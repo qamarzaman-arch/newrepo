@@ -1,9 +1,94 @@
-import { Router } from 'express';
+import { Router, Response, NextFunction } from 'express';
+import { z } from 'zod';
+import { prisma } from '../server';
+import { authenticate, AuthRequest } from '../middleware/auth';
+import { AppError } from '../middleware/errorHandler';
+
 const router = Router();
-// TODO: Implement device routes
-router.get('/', (req, res) => res.json({ success: true, data: [] }));
-router.get('/:id', (req, res) => res.json({ success: true, data: {} }));
-router.post('/', (req, res) => res.json({ success: true }));
-router.put('/:id', (req, res) => res.json({ success: true }));
-router.delete('/:id', (req, res) => res.json({ success: true }));
+
+const createDeviceSchema = z.object({
+  name: z.string().min(1),
+  type: z.string().min(1),
+  model: z.string().optional(),
+  ipAddress: z.string().optional(),
+  port: z.number().optional(),
+  config: z.string().optional(),
+});
+
+// Get devices
+router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { type, isActive } = req.query;
+    const where: any = {};
+    if (type) where.type = type;
+    if (isActive !== undefined) where.isActive = isActive === 'true';
+
+    const devices = await prisma.device.findMany({ where, orderBy: { name: 'asc' } });
+    res.json({ success: true, data: { devices } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get single device
+router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const device = await prisma.device.findUnique({ where: { id: req.params.id } });
+    if (!device) throw new AppError('Device not found', 404);
+    res.json({ success: true, data: { device } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create device
+router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const data = createDeviceSchema.parse(req.body);
+    const device = await prisma.device.create({ data });
+    res.status(201).json({ success: true, data: { device } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update device
+router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const device = await prisma.device.update({
+      where: { id: req.params.id },
+      data: req.body,
+    });
+    res.json({ success: true, data: { device } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update heartbeat
+router.post('/:id/heartbeat', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const device = await prisma.device.update({
+      where: { id: req.params.id },
+      data: { lastSeenAt: new Date() },
+    });
+    res.json({ success: true, data: { device } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete device
+router.delete('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    await prisma.device.update({
+      where: { id: req.params.id },
+      data: { isActive: false },
+    });
+    res.json({ success: true, message: 'Device deactivated' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

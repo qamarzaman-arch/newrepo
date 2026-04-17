@@ -10,48 +10,54 @@ import {
   Smartphone,
   SplitSquareHorizontal,
   X,
-  Check,
+  ShoppingCart,
+  Users,
+  Package,
+  Truck,
+  Calendar,
+  MapPin,
 } from 'lucide-react';
 import { useOrderStore, OrderItem } from '../stores/orderStore';
+import { useMenuCategories, useMenuItems } from '../hooks/useMenu';
+import { useTables } from '../hooks/useTables';
+import { orderService } from '../services/orderService';
 import toast from 'react-hot-toast';
-
-// Mock menu data (will be replaced with API call)
-const mockCategories = [
-  { id: '1', name: 'Appetizers', icon: '🥗' },
-  { id: '2', name: 'Main Course', icon: '🍖' },
-  { id: '3', name: 'Desserts', icon: '🍰' },
-  { id: '4', name: 'Beverages', icon: '☕' },
-  { id: '5', name: 'Sides', icon: '🍟' },
-];
-
-const mockMenuItems = [
-  { id: '1', categoryId: '1', name: 'Caesar Salad', price: 8.99, image: '🥗', description: 'Fresh romaine with parmesan' },
-  { id: '2', categoryId: '1', name: 'Spring Rolls', price: 6.99, image: '🌯', description: 'Crispy vegetable rolls' },
-  { id: '3', categoryId: '2', name: 'Grilled Steak', price: 24.99, image: '🥩', description: 'Premium beef steak' },
-  { id: '4', categoryId: '2', name: 'Chicken Curry', price: 16.99, image: '🍛', description: 'Spicy chicken curry' },
-  { id: '5', categoryId: '2', name: 'Pasta Carbonara', price: 14.99, image: '🍝', description: 'Creamy pasta with bacon' },
-  { id: '6', categoryId: '3', name: 'Chocolate Cake', price: 7.99, image: '🍰', description: 'Rich chocolate layer cake' },
-  { id: '7', categoryId: '3', name: 'Ice Cream', price: 5.99, image: '🍨', description: 'Vanilla bean ice cream' },
-  { id: '8', categoryId: '4', name: 'Coffee', price: 3.99, image: '☕', description: 'Freshly brewed coffee' },
-  { id: '9', categoryId: '4', name: 'Fresh Juice', price: 4.99, image: '🧃', description: 'Orange or apple juice' },
-  { id: '10', categoryId: '5', name: 'French Fries', price: 4.99, image: '🍟', description: 'Crispy golden fries' },
-];
+import { useAuthStore } from '../stores/authStore';
 
 const POSScreen: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState('1');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showItemNotes, setShowItemNotes] = useState<string | null>(null);
+  const [showTableSelection, setShowTableSelection] = useState(false);
+  const [orderType, setOrderType] = useState<'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'RESERVATION'>('DINE_IN');
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { currentOrder, addItem, removeItem, updateQuantity, clearOrder, getSubtotal, getTotal } = useOrderStore();
 
-  const filteredItems = mockMenuItems.filter((item) => {
-    const matchesCategory = item.categoryId === selectedCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory || matchesSearch;
+  // Fetch data from API
+  const { data: categories, isLoading: loadingCategories } = useMenuCategories();
+  const { data: menuItems, isLoading: loadingItems } = useMenuItems({
+    categoryId: selectedCategory || undefined,
+    search: searchQuery || undefined,
+    available: true,
   });
+  const { data: tables } = useTables({ isActive: true });
 
-  const handleAddItem = (item: typeof mockMenuItems[0]) => {
+  const filteredItems = menuItems?.filter((item: any) => {
+    if (searchQuery) {
+      return item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    }
+    return true;
+  }) || [];
+
+  const handleAddItem = (item: any) => {
+    if (!item.isAvailable) {
+      toast.error('This item is not available');
+      return;
+    }
+
     addItem({
       menuItemId: item.id,
       name: item.name,
@@ -61,7 +67,21 @@ const POSScreen: React.FC = () => {
     toast.success(`Added ${item.name}`);
   };
 
-  const handleCheckout = () => {
+  const handleOrderTypeChange = (type: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'RESERVATION') => {
+    if (type === 'DINE_IN' && !selectedTableId) {
+      setShowTableSelection(true);
+      return;
+    }
+    setOrderType(type);
+  };
+
+  const handleTableSelect = (tableId: string) => {
+    setSelectedTableId(tableId);
+    setShowTableSelection(false);
+    toast.success('Table selected!');
+  };
+
+  const handleCheckout = async () => {
     if (currentOrder.items.length === 0) {
       toast.error('Please add items to the order');
       return;
@@ -69,19 +89,58 @@ const POSScreen: React.FC = () => {
     setShowPaymentModal(true);
   };
 
-  const handlePayment = (method: string) => {
-    toast.success(`Payment processed via ${method}`);
-    setShowPaymentModal(false);
-    clearOrder();
+  const handlePayment = async (method: string) => {
+    setIsSubmitting(true);
+
+    try {
+      // Create order
+      const orderData = {
+        orderType,
+        items: currentOrder.items.map((item) => ({
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          notes: item.notes,
+        })),
+      };
+
+      const response = await orderService.createOrder(orderData);
+      const order = response.data.data.order;
+
+      // Process payment
+      await orderService.processPayment(order.id, {
+        method: method.toUpperCase(),
+        amount: getTotal(),
+      });
+
+      toast.success(`Order created and payment processed via ${method}!`);
+      setShowPaymentModal(false);
+      clearOrder();
+    } catch (error: any) {
+      console.error('Order creation error:', error);
+      toast.error(error.response?.data?.error?.message || 'Failed to create order');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const subtotal = getSubtotal();
   const total = getTotal();
 
+  if (loadingCategories || loadingItems) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading menu...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full flex gap-6">
+    <div className="h-full flex flex-col lg:flex-row gap-4 md:gap-6 p-2 md:p-4 lg:p-6">
       {/* Left Panel - Menu */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Search Bar */}
         <div className="mb-4">
           <div className="relative">
@@ -98,37 +157,42 @@ const POSScreen: React.FC = () => {
 
         {/* Categories */}
         <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
-          {mockCategories.map((category) => (
+          {categories?.map((category: any) => (
             <button
               key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
+              onClick={() => setSelectedCategory(selectedCategory === category.id ? '' : category.id)}
               className={`flex items-center gap-2 px-6 py-4 rounded-xl font-semibold transition-all whitespace-nowrap ${
                 selectedCategory === category.id
                   ? 'bg-primary text-white shadow-medium'
                   : 'bg-surface-container text-gray-700 hover:bg-surface-container-lowest'
               }`}
             >
-              <span className="text-2xl">{category.icon}</span>
               <span>{category.name}</span>
             </button>
           ))}
         </div>
 
-        {/* Menu Items Grid */}
+        {/* Menu Items Grid - Responsive */}
         <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredItems.map((item) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-4">
+            {filteredItems.map((item: any) => (
               <motion.button
                 key={item.id}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleAddItem(item)}
-                className="bg-surface-lowest rounded-2xl p-4 shadow-soft hover:shadow-medium transition-all text-left"
+                disabled={!item.isAvailable}
+                className={`bg-surface-lowest rounded-xl md:rounded-2xl p-3 md:p-4 shadow-soft hover:shadow-medium transition-all text-left ${
+                  !item.isAvailable ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
-                <div className="text-5xl mb-3">{item.image}</div>
-                <h3 className="font-bold text-gray-900 mb-1">{item.name}</h3>
-                <p className="text-xs text-gray-500 mb-2 line-clamp-2">{item.description}</p>
-                <p className="text-lg font-bold text-primary">${item.price.toFixed(2)}</p>
+                <div className="text-4xl md:text-5xl mb-2 md:mb-3">{item.image || '🍽️'}</div>
+                <h3 className="font-bold text-gray-900 mb-1 text-sm md:text-base">{item.name}</h3>
+                <p className="text-xs text-gray-500 mb-2 line-clamp-2 hidden sm:block">{item.description}</p>
+                <p className="text-base md:text-lg font-bold text-primary">${item.price.toFixed(2)}</p>
+                {!item.isAvailable && (
+                  <p className="text-xs text-red-500 mt-1">Unavailable</p>
+                )}
               </motion.button>
             ))}
           </div>
@@ -136,21 +200,83 @@ const POSScreen: React.FC = () => {
       </div>
 
       {/* Right Panel - Current Order */}
-      <div className="w-96 bg-surface-lowest rounded-2xl shadow-soft flex flex-col">
+      <div className="w-full md:w-96 lg:w-[28rem] bg-surface-lowest rounded-2xl shadow-soft flex flex-col max-h-full">
         {/* Order Header */}
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Current Order</h2>
-          <div className="flex gap-2">
-            <button className="flex-1 py-2 px-3 bg-primary/10 text-primary rounded-lg text-sm font-semibold">
-              Dine-In
+        <div className="p-4 md:p-6 border-b border-gray-200">
+          <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-3">Current Order</h2>
+          
+          {/* Order Type Selection - Responsive Grid */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => handleOrderTypeChange('DINE_IN')}
+              className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl text-xs md:text-sm font-semibold transition-all ${
+                orderType === 'DINE_IN'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Dine-in</span>
+              <span className="sm:hidden">Dine</span>
             </button>
-            <button className="flex-1 py-2 px-3 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold">
-              Takeaway
+            <button
+              onClick={() => setOrderType('TAKEAWAY')}
+              className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl text-xs md:text-sm font-semibold transition-all ${
+                orderType === 'TAKEAWAY'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              <span className="hidden sm:inline">Takeaway</span>
+              <span className="sm:hidden">Take</span>
             </button>
-            <button className="flex-1 py-2 px-3 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold">
-              Delivery
+            <button
+              onClick={() => setOrderType('DELIVERY')}
+              className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl text-xs md:text-sm font-semibold transition-all ${
+                orderType === 'DELIVERY'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Truck className="w-4 h-4" />
+              <span>Delivery</span>
+            </button>
+            <button
+              onClick={() => setOrderType('RESERVATION')}
+              className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl text-xs md:text-sm font-semibold transition-all ${
+                orderType === 'RESERVATION'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              <span className="hidden sm:inline">Reservation</span>
+              <span className="sm:hidden">Reserve</span>
             </button>
           </div>
+
+          {/* Selected Table Info */}
+          {orderType === 'DINE_IN' && selectedTableId && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-green-600" />
+                <span className="text-sm font-semibold text-green-800">
+                  Table: {tables?.find((t: any) => t.id === selectedTableId)?.number || selectedTableId}
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedTableId(null)}
+                className="text-green-600 hover:text-green-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
         </div>
 
         {/* Order Items */}
@@ -188,7 +314,7 @@ const POSScreen: React.FC = () => {
             <span className="font-semibold">${subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Tax (0%)</span>
+            <span className="text-gray-600">Tax</span>
             <span className="font-semibold">$0.00</span>
           </div>
           <div className="flex justify-between text-lg font-bold pt-3 border-t border-gray-200">
@@ -206,9 +332,10 @@ const POSScreen: React.FC = () => {
             </button>
             <button
               onClick={handleCheckout}
-              className="py-4 px-4 gradient-btn rounded-xl font-semibold shadow-medium"
+              disabled={isSubmitting}
+              className="py-4 px-4 gradient-btn rounded-xl font-semibold shadow-medium disabled:opacity-50"
             >
-              Checkout
+              {isSubmitting ? 'Processing...' : 'Checkout'}
             </button>
           </div>
         </div>
@@ -221,6 +348,7 @@ const POSScreen: React.FC = () => {
             total={total}
             onClose={() => setShowPaymentModal(false)}
             onPayment={handlePayment}
+            isProcessing={isSubmitting}
           />
         )}
       </AnimatePresence>
@@ -231,6 +359,18 @@ const POSScreen: React.FC = () => {
           <ItemNotesModal
             itemId={showItemNotes}
             onClose={() => setShowItemNotes(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Table Selection Modal */}
+      <AnimatePresence>
+        {showTableSelection && (
+          <TableSelectionModal
+            tables={tables || []}
+            selectedTableId={selectedTableId}
+            onSelect={handleTableSelect}
+            onClose={() => setShowTableSelection(false)}
           />
         )}
       </AnimatePresence>
@@ -308,7 +448,8 @@ const PaymentModal: React.FC<{
   total: number;
   onClose: () => void;
   onPayment: (method: string) => void;
-}> = ({ total, onClose, onPayment }) => {
+  isProcessing: boolean;
+}> = ({ total, onClose, onPayment, isProcessing }) => {
   const paymentMethods = [
     { id: 'cash', name: 'Cash', icon: Banknote, color: 'bg-green-500' },
     { id: 'card', name: 'Card', icon: CreditCard, color: 'bg-blue-500' },
@@ -328,7 +469,8 @@ const PaymentModal: React.FC<{
           <h2 className="text-2xl font-bold">Process Payment</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            disabled={isProcessing}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
           >
             <X className="w-6 h-6" />
           </button>
@@ -346,7 +488,8 @@ const PaymentModal: React.FC<{
               <button
                 key={method.id}
                 onClick={() => onPayment(method.name)}
-                className={`${method.color} text-white p-6 rounded-2xl hover:opacity-90 transition-opacity`}
+                disabled={isProcessing}
+                className={`${method.color} text-white p-6 rounded-2xl hover:opacity-90 transition-opacity disabled:opacity-50`}
               >
                 <Icon className="w-8 h-8 mx-auto mb-2" />
                 <p className="font-semibold">{method.name}</p>
@@ -357,7 +500,8 @@ const PaymentModal: React.FC<{
 
         <button
           onClick={onClose}
-          className="w-full py-4 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+          disabled={isProcessing}
+          className="w-full py-4 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
         >
           Cancel
         </button>
@@ -381,12 +525,12 @@ const ItemNotesModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <motion.div
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 50, opacity: 0 }}
-        className="bg-surface-lowest rounded-3xl p-6 max-w-lg w-full mx-4"
+        className="bg-surface-lowest rounded-3xl p-6 max-w-lg w-full"
       >
         <h3 className="text-xl font-bold mb-4">Add Note</h3>
         <textarea
@@ -409,6 +553,84 @@ const ItemNotesModal: React.FC<{
           >
             Save Note
           </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// Table Selection Modal
+const TableSelectionModal: React.FC<{
+  tables: any[];
+  selectedTableId: string | null;
+  onSelect: (tableId: string) => void;
+  onClose: () => void;
+}> = ({ tables, selectedTableId, onSelect, onClose }) => {
+  const availableTables = tables.filter((t: any) => t.status === 'AVAILABLE');
+  const occupiedTables = tables.filter((t: any) => t.status === 'OCCUPIED');
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-surface-lowest rounded-3xl p-6 max-w-4xl w-full max-h-[80vh] flex flex-col"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold">Select Table</h2>
+            <p className="text-sm text-gray-600 mt-1">Choose a table for dine-in order</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Available Tables */}
+        <div className="flex-1 overflow-y-auto">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Available Tables</h3>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mb-6">
+            {availableTables.map((table: any) => (
+              <motion.button
+                key={table.id}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onSelect(table.id)}
+                className={`p-4 rounded-xl border-2 transition-all ${
+                  selectedTableId === table.id
+                    ? 'border-primary bg-primary/10'
+                    : 'border-green-200 bg-green-50 hover:border-green-400'
+                }`}
+              >
+                <Users className="w-6 h-6 mx-auto mb-2 text-green-600" />
+                <p className="font-bold text-sm">{table.number}</p>
+                <p className="text-xs text-gray-600">{table.capacity} seats</p>
+              </motion.button>
+            ))}
+          </div>
+
+          {/* Occupied Tables */}
+          {occupiedTables.length > 0 && (
+            <>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Occupied Tables</h3>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                {occupiedTables.map((table: any) => (
+                  <div
+                    key={table.id}
+                    className="p-4 rounded-xl border-2 border-red-200 bg-red-50 opacity-60 cursor-not-allowed"
+                  >
+                    <Users className="w-6 h-6 mx-auto mb-2 text-red-600" />
+                    <p className="font-bold text-sm">{table.number}</p>
+                    <p className="text-xs text-gray-600">{table.capacity} seats</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </motion.div>
     </div>

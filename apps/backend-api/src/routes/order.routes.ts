@@ -1,6 +1,6 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { prisma, socketIO } from '../server';
+import { prisma, io } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
@@ -177,12 +177,32 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
       }
     }
 
-    // Calculate tax
-    const taxRate = 0; // TODO: Get from settings
+    // Calculate tax - get from settings
+    const taxSetting = await prisma.setting.findUnique({
+      where: { key: 'tax_rate' },
+    });
+    const taxRate = taxSetting ? parseFloat(taxSetting.value) : 0;
     const taxAmount = (subtotal - discountAmount) * (taxRate / 100);
 
-    // Calculate surcharge
-    const surchargeAmount = 0; // TODO: Get from settings
+    // Calculate surcharge - get applicable surcharges
+    const surcharges = await prisma.surcharge.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { applicableTo: 'all' },
+          { applicableTo: data.orderType.toLowerCase() },
+        ],
+      },
+    });
+
+    let surchargeAmount = 0;
+    for (const surcharge of surcharges) {
+      if (surcharge.type === 'percentage') {
+        surchargeAmount += (subtotal * Number(surcharge.value)) / 100;
+      } else {
+        surchargeAmount += Number(surcharge.value);
+      }
+    }
 
     const totalAmount = subtotal - discountAmount + taxAmount + surchargeAmount;
 
@@ -247,8 +267,8 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
     });
 
     // Emit real-time event
-    socketIO.emit('order-created', order);
-    socketIO.to('kitchen').emit('new-kot', order);
+    io.emit('order-created', order);
+    io.to('kitchen').emit('new-kot', order);
 
     logger.info(`Order created: ${orderNumber} by ${req.user!.username}`);
 
@@ -308,7 +328,7 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res: Response
     }
 
     // Emit real-time event
-    socketIO.emit('order-updated', updatedOrder);
+    io.emit('order-updated', updatedOrder);
 
     res.json({
       success: true,
@@ -387,7 +407,7 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
     }
 
     // Emit real-time event
-    socketIO.emit('payment-processed', updatedOrder);
+    io.emit('payment-processed', updatedOrder);
 
     logger.info(`Payment processed for order ${order.orderNumber}: ${amount}`);
 

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#61f9e9",
+                    "surface-container-low": "#1c1b1b",
+                    "inverse-surface": "#e5e2e1",
+                    "primary-fixed": "#83fba5",
+                    "primary": "#6ee591",
+                    "on-surface-variant": "#bdcabc",
+                    "on-tertiary-fixed": "#00201d",
+                    "primary-container": "#50c878",
+                    "on-tertiary-container": "#004d47",
+                    "error": "#ffb4ab",
+                    "secondary-fixed-dim": "#fbbc00",
+                    "surface-variant": "#353534",
+                    "inverse-primary": "#006d36",
+                    "surface-bright": "#393939",
+                    "secondary-fixed": "#ffdfa0",
+                    "tertiary-container": "#03c7b8",
+                    "primary-fixed-dim": "#66dd8b",
+                    "surface-container-lowest": "#0e0e0e",
+                    "surface-container": "#201f1f",
+                    "outline-variant": "#3e4a3f",
+                    "on-primary-container": "#005025",
+                    "surface-container-high": "#2a2a2a",
+                    "inverse-on-surface": "#313030",
+                    "on-secondary-fixed-variant": "#5c4300",
+                    "error-container": "#93000a",
+                    "on-secondary-container": "#6d5000",
+                    "surface-dim": "#131313",
+                    "on-tertiary": "#003732",
+                    "on-background": "#e5e2e1",
+                    "on-error": "#690005",
+                    "secondary": "#ffe2ab",
+                    "surface-container-highest": "#353534",
+                    "on-secondary": "#402d00",
+                    "surface-tint": "#66dd8b",
+                    "on-secondary-fixed": "#261a00",
+                    "on-surface": "#e5e2e1",
+                    "on-primary-fixed": "#00210c",
+                    "secondary-container": "#ffbf00",
+                    "on-tertiary-fixed-variant": "#005049",
+                    "tertiary": "#45e3d3",
+                    "surface": "#131313",
+                    "on-primary-fixed-variant": "#005227",
+                    "tertiary-fixed-dim": "#3adccc",
+                    "on-primary": "#003919",
+                    "outline": "#879487",
+                    "background": "#131313",
+                    "on-error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-kinetic-gradient {
+            background: linear-gradient(135deg, #6ee591 0%, #50c878 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body overflow-hidden">
+<!-- Blurred Background Menu Layer -->
+<div class="fixed inset-0 z-0 flex blur-md saturate-50 opacity-40 select-none pointer-events-none">
+<!-- Sidebar Navigation -->
+<aside class="bg-zinc-900 h-screen w-72 flex flex-col gap-2 pt-24 pb-6">
+<div class="px-6 mb-8">
+<div class="w-12 h-12 rounded-xl bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">restaurant</span>
+</div>
+</div>
+<div class="bg-gradient-to-br from-[#6ee591] to-[#50c878] text-zinc-950 rounded-xl mx-2 shadow-lg shadow-emerald-900/20 px-4 py-3 font-sans text-[13px] font-medium flex items-center gap-3">
+<span class="material-symbols-outlined">restaurant</span> Appetizers
+            </div>
+<div class="text-zinc-400 px-4 py-3 mx-2 font-sans text-[13px] font-medium flex items-center gap-3">
+<span class="material-symbols-outlined">flatware</span> Mains
+            </div>
+<div class="text-zinc-400 px-4 py-3 mx-2 font-sans text-[13px] font-medium flex items-center gap-3">
+<span class="material-symbols-outlined">set_meal</span> Sides
+            </div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 bg-surface p-8 overflow-hidden">
+<header class="flex justify-between items-center mb-12">
+<div>
+<h1 class="font-headline text-4xl font-extrabold tracking-tighter text-on-surface uppercase">Mains</h1>
+<p class="text-on-surface-variant font-label text-sm tracking-wide">Select items to add to ticket</p>
+</div>
+</header>
+<div class="grid grid-cols-3 gap-6">
+<!-- Placeholder Menu Cards -->
+<div class="bg-surface-container-high rounded-xl p-4 aspect-square"></div>
+<div class="bg-surface-container-high rounded-xl p-4 aspect-square"></div>
+<div class="bg-surface-container-high rounded-xl p-4 aspect-square"></div>
+<div class="bg-surface-container-high rounded-xl p-4 aspect-square"></div>
+<div class="bg-surface-container-high rounded-xl p-4 aspect-square"></div>
+<div class="bg-surface-container-high rounded-xl p-4 aspect-square"></div>
+</div>
+</main>
+<!-- Right Side Order Panel (Blurred) -->
+<aside class="w-96 bg-surface-container-low border-l border-outline-variant/10 p-6">
+<div class="h-full flex flex-col justify-between">
+<div>
+<h2 class="font-headline text-xl font-bold mb-6">Current Ticket</h2>
+<div class="space-y-4">
+<div class="bg-surface-container-highest p-4 rounded-xl"></div>
+<div class="bg-surface-container-highest p-4 rounded-xl"></div>
+</div>
+</div>
+<div class="pt-6">
+<div class="h-16 w-full bg-primary rounded-xl"></div>
+</div>
+</div>
+</aside>
+</div>
+<!-- Top AppBar (Locked above blur) -->
+<header class="fixed top-0 left-0 w-full z-10 flex justify-between items-center w-full px-6 py-4 h-20 bg-zinc-950 dark:bg-[#131313] shadow-2xl shadow-black/40">
+<div class="flex items-center gap-4">
+<span class="font-manrope text-sm font-semibold tracking-wide uppercase text-emerald-400 dark:text-[#6ee591] text-2xl font-black tracking-tighter">POSLYTIC</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center bg-zinc-900 rounded-full px-4 py-2 gap-3">
+<span class="material-symbols-outlined text-emerald-400">table_bar</span>
+<span class="font-headline font-bold text-on-surface">Table 04</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-3 text-zinc-500 hover:bg-zinc-800 transition-colors duration-200 active:scale-95 transition-transform rounded-full">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-3 text-zinc-500 hover:bg-zinc-800 transition-colors duration-200 active:scale-95 transition-transform rounded-full">
+<span class="material-symbols-outlined">schedule</span>
+</button>
+<button class="p-3 text-zinc-500 hover:bg-zinc-800 transition-colors duration-200 active:scale-95 transition-transform rounded-full">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- KOT CONFIRMATION MODAL OVERLAY -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-surface-container-lowest/60 backdrop-blur-sm">
+<!-- The Modal (The Vault) -->
+<div class="w-full max-w-xl bg-surface-container rounded-[2rem] overflow-hidden shadow-[0_24px_48px_rgba(0,0,0,0.6)] border border-outline-variant/10">
+<!-- Header Section -->
+<div class="px-8 pt-8 pb-4 text-center">
+<div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-6">
+<span class="material-symbols-outlined text-4xl text-primary" style="font-variation-settings: 'FILL' 1;">restaurant_menu</span>
+</div>
+<h2 class="font-headline text-3xl font-extrabold tracking-tight text-on-surface mb-2">Send to Kitchen?</h2>
+<div class="flex items-center justify-center gap-2 text-primary">
+<span class="material-symbols-outlined text-sm">table_restaurant</span>
+<span class="font-headline font-bold tracking-widest uppercase text-xs">Table 04 • Station 2</span>
+</div>
+</div>
+<!-- Content Area: New Items List -->
+<div class="px-8 py-6 space-y-4">
+<div class="text-on-surface-variant font-label text-[11px] uppercase tracking-[0.2em] font-bold">New Items to Fire</div>
+<div class="space-y-3">
+<!-- Item 1 -->
+<div class="flex items-center justify-between bg-surface-container-high p-5 rounded-2xl">
+<div class="flex items-center gap-5">
+<div class="w-12 h-12 rounded-xl overflow-hidden bg-surface-container-lowest flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="close-up of a juicy gourmet cheeseburger with melted cheddar and fresh lettuce on a toasted brioche bun" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA01WlaBG17ZXyIzdAnZS3N6vmsKjyH0m21tN82sVSi7nEBdsTBP8Yp6O0K-Wozz2Pfxgdq9Xb8Ld3QDTqGj3dKF9i6ay15kdLO6Xb7DahVSbvKSI5yhK8BhuIwO3u1c7Cu17eQHV9orLKpUkU40vpweH7HX4mfzXBi7-95OQXhf-6d8Xv5o1iC8Y6XFEdoLwec4YIApJJE2YiRED6tdOj9mUIATxYV9AU5T2ZJh0E5pCCUnr_tLFEfqpoqWwQj7kxSbHPmpt8M4is"/>
+</div>
+<div>
+<div class="font-headline font-bold text-lg text-on-surface">Cheeseburger</div>
+<div class="font-label text-xs text-on-surface-variant">Medium Rare, No Onions</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-headline font-black text-2xl text-primary">2x</span>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex items-center justify-between bg-surface-container-high p-5 rounded-2xl">
+<div class="flex items-center gap-5">
+<div class="w-12 h-12 rounded-xl overflow-hidden bg-surface-container-lowest flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="chilled glass bottle of classic cola with condensation and a straw against a dark atmospheric background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVEQGicttWNcxNJ8BhZcBn_tk7YU1hey-tlIzS7izynYcQq27_aaSfoVltaforOyBrDQirAw54KPkV9WjRZumUL4UjAPke5r5Wz_FTAmpJoIyHYyfhApJp90aLb0XQk3TCV3I8hRlQPMKRkUue0rki4mj5SL_FTEerlkV3UDQBTyC2Jp5iWexfYNRdDmjr7x3TWZyRJ7pw1lPWsn81fAwFgxwd_bgAnnwa69TI1hUfzwhd4FggRGrPyfONu4rtYMPtyGPYoS6Oevg"/>
+</div>
+<div>
+<div class="font-headline font-bold text-lg text-on-surface">Coke</div>
+<div class="font-label text-xs text-on-surface-variant">Classic, Large Ice</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-headline font-black text-2xl text-primary">1x</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal Actions -->
+<div class="p-8 flex flex-col gap-4">
+<button class="w-full bg-kinetic-gradient h-16 rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-transform duration-150 shadow-lg shadow-emerald-900/20">
+<span class="material-symbols-outlined text-on-primary-fixed" style="font-variation-settings: 'FILL' 1;">send</span>
+<span class="font-headline font-extrabold text-on-primary-fixed text-lg tracking-tight uppercase">Confirm &amp; Send</span>
+</button>
+<button class="w-full h-14 border border-outline-variant/30 rounded-2xl flex items-center justify-center font-label font-bold text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 duration-150">
+                    Cancel
+                </button>
+</div>
+</div>
+</div>
+<!-- Bottom Navigation Shell (Persistent UI) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-zinc-950/90 dark:bg-[#131313]/90 backdrop-blur-2xl border-t border-white/5 shadow-[0_-12px_40px_rgba(0,0,0,0.6)] rounded-t-[2rem]">
+<div class="flex flex-col items-center justify-center bg-zinc-800 text-emerald-400 rounded-2xl px-8 py-2 active:scale-90 duration-300">
+<span class="material-symbols-outlined mb-1">receipt_long</span>
+<span class="font-manrope text-[11px] font-bold uppercase tracking-widest">Orders</span>
+</div>
+<div class="flex flex-col items-center justify-center text-zinc-500 px-8 py-2 hover:text-emerald-300 transition-all active:scale-90 duration-300">
+<span class="material-symbols-outlined mb-1">timer</span>
+<span class="font-manrope text-[11px] font-bold uppercase tracking-widest">Shifts</span>
+</div>
+<div class="flex flex-col items-center justify-center text-zinc-500 px-8 py-2 hover:text-emerald-300 transition-all active:scale-90 duration-300">
+<span class="material-symbols-outlined mb-1">analytics</span>
+<span class="font-manrope text-[11px] font-bold uppercase tracking-widest">Reports</span>
+</div>
+</nav>
+</body></html>

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#61f9e9",
+                        "surface-container-low": "#1c1b1b",
+                        "inverse-surface": "#e5e2e1",
+                        "primary-fixed": "#83fba5",
+                        "primary": "#6ee591",
+                        "on-surface-variant": "#bdcabc",
+                        "on-tertiary-fixed": "#00201d",
+                        "primary-container": "#50c878",
+                        "on-tertiary-container": "#004d47",
+                        "error": "#ffb4ab",
+                        "secondary-fixed-dim": "#fbbc00",
+                        "surface-variant": "#353534",
+                        "inverse-primary": "#006d36",
+                        "surface-bright": "#393939",
+                        "secondary-fixed": "#ffdfa0",
+                        "tertiary-container": "#03c7b8",
+                        "primary-fixed-dim": "#66dd8b",
+                        "surface-container-lowest": "#0e0e0e",
+                        "surface-container": "#201f1f",
+                        "outline-variant": "#3e4a3f",
+                        "on-primary-container": "#005025",
+                        "surface-container-high": "#2a2a2a",
+                        "inverse-on-surface": "#313030",
+                        "on-secondary-fixed-variant": "#5c4300",
+                        "error-container": "#93000a",
+                        "on-secondary-container": "#6d5000",
+                        "surface-dim": "#131313",
+                        "on-tertiary": "#003732",
+                        "on-background": "#e5e2e1",
+                        "on-error": "#690005",
+                        "secondary": "#ffe2ab",
+                        "surface-container-highest": "#353534",
+                        "on-secondary": "#402d00",
+                        "surface-tint": "#66dd8b",
+                        "on-secondary-fixed": "#261a00",
+                        "on-surface": "#e5e2e1",
+                        "on-primary-fixed": "#00210c",
+                        "secondary-container": "#ffbf00",
+                        "on-tertiary-fixed-variant": "#005049",
+                        "tertiary": "#45e3d3",
+                        "surface": "#131313",
+                        "on-primary-fixed-variant": "#005227",
+                        "tertiary-fixed-dim": "#3adccc",
+                        "on-primary": "#003919",
+                        "outline": "#879487",
+                        "background": "#131313",
+                        "on-error-container": "#ffdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-kinetic-gradient {
+            background: linear-gradient(135deg, #6ee591 0%, #50c878 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary selection:text-on-primary">
+<!-- TopAppBar -->
+<header class="bg-zinc-950 dark:bg-[#131313] shadow-2xl shadow-black/40 docked full-width top-0 sticky z-50">
+<div class="flex justify-between items-center w-full px-6 py-4 h-20">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-black tracking-tighter text-emerald-400 dark:text-[#6ee591] font-headline">POSLYTIC</span>
+<div class="hidden md:flex items-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-[#1c1c1c] rounded-xl">
+<span class="material-symbols-outlined text-zinc-500">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm text-on-surface-variant w-48" placeholder="Search menu..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-3 text-zinc-500 hover:bg-zinc-800 transition-colors duration-200 rounded-xl active:scale-95 transition-transform">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-3 text-zinc-500 hover:bg-zinc-800 transition-colors duration-200 rounded-xl active:scale-95 transition-transform">
+<span class="material-symbols-outlined">schedule</span>
+</button>
+<button class="p-1 pl-4 flex items-center gap-3 border-l border-white/5 hover:bg-zinc-800 transition-colors duration-200 rounded-xl active:scale-95 transition-transform">
+<div class="flex flex-col items-end">
+<span class="text-sm font-bold text-on-surface leading-none">James Miller</span>
+<span class="text-[10px] text-zinc-500 uppercase tracking-widest font-headline">Server #24</span>
+</div>
+<span class="material-symbols-outlined text-3xl text-zinc-500">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<main class="flex min-h-[calc(100vh-80px)]">
+<!-- SideNav Suppressed for Checkout Flow Focus - Replacing with Flow Progress -->
+<div class="hidden lg:flex flex-col w-72 bg-zinc-900 dark:bg-[#1c1c1c] p-6 gap-8 border-r border-white/5">
+<div class="space-y-1">
+<h2 class="font-headline font-extrabold text-2xl text-on-surface tracking-tight leading-tight">Checkout</h2>
+<p class="text-zinc-500 font-medium text-sm">Table 24 • 4 Items</p>
+</div>
+<nav class="flex flex-col gap-4">
+<div class="flex items-center gap-4 p-4 rounded-xl bg-zinc-800 text-zinc-500">
+<div class="w-8 h-8 rounded-full border-2 border-zinc-700 flex items-center justify-center text-xs font-bold">1</div>
+<span class="font-headline text-sm font-bold">Payment Method</span>
+</div>
+<div class="flex items-center gap-4 p-4 rounded-xl bg-kinetic-gradient text-zinc-950 shadow-lg shadow-emerald-900/20">
+<div class="w-8 h-8 rounded-full bg-zinc-950 flex items-center justify-center text-xs font-bold text-primary">2</div>
+<span class="font-headline text-sm font-bold">Amount Entry</span>
+</div>
+<div class="flex items-center gap-4 p-4 rounded-xl text-zinc-600">
+<div class="w-8 h-8 rounded-full border-2 border-zinc-800 flex items-center justify-center text-xs font-bold">3</div>
+<span class="font-headline text-sm font-bold">Confirmation</span>
+</div>
+</nav>
+<div class="mt-auto p-4 bg-surface-container-low rounded-2xl border border-white/5">
+<div class="flex justify-between items-center mb-4">
+<span class="text-xs uppercase tracking-widest font-bold text-zinc-500">Current Order</span>
+<span class="material-symbols-outlined text-zinc-600 text-sm">receipt</span>
+</div>
+<ul class="space-y-3">
+<li class="flex justify-between text-sm">
+<span class="text-on-surface-variant">Ribeye Steak</span>
+<span class="text-on-surface font-semibold">$24.50</span>
+</li>
+<li class="flex justify-between text-sm">
+<span class="text-on-surface-variant">Glass Cabernet</span>
+<span class="text-on-surface font-semibold">$12.00</span>
+</li>
+<li class="pt-3 border-t border-white/5 flex justify-between text-lg font-headline font-black text-primary">
+<span>Total</span>
+<span>$36.50</span>
+</li>
+</ul>
+</div>
+</div>
+<!-- Main Content Canvas (The Vault) -->
+<div class="flex-1 p-6 md:p-12 lg:p-16 flex flex-col items-center justify-center bg-surface-dim overflow-y-auto">
+<div class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-12">
+<!-- Left: Numeric Input Pad -->
+<div class="lg:col-span-7 flex flex-col gap-6">
+<div class="bg-surface-container-lowest p-6 rounded-[2rem] border border-white/5">
+<div class="grid grid-cols-3 gap-4">
+<!-- Numeric Keys -->
+<button class="aspect-square flex items-center justify-center text-3xl font-headline font-bold text-on-surface bg-surface-container hover:bg-surface-container-high rounded-2xl transition-all active:scale-95">1</button>
+<button class="aspect-square flex items-center justify-center text-3xl font-headline font-bold text-on-surface bg-surface-container hover:bg-surface-container-high rounded-2xl transition-all active:scale-95">2</button>
+<button class="aspect-square flex items-center justify-center text-3xl font-headline font-bold text-on-surface bg-surface-container hover:bg-surface-container-high rounded-2xl transition-all active:scale-95">3</button>
+<button class="aspect-square flex items-center justify-center text-3xl font-headline font-bold text-on-surface bg-surface-container hover:bg-surface-container-high rounded-2xl transition-all active:scale-95">4</button>
+<button class="aspect-square flex items-center justify-center text-3xl font-headline font-bold text-on-surface bg-surface-container hover:bg-surface-container-high rounded-2xl transition-all active:scale-95">5</button>
+<button class="aspect-square flex items-center justify-center text-3xl font-headline font-bold text-on-surface bg-surface-container hover:bg-surface-container-high rounded-2xl transition-all active:scale-95">6</button>
+<button class="aspect-square flex items-center justify-center text-3xl font-headline font-bold text-on-surface bg-surface-container hover:bg-surface-container-high rounded-2xl transition-all active:scale-95">7</button>
+<button class="aspect-square flex items-center justify-center text-3xl font-headline font-bold text-on-surface bg-surface-container hover:bg-surface-container-high rounded-2xl transition-all active:scale-95">8</button>
+<button class="aspect-square flex items-center justify-center text-3xl font-headline font-bold text-on-surface bg-surface-container hover:bg-surface-container-high rounded-2xl transition-all active:scale-95">9</button>
+<button class="aspect-square flex items-center justify-center text-3xl font-headline font-bold text-on-surface bg-surface-container hover:bg-surface-container-high rounded-2xl transition-all active:scale-95">.</button>
+<button class="aspect-square flex items-center justify-center text-3xl font-headline font-bold text-on-surface bg-surface-container hover:bg-surface-container-high rounded-2xl transition-all active:scale-95">0</button>
+<button class="aspect-square flex items-center justify-center text-3xl font-headline font-bold text-error bg-error-container/20 hover:bg-error-container/40 rounded-2xl transition-all active:scale-95">
+<span class="material-symbols-outlined text-4xl">backspace</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-4 mt-4">
+<button class="py-6 flex items-center justify-center gap-3 text-xl font-headline font-bold text-secondary bg-secondary-container/10 hover:bg-secondary-container/20 rounded-2xl transition-all active:scale-95 border border-secondary-container/20">
+                                Exact Change
+                            </button>
+<button class="py-6 flex items-center justify-center gap-3 text-xl font-headline font-bold text-tertiary bg-tertiary-container/10 hover:bg-tertiary-container/20 rounded-2xl transition-all active:scale-95 border border-tertiary-container/20">
+                                Next $10
+                            </button>
+</div>
+</div>
+</div>
+<!-- Right: Summary and Action -->
+<div class="lg:col-span-5 flex flex-col gap-8">
+<div class="flex flex-col gap-4">
+<div class="bg-surface-container-low p-8 rounded-[2rem] flex flex-col gap-1 items-center justify-center text-center">
+<span class="text-sm font-headline font-extrabold uppercase tracking-[0.2em] text-zinc-500">Amount Due</span>
+<span class="text-6xl font-headline font-black text-on-surface tracking-tighter">$30.92</span>
+</div>
+<div class="grid grid-cols-1 gap-4">
+<div class="bg-surface-container-high p-8 rounded-[2rem] flex justify-between items-center border-l-4 border-primary">
+<div class="flex flex-col">
+<span class="text-xs font-bold uppercase tracking-widest text-zinc-400">Cash Received</span>
+<span class="text-4xl font-headline font-bold text-on-surface">$40.00</span>
+</div>
+<span class="material-symbols-outlined text-primary text-5xl opacity-40">payments</span>
+</div>
+<div class="bg-surface-container-highest/50 backdrop-blur-md p-8 rounded-[2rem] flex justify-between items-center">
+<div class="flex flex-col">
+<span class="text-xs font-bold uppercase tracking-widest text-zinc-400">Change Due</span>
+<span class="text-4xl font-headline font-bold text-tertiary">$9.08</span>
+</div>
+<span class="material-symbols-outlined text-tertiary text-5xl opacity-40">currency_exchange</span>
+</div>
+</div>
+</div>
+<div class="mt-auto space-y-4">
+<div class="flex gap-4">
+<button class="flex-1 py-5 rounded-2xl bg-zinc-800 text-on-surface font-headline font-bold text-sm uppercase tracking-widest hover:bg-zinc-700 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-xl">arrow_back</span>
+                                Change Method
+                            </button>
+<button class="w-16 py-5 rounded-2xl bg-zinc-800 text-on-surface flex items-center justify-center hover:bg-zinc-700 transition-all">
+<span class="material-symbols-outlined text-xl">more_vert</span>
+</button>
+</div>
+<button class="w-full py-8 bg-kinetic-gradient rounded-[2rem] text-on-primary-fixed font-headline font-black text-xl uppercase tracking-widest shadow-2xl shadow-emerald-900/40 flex items-center justify-center gap-4 active:scale-[0.98] transition-transform group">
+<span class="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform">check_circle</span>
+                            Place Order &amp; Print
+                        </button>
+</div>
+</div>
+</div>
+<!-- Asymmetric Branding Detail -->
+<div class="absolute bottom-12 right-12 opacity-5 pointer-events-none select-none">
+<span class="text-9xl font-headline font-black tracking-tighter leading-none block">VAULT</span>
+<span class="text-9xl font-headline font-black tracking-tighter leading-none block text-right">SECURE</span>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-zinc-950/90 dark:bg-[#131313]/90 backdrop-blur-2xl rounded-t-[2rem] border-t border-white/5 shadow-[0_-12px_40px_rgba(0,0,0,0.6)]">
+<button class="flex flex-col items-center justify-center text-zinc-500 px-8 py-2 hover:text-emerald-300 transition-all active:scale-90 duration-300">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-manrope text-[11px] font-bold uppercase tracking-widest">Orders</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-zinc-800 text-emerald-400 rounded-2xl px-8 py-2 active:scale-90 duration-300">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-manrope text-[11px] font-bold uppercase tracking-widest">Checkout</span>
+</button>
+<button class="flex flex-col items-center justify-center text-zinc-500 px-8 py-2 hover:text-emerald-300 transition-all active:scale-90 duration-300">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-manrope text-[11px] font-bold uppercase tracking-widest">Reports</span>
+</button>
+</nav>
+</body></html>

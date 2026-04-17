@@ -1,7 +1,7 @@
 {
-  "name": "@restaurant-pos/pos-desktop",
+  "name": "@poslytic/pos-desktop",
   "version": "1.0.0",
-  "description": "Restaurant POS Desktop Application",
+  "description": "POSLytic - Smart Restaurant Management System",
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
@@ -14,17 +14,15 @@
     "electron:pack": "electron-builder --dir"
   },
   "dependencies": {
-    "@prisma/client": "^5.8.0",
     "@tanstack/react-query": "^5.17.9",
     "@tanstack/react-table": "^8.11.6",
     "axios": "^1.6.5",
-    "better-sqlite3": "^9.2.2",
+    "better-sqlite3": "^12.9.0",
     "clsx": "^2.1.0",
     "date-fns": "^3.2.0",
-    "electron-log": "^5.1.0",
-    "electron-store": "^8.1.0",
+    "electron-log": "^5.4.3",
+    "electron-store": "^8.2.0",
     "framer-motion": "^10.18.0",
-    "headlessui": "^0.0.0",
     "lucide-react": "^0.309.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -36,7 +34,7 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.8",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.10.6",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
@@ -44,9 +42,7 @@
     "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.2",
     "electron": "^28.1.4",
-    "electron-builder": "^24.9.1",
     "postcss": "^8.4.33",
-    "prisma": "^5.8.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.11",
@@ -54,7 +50,7 @@
   },
   "build": {
     "appId": "com.restaurantpos.desktop",
-    "productName": "Restaurant POS",
+    "productName": "POSLytic",
     "directories": {
       "output": "release"
     },
@@ -63,15 +59,21 @@
       "package.json"
     ],
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "assets/icon.ico"
     },
     "mac": {
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "icon": "assets/icon.icns"
     },
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "icon": "assets/icon.png"
     }
   }

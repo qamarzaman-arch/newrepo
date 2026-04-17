@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import path from 'path';
-import Database from 'better-sqlite3';
+// import Database from 'better-sqlite3'; // Temporarily disabled - requires C++ build tools
 import Store from 'electron-store';
 import log from 'electron-log';
 
@@ -10,181 +10,21 @@ log.transports.file.maxSize = 5 * 1024 * 1024; // 5MB
 
 const store = new Store();
 let mainWindow: BrowserWindow | null = null;
-let db: Database.Database;
+// let db: Database.Database; // Temporarily disabled
 
-// Initialize local database
-function initializeDatabase() {
-  const dbPath = path.join(app.getPath('userData'), 'pos-local.db');
-  db = new Database(dbPath);
+// Initialize local database - TEMPORARILY DISABLED
+// function initializeDatabase() {
+//   const dbPath = path.join(app.getPath('userData'), 'pos-local.db');
+//   db = new Database(dbPath);
+//   db.pragma('journal_mode = WAL');
+//   db.pragma('foreign_keys = ON');
+//   createTables();
+//   log.info(`Database initialized at: ${dbPath}`);
+// }
 
-  // Enable WAL mode for better performance
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
-
-  // Create tables if they don't exist
-  createTables();
-
-  log.info(`Database initialized at: ${dbPath}`);
-}
-
-function createTables() {
-  // Users table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      username TEXT UNIQUE NOT NULL,
-      email TEXT,
-      password_hash TEXT NOT NULL,
-      full_name TEXT NOT NULL,
-      role TEXT NOT NULL,
-      pin TEXT,
-      phone TEXT,
-      avatar TEXT,
-      is_active BOOLEAN DEFAULT 1,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      last_login_at DATETIME
-    );
-
-    CREATE TABLE IF NOT EXISTS menu_categories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      description TEXT,
-      display_order INTEGER DEFAULT 0,
-      is_active BOOLEAN DEFAULT 1,
-      image TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS menu_items (
-      id TEXT PRIMARY KEY,
-      category_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      description TEXT,
-      price DECIMAL(10,2) NOT NULL,
-      cost DECIMAL(10,2) NOT NULL,
-      image TEXT,
-      sku TEXT,
-      barcode TEXT,
-      is_active BOOLEAN DEFAULT 1,
-      is_available BOOLEAN DEFAULT 1,
-      prep_time_minutes INTEGER DEFAULT 15,
-      tax_rate DECIMAL(5,2) DEFAULT 0,
-      display_order INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (category_id) REFERENCES menu_categories(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS orders (
-      id TEXT PRIMARY KEY,
-      order_number TEXT UNIQUE NOT NULL,
-      order_type TEXT NOT NULL,
-      status TEXT NOT NULL,
-      customer_id TEXT,
-      customer_name TEXT,
-      customer_phone TEXT,
-      table_id TEXT,
-      subtotal DECIMAL(10,2) NOT NULL,
-      discount_amount DECIMAL(10,2) DEFAULT 0,
-      discount_percent DECIMAL(5,2) DEFAULT 0,
-      tax_amount DECIMAL(10,2) DEFAULT 0,
-      surcharge_amount DECIMAL(10,2) DEFAULT 0,
-      total_amount DECIMAL(10,2) NOT NULL,
-      paid_amount DECIMAL(10,2) DEFAULT 0,
-      payment_method TEXT,
-      payment_status TEXT DEFAULT 'PENDING',
-      cashier_id TEXT NOT NULL,
-      server_id TEXT,
-      notes TEXT,
-      kitchen_notes TEXT,
-      ordered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      confirmed_at DATETIME,
-      completed_at DATETIME,
-      cancelled_at DATETIME,
-      cancel_reason TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS order_items (
-      id TEXT PRIMARY KEY,
-      order_id TEXT NOT NULL,
-      menu_item_id TEXT NOT NULL,
-      quantity INTEGER NOT NULL,
-      unit_price DECIMAL(10,2) NOT NULL,
-      total_price DECIMAL(10,2) NOT NULL,
-      notes TEXT,
-      modifiers TEXT,
-      status TEXT DEFAULT 'NEW',
-      sent_to_kitchen_at DATETIME,
-      prepared_at DATETIME,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-      FOREIGN KEY (menu_item_id) REFERENCES menu_items(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS customers (
-      id TEXT PRIMARY KEY,
-      first_name TEXT NOT NULL,
-      last_name TEXT NOT NULL,
-      email TEXT UNIQUE,
-      phone TEXT UNIQUE NOT NULL,
-      address TEXT,
-      city TEXT,
-      date_of_birth DATETIME,
-      loyalty_points INTEGER DEFAULT 0,
-      total_orders INTEGER DEFAULT 0,
-      total_spent DECIMAL(10,2) DEFAULT 0,
-      last_visit_at DATETIME,
-      preferences TEXT,
-      is_active BOOLEAN DEFAULT 1,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS tables (
-      id TEXT PRIMARY KEY,
-      number TEXT NOT NULL,
-      capacity INTEGER DEFAULT 4,
-      status TEXT DEFAULT 'AVAILABLE',
-      location TEXT,
-      shape TEXT,
-      is_active BOOLEAN DEFAULT 1,
-      pos_x INTEGER,
-      pos_y INTEGER,
-      width INTEGER,
-      height INTEGER,
-      current_order_id TEXT UNIQUE,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS sync_queue (
-      id TEXT PRIMARY KEY,
-      operation TEXT NOT NULL,
-      model_name TEXT NOT NULL,
-      record_id TEXT NOT NULL,
-      payload TEXT NOT NULL,
-      status TEXT DEFAULT 'pending',
-      retry_count INTEGER DEFAULT 0,
-      error_message TEXT,
-      synced_at DATETIME,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
-    CREATE INDEX IF NOT EXISTS idx_orders_ordered_at ON orders(ordered_at);
-    CREATE INDEX IF NOT EXISTS idx_menu_items_category ON menu_items(category_id);
-    CREATE INDEX IF NOT EXISTS idx_menu_items_active ON menu_items(is_active, is_available);
-    CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status);
-  `);
-
-  log.info('Database tables created/verified');
-}
+// function createTables() {
+//   db.exec(`...`);
+// }
 
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
@@ -214,8 +54,18 @@ function createWindow() {
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.loadURL('http://localhost:5176');
+    // Open DevTools but suppress non-critical warnings
     mainWindow.webContents.openDevTools();
+    
+    // Suppress common DevTools warnings
+    mainWindow.webContents.on('console-message', (event, level, message) => {
+      // Filter out known non-critical warnings
+      if (message.includes('dragEvent is not defined') ||
+          message.includes('Failed to fetch') && message.includes('devtools://')) {
+        return; // Ignore these DevTools internal errors
+      }
+    });
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
@@ -228,18 +78,9 @@ function createWindow() {
 
 // IPC Handlers
 ipcMain.handle('db-query', (event, sql, params = []) => {
-  try {
-    const stmt = db.prepare(sql);
-    if (sql.trim().toUpperCase().startsWith('SELECT')) {
-      return { success: true, data: stmt.all(...params) };
-    } else {
-      const result = stmt.run(...params);
-      return { success: true, data: { lastInsertRowid: result.lastInsertRowid, changes: result.changes } };
-    }
-  } catch (error: any) {
-    log.error('Database query error:', error);
-    return { success: false, error: error.message };
-  }
+  // Temporarily disabled - better-sqlite3 not available
+  log.warn('Database queries are currently disabled. Install better-sqlite3 to enable.');
+  return { success: false, error: 'Database not available - better-sqlite3 requires C++ build tools' };
 });
 
 ipcMain.handle('store-get', (event, key) => {
@@ -262,7 +103,8 @@ ipcMain.handle('get-app-info', () => {
 
 // App lifecycle
 app.whenReady().then(() => {
-  initializeDatabase();
+  // initializeDatabase(); // Temporarily disabled - better-sqlite3 requires C++ build tools
+  log.info('Database initialization skipped (better-sqlite3 not available)');
   createWindow();
 
   app.on('activate', () => {
@@ -274,13 +116,13 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    db?.close();
+    // db?.close(); // Temporarily disabled
     app.quit();
   }
 });
 
 app.on('before-quit', () => {
-  db?.close();
+  // db?.close(); // Temporarily disabled
 });
 
 // Security: Disable navigation

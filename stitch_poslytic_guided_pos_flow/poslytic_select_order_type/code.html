@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#61f9e9",
+                        "surface-container-low": "#1c1b1b",
+                        "inverse-surface": "#e5e2e1",
+                        "primary-fixed": "#83fba5",
+                        "primary": "#6ee591",
+                        "on-surface-variant": "#bdcabc",
+                        "on-tertiary-fixed": "#00201d",
+                        "primary-container": "#50c878",
+                        "on-tertiary-container": "#004d47",
+                        "error": "#ffb4ab",
+                        "secondary-fixed-dim": "#fbbc00",
+                        "surface-variant": "#353534",
+                        "inverse-primary": "#006d36",
+                        "surface-bright": "#393939",
+                        "secondary-fixed": "#ffdfa0",
+                        "tertiary-container": "#03c7b8",
+                        "primary-fixed-dim": "#66dd8b",
+                        "surface-container-lowest": "#0e0e0e",
+                        "surface-container": "#201f1f",
+                        "outline-variant": "#3e4a3f",
+                        "on-primary-container": "#005025",
+                        "surface-container-high": "#2a2a2a",
+                        "inverse-on-surface": "#313030",
+                        "on-secondary-fixed-variant": "#5c4300",
+                        "error-container": "#93000a",
+                        "on-secondary-container": "#6d5000",
+                        "surface-dim": "#131313",
+                        "on-tertiary": "#003732",
+                        "on-background": "#e5e2e1",
+                        "on-error": "#690005",
+                        "secondary": "#ffe2ab",
+                        "surface-container-highest": "#353534",
+                        "on-secondary": "#402d00",
+                        "surface-tint": "#66dd8b",
+                        "on-secondary-fixed": "#261a00",
+                        "on-surface": "#e5e2e1",
+                        "on-primary-fixed": "#00210c",
+                        "secondary-container": "#ffbf00",
+                        "on-tertiary-fixed-variant": "#005049",
+                        "tertiary": "#45e3d3",
+                        "surface": "#131313",
+                        "on-primary-fixed-variant": "#005227",
+                        "tertiary-fixed-dim": "#3adccc",
+                        "on-primary": "#003919",
+                        "outline": "#879487",
+                        "background": "#131313",
+                        "on-error-container": "#ffdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .kinetic-vault-gradient {
+            background: linear-gradient(135deg, #6ee591 0%, #50c878 100%);
+        }
+        .glass-overlay {
+            backdrop-filter: blur(20px);
+            background-color: rgba(53, 53, 52, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body overflow-hidden h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="bg-zinc-950 dark:bg-[#131313] flex justify-between items-center w-full px-6 py-4 h-20 shadow-2xl shadow-black/40 top-0 z-50">
+<div class="flex items-center gap-6">
+<span class="font-manrope text-sm font-semibold tracking-wide uppercase text-emerald-400 dark:text-[#6ee591]">
+                POSLYTIC
+            </span>
+<div class="h-8 w-[1px] bg-outline-variant/30"></div>
+<div class="flex flex-col">
+<span class="font-headline font-extrabold text-lg text-on-surface leading-tight">Welcome, Rauf</span>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Terminal #04 | Online</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-8">
+<div class="flex flex-col items-end">
+<span class="font-headline font-bold text-xl text-on-surface">10:45 AM</span>
+<span class="text-[10px] text-on-surface-variant font-medium tracking-tighter uppercase">Monday, May 22</span>
+</div>
+<div class="flex gap-2">
+<button class="p-3 rounded-xl hover:bg-zinc-800 transition-colors duration-200 active:scale-95 transition-transform text-zinc-500">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-3 rounded-xl hover:bg-zinc-800 transition-colors duration-200 active:scale-95 transition-transform text-zinc-500">
+<span class="material-symbols-outlined" data-icon="schedule">schedule</span>
+</button>
+<button class="p-3 rounded-xl hover:bg-zinc-800 transition-colors duration-200 active:scale-95 transition-transform text-zinc-500">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Canvas: Order Selection -->
+<main class="flex-1 flex flex-col items-center justify-center px-8 relative">
+<!-- Subtle Ambient Background Element -->
+<div class="absolute inset-0 overflow-hidden pointer-events-none">
+<div class="absolute -top-[20%] -left-[10%] w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px]"></div>
+<div class="absolute top-[40%] -right-[5%] w-[400px] h-[400px] bg-tertiary/5 rounded-full blur-[100px]"></div>
+</div>
+<div class="w-full max-w-6xl space-y-12 z-10">
+<div class="text-center space-y-2">
+<h2 class="font-headline text-4xl font-extrabold tracking-tight text-on-surface">Select Order Type</h2>
+<p class="text-on-surface-variant text-lg">Choose a destination to begin a new ticket session</p>
+</div>
+<!-- Bento Grid of Actions -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Walk-In Card -->
+<button class="group relative flex flex-col items-center justify-center p-10 bg-surface-container rounded-[2rem] hover:bg-surface-container-high transition-all duration-300 active:scale-95 border-b-4 border-transparent hover:border-primary shadow-xl">
+<div class="w-24 h-24 rounded-3xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:kinetic-vault-gradient group-hover:text-on-primary-fixed transition-all duration-500">
+<span class="material-symbols-outlined !text-5xl" data-icon="person_pin">person_pin</span>
+</div>
+<span class="font-headline text-2xl font-bold tracking-tight text-on-surface">Walk-In</span>
+<span class="text-sm text-on-surface-variant mt-2">Instant checkout</span>
+</button>
+<!-- Take Away Card -->
+<button class="group relative flex flex-col items-center justify-center p-10 bg-surface-container rounded-[2rem] hover:bg-surface-container-high transition-all duration-300 active:scale-95 border-b-4 border-transparent hover:border-primary shadow-xl">
+<div class="w-24 h-24 rounded-3xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:kinetic-vault-gradient group-hover:text-on-primary-fixed transition-all duration-500">
+<span class="material-symbols-outlined !text-5xl" data-icon="shopping_bag">shopping_bag</span>
+</div>
+<span class="font-headline text-2xl font-bold tracking-tight text-on-surface">Take Away</span>
+<span class="text-sm text-on-surface-variant mt-2">Pickup ready</span>
+</button>
+<!-- Delivery Card -->
+<button class="group relative flex flex-col items-center justify-center p-10 bg-surface-container rounded-[2rem] hover:bg-surface-container-high transition-all duration-300 active:scale-95 border-b-4 border-transparent hover:border-primary shadow-xl">
+<div class="w-24 h-24 rounded-3xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:kinetic-vault-gradient group-hover:text-on-primary-fixed transition-all duration-500">
+<span class="material-symbols-outlined !text-5xl" data-icon="moped">moped</span>
+</div>
+<span class="font-headline text-2xl font-bold tracking-tight text-on-surface">Delivery</span>
+<span class="text-sm text-on-surface-variant mt-2">Outbound routing</span>
+</button>
+<!-- Dine-In Card -->
+<button class="group relative flex flex-col items-center justify-center p-10 bg-surface-container rounded-[2rem] hover:bg-surface-container-high transition-all duration-300 active:scale-95 border-b-4 border-transparent hover:border-primary shadow-xl">
+<div class="w-24 h-24 rounded-3xl bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:kinetic-vault-gradient group-hover:text-on-primary-fixed transition-all duration-500">
+<span class="material-symbols-outlined !text-5xl" data-icon="restaurant">restaurant</span>
+</div>
+<span class="font-headline text-2xl font-bold tracking-tight text-on-surface">Dine-In</span>
+<span class="text-sm text-on-surface-variant mt-2">Table service</span>
+</button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-8 pb-8 pt-4 bg-zinc-950/90 dark:bg-[#131313]/90 backdrop-blur-2xl border-t border-white/5 shadow-[0_-12px_40px_rgba(0,0,0,0.6)] rounded-t-[3rem]">
+<div class="flex gap-4">
+<button class="flex flex-col items-center justify-center bg-zinc-800 text-emerald-400 rounded-2xl px-10 py-3 active:scale-90 transition-all duration-300">
+<span class="material-symbols-outlined mb-1" data-icon="receipt_long">receipt_long</span>
+<span class="font-manrope text-[11px] font-bold uppercase tracking-widest">Orders</span>
+</button>
+<button class="flex flex-col items-center justify-center text-zinc-500 hover:text-emerald-300 px-10 py-3 active:scale-90 transition-all duration-300">
+<span class="material-symbols-outlined mb-1" data-icon="local_shipping">local_shipping</span>
+<span class="font-manrope text-[11px] font-bold uppercase tracking-widest">Dispatch</span>
+</button>
+<button class="flex flex-col items-center justify-center text-zinc-500 hover:text-emerald-300 px-10 py-3 active:scale-90 transition-all duration-300">
+<span class="material-symbols-outlined mb-1" data-icon="timer">timer</span>
+<span class="font-manrope text-[11px] font-bold uppercase tracking-widest">Shifts</span>
+</button>
+</div>
+<!-- Center Floating Action Placeholder or Space -->
+<div class="w-16"></div>
+<div class="flex gap-4">
+<button class="flex flex-col items-center justify-center text-zinc-500 hover:text-emerald-300 px-10 py-3 active:scale-90 transition-all duration-300">
+<span class="material-symbols-outlined mb-1" data-icon="analytics">analytics</span>
+<span class="font-manrope text-[11px] font-bold uppercase tracking-widest">Reports</span>
+</button>
+<button class="flex flex-col items-center justify-center text-zinc-500 hover:text-emerald-300 px-10 py-3 active:scale-90 transition-all duration-300">
+<span class="material-symbols-outlined mb-1" data-icon="print">print</span>
+<span class="font-manrope text-[11px] font-bold uppercase tracking-widest">Printer</span>
+</button>
+<button class="flex flex-col items-center justify-center text-zinc-500 hover:text-emerald-300 px-10 py-3 active:scale-90 transition-all duration-300">
+<span class="material-symbols-outlined mb-1" data-icon="settings">settings</span>
+<span class="font-manrope text-[11px] font-bold uppercase tracking-widest">Settings</span>
+</button>
+</div>
+</nav>
+<!-- Side Decoration (Ambient Visuals) -->
+<div class="fixed left-6 top-1/2 -translate-y-1/2 flex flex-col gap-4 opacity-20 hover:opacity-100 transition-opacity">
+<div class="w-1 h-12 rounded-full bg-primary shadow-[0_0_15px_#6ee591]"></div>
+<div class="w-1 h-6 rounded-full bg-zinc-700"></div>
+<div class="w-1 h-6 rounded-full bg-zinc-700"></div>
+</div>
+</body></html>

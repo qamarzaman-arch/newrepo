@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { authService } from '../services/authService';
 
 interface User {
   id: string;
@@ -17,7 +18,7 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (user: User, token: string) => void;
   logout: () => void;
-  initialize: () => void;
+  initialize: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -35,7 +36,12 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      logout: () => {
+      logout: async () => {
+        try {
+          await authService.logout();
+        } catch (error) {
+          console.error('Logout error:', error);
+        }
         set({
           user: null,
           token: null,
@@ -44,17 +50,27 @@ export const useAuthStore = create<AuthState>()(
       },
 
       initialize: async () => {
-        // Check if we have a stored token
         const token = localStorage.getItem('token');
         if (token) {
-          // TODO: Verify token with backend
-          // For now, just restore from localStorage
-          const userStr = localStorage.getItem('user');
-          if (userStr) {
+          try {
+            // Verify token with backend
+            const response = await authService.verifyToken();
+            const user = response.data.data.user;
+            
             set({
-              user: JSON.parse(userStr),
+              user,
               token,
               isAuthenticated: true,
+            });
+          } catch (error) {
+            console.error('Token verification failed:', error);
+            // Token is invalid, clear storage
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            set({
+              user: null,
+              token: null,
+              isAuthenticated: false,
             });
           }
         }

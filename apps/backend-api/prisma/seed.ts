@@ -22,6 +22,68 @@ async function main() {
   });
   console.log('✅ Created admin user');
 
+  // Create cashier users
+  const cashierPassword = await bcrypt.hash('cashier123', 12);
+  await prisma.user.upsert({
+    where: { username: 'cashier1' },
+    update: {},
+    create: {
+      username: 'cashier1',
+      email: 'cashier1@restaurant.com',
+      passwordHash: cashierPassword,
+      fullName: 'John Cashier',
+      role: 'CASHIER',
+      phone: '+1234567891',
+    },
+  });
+  console.log('✅ Created cashier1 user');
+
+  await prisma.user.upsert({
+    where: { username: 'cashier2' },
+    update: {},
+    create: {
+      username: 'cashier2',
+      email: 'cashier2@restaurant.com',
+      passwordHash: cashierPassword,
+      fullName: 'Sarah Cashier',
+      role: 'CASHIER',
+      phone: '+1234567892',
+    },
+  });
+  console.log('✅ Created cashier2 user');
+
+  // Create manager user
+  const managerPassword = await bcrypt.hash('manager123', 12);
+  await prisma.user.upsert({
+    where: { username: 'manager' },
+    update: {},
+    create: {
+      username: 'manager',
+      email: 'manager@restaurant.com',
+      passwordHash: managerPassword,
+      fullName: 'Mike Manager',
+      role: 'MANAGER',
+      phone: '+1234567893',
+    },
+  });
+  console.log('✅ Created manager user');
+
+  // Create kitchen staff user
+  const kitchenPassword = await bcrypt.hash('kitchen123', 12);
+  await prisma.user.upsert({
+    where: { username: 'kitchen' },
+    update: {},
+    create: {
+      username: 'kitchen',
+      email: 'kitchen@restaurant.com',
+      passwordHash: kitchenPassword,
+      fullName: 'Chef Kitchen',
+      role: 'KITCHEN',
+      phone: '+1234567894',
+    },
+  });
+  console.log('✅ Created kitchen user');
+
   // Create menu categories
   const categories = await Promise.all([
     prisma.menuCategory.create({
@@ -114,8 +176,10 @@ async function main() {
 
   // Create sample customers
   for (let i = 1; i <= 5; i++) {
-    await prisma.customer.create({
-      data: {
+    await prisma.customer.upsert({
+      where: { phone: `+12345678${String(i).padStart(2, '0')}` },
+      update: {},
+      create: {
         firstName: `Customer${i}`,
         lastName: 'Test',
         email: `customer${i}@example.com`,
@@ -138,8 +202,10 @@ async function main() {
   ];
 
   for (const setting of settings) {
-    await prisma.setting.create({
-      data: setting,
+    await prisma.setting.upsert({
+      where: { key: setting.key },
+      update: {},
+      create: setting,
     });
   }
   console.log('✅ Created settings');

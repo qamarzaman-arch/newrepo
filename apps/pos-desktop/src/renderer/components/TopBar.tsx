@@ -1,9 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Wifi, WifiOff, Clock, User } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
+const routeTitles: Record<string, string> = {
+  '/pos': 'Point of Sale',
+  '/dashboard': 'Dashboard',
+  '/orders': 'Orders',
+  '/kitchen': 'Kitchen Display',
+  '/tables': 'Table Management',
+  '/menu': 'Menu Management',
+  '/customers': 'Customers',
+  '/inventory': 'Inventory',
+  '/reports': 'Reports & Analytics',
+  '/settings': 'Settings',
+};
+
 const TopBar: React.FC = () => {
   const { user } = useAuthStore();
+  const location = useLocation();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -39,6 +54,10 @@ const TopBar: React.FC = () => {
     });
   };
 
+  const getPageTitle = () => {
+    return routeTitles[location.pathname] || 'Restaurant OS';
+  };
+
   return (
     <header className="bg-surface-lowest border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -48,7 +67,7 @@ const TopBar: React.FC = () => {
             Workspace
           </p>
           <h2 className="text-2xl font-bold text-gray-900 mt-1">
-            Point of Sale
+            {getPageTitle()}
           </h2>
         </div>
 

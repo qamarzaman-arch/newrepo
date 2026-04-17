@@ -6,6 +6,23 @@ import { Toaster } from 'react-hot-toast';
 import App from './App';
 import './index.css';
 
+// Suppress non-critical console warnings in development
+if (import.meta.env.DEV) {
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    // Filter out known non-critical errors
+    const message = args.join(' ');
+    if (
+      message.includes('Warning: ReactDOM.render is no longer supported') ||
+      message.includes('Support for defaultProps will be removed') ||
+      message.includes('findDOMNode is deprecated')
+    ) {
+      return; // Suppress these React warnings
+    }
+    originalConsoleError(...args);
+  };
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

@@ -60,11 +60,11 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
         role: user.role,
       },
       process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      { expiresIn: (process.env.JWT_EXPIRES_IN || '24h') as any }
     );
 
     // Create session
-    const session = await prisma.session.create({
+    await prisma.session.create({
       data: {
         userId: user.id,
         token,
