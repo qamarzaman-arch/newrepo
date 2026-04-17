@@ -40,7 +40,7 @@ export function setupRoutes(app: Application) {
   app.use(`${apiPrefix}/staff`, staffRoutes);
 
   // 404 handler
-  app.use((req, res) => {
+  app.use((_req, res) => {
     res.status(404).json({ error: 'Route not found' });
   });
 }
