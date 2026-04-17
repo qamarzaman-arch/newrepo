@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Culinary Atelier - Menu &amp; Selection</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#c8eadc",
+                        "surface-bright": "#f8faf7",
+                        "surface-variant": "#e1e3e1",
+                        "secondary-fixed-dim": "#adcec0",
+                        "inverse-primary": "#82d7ba",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#ffcdc5",
+                        "primary-container": "#006b54",
+                        "on-tertiary-fixed": "#3c0804",
+                        "on-surface-variant": "#3e4944",
+                        "primary": "#00513f",
+                        "primary-fixed": "#9ef3d6",
+                        "inverse-surface": "#2e3130",
+                        "tertiary-fixed": "#ffdad4",
+                        "surface-container-low": "#f2f4f2",
+                        "on-secondary-fixed-variant": "#2f4d42",
+                        "inverse-on-surface": "#f0f1ef",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#e7e9e6",
+                        "on-primary-container": "#94e8cb",
+                        "outline-variant": "#bec9c3",
+                        "surface-container": "#edeeec",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed-dim": "#82d7ba",
+                        "tertiary-container": "#92493e",
+                        "secondary-container": "#c8eadc",
+                        "on-tertiary-fixed-variant": "#753229",
+                        "on-primary-fixed": "#002118",
+                        "on-surface": "#191c1b",
+                        "surface-tint": "#016b54",
+                        "on-secondary-fixed": "#012018",
+                        "on-secondary": "#ffffff",
+                        "surface-container-highest": "#e1e3e1",
+                        "secondary": "#466559",
+                        "on-error": "#ffffff",
+                        "on-background": "#191c1b",
+                        "surface-dim": "#d9dad8",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-container": "#4c6b5f",
+                        "on-error-container": "#93000a",
+                        "background": "#f8faf7",
+                        "outline": "#6f7a74",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb4a8",
+                        "on-primary-fixed-variant": "#00513f",
+                        "surface": "#f8faf7",
+                        "tertiary": "#753229"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .primary-gradient {
+            background: linear-gradient(135deg, #00513f 0%, #006b54 100%);
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #bec9c3;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface overflow-hidden h-screen flex">
+<!-- Sidebar Navigation (SideNavBar Anchor) -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-[#edeeec] dark:bg-stone-900 flex flex-col h-full py-6 z-40 transition-all duration-300 ease-in-out font-['Manrope'] text-sm font-semibold">
+<div class="px-6 mb-8">
+<h1 class="text-lg font-black text-emerald-900 dark:text-emerald-50 tracking-tight">The Culinary Atelier</h1>
+<p class="text-xs text-stone-500 font-medium">Digital Maître d'</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center space-x-3 text-stone-600 dark:text-stone-400 hover:text-emerald-800 px-6 py-4 transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center space-x-3 bg-white dark:bg-stone-800 text-emerald-900 dark:text-emerald-400 rounded-l-full ml-4 shadow-sm px-6 py-4 transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="restaurant_menu">restaurant_menu</span>
+<span>Menu</span>
+</a>
+<a class="flex items-center space-x-3 text-stone-600 dark:text-stone-400 hover:text-emerald-800 px-6 py-4 transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="table_restaurant">table_restaurant</span>
+<span>Floor Plan</span>
+</a>
+<a class="flex items-center space-x-3 text-stone-600 dark:text-stone-400 hover:text-emerald-800 px-6 py-4 transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span>Payments</span>
+</a>
+<a class="flex items-center space-x-3 text-stone-600 dark:text-stone-400 hover:text-emerald-800 px-6 py-4 transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="soup_kitchen">soup_kitchen</span>
+<span>Kitchen</span>
+</a>
+</nav>
+<div class="px-6 mt-auto space-y-1">
+<button class="w-full primary-gradient text-white py-3 rounded-xl mb-6 font-bold flex items-center justify-center space-x-2 shadow-lg">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+<span>New Order</span>
+</button>
+<a class="flex items-center space-x-3 text-stone-600 dark:text-stone-400 px-2 py-3" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span>Help</span>
+</a>
+<a class="flex items-center space-x-3 text-stone-600 dark:text-stone-400 px-2 py-3" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 ml-64 mr-96 h-full overflow-y-auto bg-surface">
+<!-- TopNavBar Anchor -->
+<header class="flex justify-between items-center px-8 py-6 w-full sticky top-0 z-30 bg-[#f8faf7] font-['Manrope'] antialiased">
+<div class="flex items-center space-x-8">
+<h2 class="text-2xl font-extrabold text-emerald-900 tracking-tight">Menu Selection</h2>
+<div class="relative group">
+<span class="absolute inset-y-0 left-0 pl-3 flex items-center text-stone-400">
+<span class="material-symbols-outlined text-lg" data-icon="search">search</span>
+</span>
+<input class="bg-surface-container border-none focus:ring-2 focus:ring-primary rounded-full pl-10 pr-4 py-2 text-sm w-64 transition-all" placeholder="Search dish, ingredient..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<button class="p-2 rounded-full hover:bg-stone-100 transition-colors text-stone-500">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-stone-100 transition-colors text-stone-500">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="professional male chef in white uniform with blurred kitchen background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_N9uD1ZmO1eds9Q7ZTShCxp_CA6g0hV6U68oNtpZ-CKxHc2FVnUeC_37yB9s5pj8Sz48Bv4EN3EzOSMFhB4VnAnhRspgB6i8LIe0Dn0BMHgg_0o9sH7jZIjed22WKcq1jtXDqv9EA6UBScmshGtbwrGamR2GZcEogW_VCaKpJeNcBV-ZBukEzzw9ePgdk0GdBGZn1FDDux1DQGD3zhEm-q9F4Il58Sl3an79fU1lTdAGfRswwRLxH1aHSqkg2yBCKXzl_FxxM2J-C"/>
+</div>
+</div>
+</header>
+<!-- Category Horizontal Slider -->
+<section class="px-8 mb-8">
+<div class="flex space-x-4 overflow-x-auto pb-4 scroll-hide">
+<button class="px-6 py-2 bg-emerald-900 text-white rounded-full font-bold flex-shrink-0 transition-all">Appetizers</button>
+<button class="px-6 py-2 bg-white text-stone-600 rounded-full font-semibold border border-transparent hover:border-emerald-900/10 flex-shrink-0 transition-all">Main Courses</button>
+<button class="px-6 py-2 bg-white text-stone-600 rounded-full font-semibold border border-transparent hover:border-emerald-900/10 flex-shrink-0 transition-all">Desserts</button>
+<button class="px-6 py-2 bg-white text-stone-600 rounded-full font-semibold border border-transparent hover:border-emerald-900/10 flex-shrink-0 transition-all">Wine &amp; Spirits</button>
+<button class="px-6 py-2 bg-white text-stone-600 rounded-full font-semibold border border-transparent hover:border-emerald-900/10 flex-shrink-0 transition-all">Soft Drinks</button>
+</div>
+</section>
+<!-- Menu Grid -->
+<section class="px-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
+<!-- Item Card: Signature Steak -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer border border-transparent hover:border-emerald-900/5">
+<div class="h-48 w-full overflow-hidden relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="succulent signature steak with rosemary sprig on dark slate plate with salt crystals and soft cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB4OGSwoj3sA5-te7HgMhD43Po95xmV4tziv_6ogf5_1OUp-ZcSBgeEmxd4yNeSNv5CJDxjw7cRQUEkYftCucuVpt1vVc_vopNR_q8sHR0Nog5laJMApGllg2nrqpWEIiTS8xcX2KRcyOsnyWXi9Ptw7pfLTjFqr-lMu7YOmr1L9B0N6f3fXdhHnH6SY8cZ5rhQytK6y9b4Pvxi63ebEvJJUe0lMKwtbdEepMovvCL_YVvON-kOnjWkXvCO6_74zz59O0NP0wecQntZ"/>
+<div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-bold text-emerald-900 uppercase tracking-widest">Signature</div>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline font-bold text-lg text-emerald-900">Signature Steak</h3>
+<span class="font-headline font-bold text-emerald-900">$48.00</span>
+</div>
+<p class="text-sm text-stone-500 mb-4 line-clamp-2">Prime ribeye, dry-aged for 45 days, served with roasted garlic butter and seasonal marrow.</p>
+<button class="w-full py-2 bg-secondary-container text-on-secondary-container font-semibold rounded-lg flex items-center justify-center space-x-2 group-hover:bg-emerald-900 group-hover:text-white transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+<span>Customize Order</span>
+</button>
+</div>
+</div>
+<!-- Item Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer">
+<div class="h-48 w-full overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="crispy pan-seared sea bass on a bed of citrus risotto with bright microgreens and lemon foam" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfllx9s2EqkPZsESAkyaFrGK1zNGiYa0xUhUuu-8q9NK5G9sG-mAFxDHZfPR810DoZyRf_QqNU-hHe1ssREz3af_wuIUzr-SSRYeug_zl0SofmuAmEaXZpt_w171DoZGjGAnKYa7D-Ks0SL7pvibZ400eykamZxNN0B0ALVQWjh6xVctRHqniFSxfWbuTHFqCRBH_0f-4MjU2-_4oTyvD8jbhNGI59vXYZq1HJiJ8z7fyLroTUw7zSvEHmowq1YJMlmKB9rpxem08c"/>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline font-bold text-lg text-emerald-900">Wild Sea Bass</h3>
+<span class="font-headline font-bold text-emerald-900">$34.50</span>
+</div>
+<p class="text-sm text-stone-500 mb-4 line-clamp-2">Line-caught bass with a light citrus beurre blanc and herb-infused pearl couscous.</p>
+<button class="w-full py-2 bg-secondary-container text-on-secondary-container font-semibold rounded-lg flex items-center justify-center space-x-2 transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+<span>Quick Add</span>
+</button>
+</div>
+</div>
+<!-- Item Card 3 -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer">
+<div class="h-48 w-full overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="truffle mushroom risotto in a ceramic bowl topped with shaved black truffles and parmesan crisps" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDh-bpssyN8MHxC0oBKMIwJjHEk1mTd2t3wnELMCDFteMnukFfsHWdJsLhEks3fvyZdJh0qz1mV9xNWmakpobKAfsBgUqUJm8juYuP2nna8cmb0dxNvBpp6FdS4VVhcglxhC59ozg0KH5IKEXQXM5bJ6fKftZxVJvJjE5pKBxYgG6hSDZSA9anFa2tA4Q7KQImBYVnMw_C3DC4mOAc8CAfF7LYU10Rfq4V30FoMXz6O-9O2QwgCFyuBaYvUgFwqClODVJ4qmixJ-Hwy"/>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline font-bold text-lg text-emerald-900">Truffle Risotto</h3>
+<span class="font-headline font-bold text-emerald-900">$29.00</span>
+</div>
+<p class="text-sm text-stone-500 mb-4 line-clamp-2">Carnaroli rice slow-cooked with seasonal black truffles and 24-month aged Reggiano.</p>
+<button class="w-full py-2 bg-secondary-container text-on-secondary-container font-semibold rounded-lg flex items-center justify-center space-x-2 transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+<span>Quick Add</span>
+</button>
+</div>
+</div>
+<!-- Item Card 4 -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer">
+<div class="h-48 w-full overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="roasted duck breast with honey glaze served alongside caramelized baby carrots and berry reduction" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAycQbHJMNDxfe8iABtGNMXzGJyN2nR2C5IiHVzjbKRqPktWlw3PFy4R8fQ6YY7gRRksGOZl6pdgpnOHvAik5-892JOCzH1hXD5tHYDU6fwf6gT3nLKrXDzKLvZ3Z9Uydgp-H_ozcUCRekGv3GjrqMJse-HxZGl87GJl7JC_R0RruP5HGiQE7DYlP8uTwgY0I4BoeIFiusjTIz6II3GCYz8KM6PFTvx6pe5LxZY_ec8stAdZBZ6H0el2syXBQtIfCLC1_SkhOMiyqPW"/>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline font-bold text-lg text-emerald-900">Glazed Duck</h3>
+<span class="font-headline font-bold text-emerald-900">$38.00</span>
+</div>
+<p class="text-sm text-stone-500 mb-4 line-clamp-2">Honey-lavender glazed duck breast with parsnip puree and blackberry reduction.</p>
+<button class="w-full py-2 bg-secondary-container text-on-secondary-container font-semibold rounded-lg flex items-center justify-center space-x-2 transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+<span>Quick Add</span>
+</button>
+</div>
+</div>
+<!-- Item Card 5 -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer border border-transparent hover:border-emerald-900/5">
+<div class="h-48 w-full overflow-hidden relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="artisan heirloom tomato salad with fresh burrata cheese and balsamic glaze swirls" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBp8Xj95_5LI6x7QxKEORPcX6OvWODpkfj_KWAHYjVN3g7ROrAbq1ZczqLQTr8mGZLS4F8O3yTqdsVpRiv3zFCXDcWDPBC8fca6o9kWgjAv3Y2zDaii-DRhbsgCfgWe83NaICDgCsbtLUxNIygZD9tj3VcsLTUTzs2eWoHQqZM8x7ZNPREX3GO-7JWKFGXz521Wpo2IRgXTH8Mi2dVxQCyICZ5r5YIdxgS3j8irNVx1rwnbO1MZFRoNlVeMovjwUDXQVkBXwghvstSP"/>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline font-bold text-lg text-emerald-900">Heirloom Burrata</h3>
+<span class="font-headline font-bold text-emerald-900">$22.00</span>
+</div>
+<p class="text-sm text-stone-500 mb-4 line-clamp-2">Organic heirloom tomatoes, fresh Puglia burrata, and basil-infused virgin olive oil.</p>
+<button class="w-full py-2 bg-secondary-container text-on-secondary-container font-semibold rounded-lg flex items-center justify-center space-x-2 transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+<span>Quick Add</span>
+</button>
+</div>
+</div>
+<!-- Item Card 6 -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer">
+<div class="h-48 w-full overflow-hidden relative">
+<img class="w-full h-full object-crop group-hover:scale-105 transition-transform duration-500" data-alt="lamb chops grilled to perfection with herb crust and roasted baby potatoes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC148ff9jJVWrC-7RJxDndA9p7F_1gbA8eZN4KyUuF-7XMsJBGDvOiywX-Tl-K-WdXlX_YVgP_r1dCrJ_gldONsvwqkyzLQskoOtlNSPluhtSns0uPQ7ZowwF9_RsWE6rYA2gHwEQop1pVMoE89OSJulFc_YrTs-6QF1ZwVja65VGt0CzGiS3faw9XisNRiU8WX79NdOJP5r8qjbHNj01CXRTjjgxCOq2hPb7e6IoGoWzdXqrnzwO7nH5n0oI4Akg_TCJZXvVTrWpdC"/>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline font-bold text-lg text-emerald-900">Herb Lamb Rack</h3>
+<span class="font-headline font-bold text-emerald-900">$42.00</span>
+</div>
+<p class="text-sm text-stone-500 mb-4 line-clamp-2">Pistachio-crusted lamb rack served with mint gremolata and roasted root vegetables.</p>
+<button class="w-full py-2 bg-secondary-container text-on-secondary-container font-semibold rounded-lg flex items-center justify-center space-x-2 transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+<span>Quick Add</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Persistent 'Current Order' Right Panel -->
+<aside class="w-96 fixed right-0 top-0 h-screen bg-surface-container-high z-40 flex flex-col shadow-2xl">
+<div class="p-8 pb-4">
+<div class="flex justify-between items-center mb-6">
+<h2 class="font-headline font-extrabold text-xl text-emerald-900 uppercase tracking-tight">Current Order</h2>
+<span class="bg-primary-container text-on-primary-container text-xs font-bold px-3 py-1 rounded-full">Table 12</span>
+</div>
+<div class="flex items-center space-x-4 mb-8 bg-surface-container-lowest p-3 rounded-xl">
+<div class="h-10 w-10 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container" data-icon="person">person</span>
+</div>
+<div>
+<p class="text-xs text-stone-500 uppercase tracking-widest font-bold">Server</p>
+<p class="text-sm font-semibold text-emerald-900">Julian Marcelle</p>
+</div>
+</div>
+</div>
+<!-- Cart Items - Tonal Stacking -->
+<div class="flex-1 overflow-y-auto px-8 space-y-4">
+<!-- Order Item 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl flex items-center space-x-4">
+<div class="h-16 w-16 rounded-lg overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="close up of grilled ribeye steak" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCS_hJ3geoKcPvQZFUPid3lf5QFdn_ThPXkJzDnRwXHZrEL2InvQLFHqViHh6a-6auXMzcnq5ZT9kaeZdcXEoAiCsyM-9M2GGU-K9IVY762Nk6AkQUXHar02FJkm9sqk1uM3FU0SERA11oQ6wnYBOS0-2zMeIyiX4PjwQGRjRuc138VUcvCJ0no0bj-QQGef2WZ6Q1CGj7WSHI9Di9-6y0wuGFFkCQoghs7OPw__D209YHKGdyHjtMXrZE59R8vqWhSCFm4nmSAfhZJ"/>
+</div>
+<div class="flex-1">
+<p class="font-bold text-emerald-900 text-sm">Signature Steak</p>
+<p class="text-xs text-stone-500">Medium Rare • Extra Butter</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-emerald-900 text-sm">$48.00</p>
+<div class="flex items-center space-x-2 mt-1">
+<button class="w-5 h-5 flex items-center justify-center rounded bg-stone-100 text-stone-500 text-xs">-</button>
+<span class="text-xs font-bold">1</span>
+<button class="w-5 h-5 flex items-center justify-center rounded bg-stone-100 text-stone-500 text-xs">+</button>
+</div>
+</div>
+</div>
+<!-- Order Item 2 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl flex items-center space-x-4">
+<div class="h-16 w-16 rounded-lg overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="vibrant tomato burrata salad" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDqD9oiCkwDmvyqcFFv3jfGKqgn0C_bsoFQ6rs8ytef1t0AURpNV0Jx_VH6EuJDjW72k9Yz3vPifgaL-16MPdDqXFNZ_2a-w-QSAeksK0I3WXjh6aOq7HgkzfsaZ6OPZI9VQBD1Mbl8MBD1SfJxNVWnKuP4qdOKfT6uc_aRXxHpB3g16SC9crCWAWSeu27QRK8jotqfKe8JsCgMeyuZCRr4TB5XLlmUvBoLqgygP3NuOCXDYCmtmyabbis45mrCCQMbihWxnVj7e5F0"/>
+</div>
+<div class="flex-1">
+<p class="font-bold text-emerald-900 text-sm">Heirloom Burrata</p>
+<p class="text-xs text-stone-500">Standard</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-emerald-900 text-sm">$22.00</p>
+<div class="flex items-center space-x-2 mt-1">
+<button class="w-5 h-5 flex items-center justify-center rounded bg-stone-100 text-stone-500 text-xs">-</button>
+<span class="text-xs font-bold">1</span>
+<button class="w-5 h-5 flex items-center justify-center rounded bg-stone-100 text-stone-500 text-xs">+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Checkout Section -->
+<div class="p-8 bg-surface-container-lowest/50 backdrop-blur-md mt-auto border-t border-outline-variant/10">
+<div class="space-y-2 mb-6">
+<div class="flex justify-between text-sm text-stone-500 font-medium">
+<span>Subtotal</span>
+<span>$70.00</span>
+</div>
+<div class="flex justify-between text-sm text-stone-500 font-medium">
+<span>Tax (8.5%)</span>
+<span>$5.95</span>
+</div>
+<div class="flex justify-between items-end pt-4">
+<span class="font-headline font-extrabold text-stone-400 text-xs uppercase tracking-widest">Total Amount</span>
+<span class="font-headline font-extrabold text-3xl text-emerald-900 tracking-tighter">$75.95</span>
+</div>
+</div>
+<button class="w-full primary-gradient text-white py-4 rounded-xl font-headline font-bold text-lg shadow-xl shadow-emerald-900/10 hover:scale-[1.02] active:scale-95 transition-all">
+                Proceed to Checkout
+            </button>
+</div>
+</aside>
+<!-- Item Customizer Slide-Over (Modal Mockup) -->
+<div class="fixed inset-0 z-50 flex items-center justify-end pointer-events-none">
+<!-- Background Overlay (Simulated) -->
+<div class="absolute inset-0 bg-stone-900/30 backdrop-blur-sm pointer-events-auto"></div>
+<!-- Sliding Sheet -->
+<div class="relative w-[500px] h-screen bg-surface-container-lowest glass-panel shadow-2xl pointer-events-auto flex flex-col translate-x-0 transition-transform duration-500">
+<div class="p-8 border-b border-outline-variant/10">
+<div class="flex justify-between items-start mb-6">
+<button class="p-2 -ml-2 rounded-full hover:bg-stone-100 transition-colors">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+<span class="bg-emerald-100 text-emerald-900 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">Menu Item Customizer</span>
+</div>
+<h2 class="font-headline font-extrabold text-3xl text-emerald-900 mb-2">Signature Steak</h2>
+<p class="text-stone-500 leading-relaxed font-medium">Select your preferences for the perfect dry-aged experience.</p>
+</div>
+<div class="flex-1 overflow-y-auto p-8 space-y-10">
+<!-- Doneness -->
+<div>
+<h4 class="font-headline font-bold text-stone-400 text-xs uppercase tracking-widest mb-4">Doneness</h4>
+<div class="grid grid-cols-2 gap-3">
+<button class="py-4 px-2 bg-surface text-stone-400 font-semibold rounded-lg border border-outline-variant/20 hover:border-emerald-900/50 transition-all text-sm">Rare</button>
+<button class="py-4 px-2 bg-emerald-900 text-white font-semibold rounded-lg border border-transparent shadow-md text-sm">Medium Rare</button>
+<button class="py-4 px-2 bg-surface text-stone-400 font-semibold rounded-lg border border-outline-variant/20 hover:border-emerald-900/50 transition-all text-sm">Medium</button>
+<button class="py-4 px-2 bg-surface text-stone-400 font-semibold rounded-lg border border-outline-variant/20 hover:border-emerald-900/50 transition-all text-sm">Medium Well</button>
+</div>
+</div>
+<!-- Sides Selection -->
+<div>
+<h4 class="font-headline font-bold text-stone-400 text-xs uppercase tracking-widest mb-4">Select Side (Pick One)</h4>
+<div class="space-y-3">
+<div class="flex items-center justify-between p-4 bg-emerald-50 rounded-xl border border-emerald-900/10">
+<div class="flex items-center space-x-3">
+<div class="w-5 h-5 rounded-full border-2 border-emerald-900 flex items-center justify-center">
+<div class="w-2.5 h-2.5 rounded-full bg-emerald-900"></div>
+</div>
+<span class="font-semibold text-emerald-900">Truffle Mashed Potatoes</span>
+</div>
+<span class="text-xs font-bold text-emerald-700">Included</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center space-x-3">
+<div class="w-5 h-5 rounded-full border-2 border-stone-300"></div>
+<span class="font-semibold text-stone-600">Grilled Asparagus &amp; Garlic</span>
+</div>
+<span class="text-xs font-bold text-stone-400">Included</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center space-x-3">
+<div class="w-5 h-5 rounded-full border-2 border-stone-300"></div>
+<span class="font-semibold text-stone-600">Loaded Marrow Bone</span>
+</div>
+<span class="text-xs font-bold text-emerald-900">+$8.00</span>
+</div>
+</div>
+</div>
+<!-- Special Notes -->
+<div>
+<h4 class="font-headline font-bold text-stone-400 text-xs uppercase tracking-widest mb-4">Special Notes</h4>
+<textarea class="w-full bg-surface-container rounded-xl border-none focus:ring-2 focus:ring-emerald-900 p-4 text-sm h-32" placeholder="e.g. Allergy to garlic, extra sea salt on the side..."></textarea>
+</div>
+</div>
+<div class="p-8 border-t border-outline-variant/10 bg-white">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center space-x-4">
+<button class="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center hover:bg-stone-50">
+<span class="material-symbols-outlined" data-icon="remove">remove</span>
+</button>
+<span class="font-headline font-extrabold text-xl">1</span>
+<button class="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center hover:bg-stone-50">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</div>
+<div class="text-right">
+<p class="text-[10px] text-stone-400 uppercase tracking-widest font-black">Subtotal</p>
+<p class="font-headline font-extrabold text-2xl text-emerald-900">$48.00</p>
+</div>
+</div>
+<button class="w-full primary-gradient text-white py-4 rounded-xl font-headline font-bold text-lg shadow-xl hover:shadow-emerald-900/20 transition-all">
+                    Add to Order
+                </button>
+</div>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,31 @@
+{
+  "name": "restaurant-pos-system",
+  "version": "1.0.0",
+  "description": "Modern Restaurant POS System with Offline-First Architecture",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:pos\"",
+    "dev:pos": "cd apps/pos-desktop && npm run dev",
+    "dev:api": "cd apps/backend-api && npm run dev",
+    "dev:web": "cd apps/web-admin && npm run dev",
+    "build": "npm run build:pos && npm run build:api && npm run build:web",
+    "build:pos": "cd apps/pos-desktop && npm run build",
+    "build:api": "cd apps/backend-api && npm run build",
+    "build:web": "cd apps/web-admin && npm run build",
+    "db:generate": "cd apps/backend-api && npx prisma generate",
+    "db:migrate": "cd apps/backend-api && npx prisma migrate dev",
+    "db:studio": "cd apps/backend-api && npx prisma studio",
+    "db:seed": "cd apps/backend-api && npm run seed"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

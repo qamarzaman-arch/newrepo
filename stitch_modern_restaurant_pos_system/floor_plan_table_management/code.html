@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-fixed": "#c8eadc",
+                    "surface-bright": "#f8faf7",
+                    "surface-variant": "#e1e3e1",
+                    "secondary-fixed-dim": "#adcec0",
+                    "inverse-primary": "#82d7ba",
+                    "error": "#ba1a1a",
+                    "on-tertiary-container": "#ffcdc5",
+                    "primary-container": "#006b54",
+                    "on-tertiary-fixed": "#3c0804",
+                    "on-surface-variant": "#3e4944",
+                    "primary": "#00513f",
+                    "primary-fixed": "#9ef3d6",
+                    "inverse-surface": "#2e3130",
+                    "tertiary-fixed": "#ffdad4",
+                    "surface-container-low": "#f2f4f2",
+                    "on-secondary-fixed-variant": "#2f4d42",
+                    "inverse-on-surface": "#f0f1ef",
+                    "error-container": "#ffdad6",
+                    "surface-container-high": "#e7e9e6",
+                    "on-primary-container": "#94e8cb",
+                    "outline-variant": "#bec9c3",
+                    "surface-container": "#edeeec",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed-dim": "#82d7ba",
+                    "tertiary-container": "#92493e",
+                    "secondary-container": "#c8eadc",
+                    "on-tertiary-fixed-variant": "#753229",
+                    "on-primary-fixed": "#002118",
+                    "on-surface": "#191c1b",
+                    "surface-tint": "#016b54",
+                    "on-secondary-fixed": "#012018",
+                    "on-secondary": "#ffffff",
+                    "surface-container-highest": "#e1e3e1",
+                    "secondary": "#466559",
+                    "on-error": "#ffffff",
+                    "on-background": "#191c1b",
+                    "surface-dim": "#d9dad8",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-container": "#4c6b5f",
+                    "on-error-container": "#93000a",
+                    "background": "#f8faf7",
+                    "outline": "#6f7a74",
+                    "on-primary": "#ffffff",
+                    "tertiary-fixed-dim": "#ffb4a8",
+                    "on-primary-fixed-variant": "#00513f",
+                    "surface": "#f8faf7",
+                    "tertiary": "#753229"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .floor-grid {
+            background-image: radial-gradient(circle, #bec9c3 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- SideNavBar (Authority: JSON) -->
+<aside class="bg-[#edeeec] dark:bg-stone-900 h-screen w-64 fixed left-0 top-0 flex flex-col h-full py-6 z-50">
+<div class="px-6 mb-8">
+<h1 class="text-lg font-black text-emerald-900 dark:text-emerald-50 font-headline tracking-tight">The Culinary Atelier</h1>
+<p class="text-stone-500 font-label text-xs uppercase tracking-widest mt-1">Digital Maître d'</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center text-stone-600 dark:text-stone-400 hover:text-emerald-800 px-6 py-4 transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">dashboard</span>
+<span class="font-semibold text-sm">Dashboard</span>
+</a>
+<a class="flex items-center text-stone-600 dark:text-stone-400 hover:text-emerald-800 px-6 py-4 transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">restaurant_menu</span>
+<span class="font-semibold text-sm">Menu</span>
+</a>
+<!-- Active Tab: Floor Plan -->
+<a class="bg-white dark:bg-stone-800 text-emerald-900 dark:text-emerald-400 rounded-l-full ml-4 shadow-sm flex items-center px-6 py-4 transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">table_restaurant</span>
+<span class="font-semibold text-sm">Floor Plan</span>
+</a>
+<a class="flex items-center text-stone-600 dark:text-stone-400 hover:text-emerald-800 px-6 py-4 transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">payments</span>
+<span class="font-semibold text-sm">Payments</span>
+</a>
+<a class="flex items-center text-stone-600 dark:text-stone-400 hover:text-emerald-800 px-6 py-4 transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">soup_kitchen</span>
+<span class="font-semibold text-sm">Kitchen</span>
+</a>
+</nav>
+<div class="px-6 mt-auto">
+<button class="w-full bg-primary text-on-primary py-3 rounded-xl font-headline font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95 mb-6">
+                New Order
+            </button>
+<div class="space-y-1 border-t border-outline-variant/30 pt-4">
+<a class="flex items-center text-stone-500 text-xs font-semibold py-2" href="#">
+<span class="material-symbols-outlined text-sm mr-2">help</span> Help
+                </a>
+<a class="flex items-center text-stone-500 text-xs font-semibold py-2" href="#">
+<span class="material-symbols-outlined text-sm mr-2">logout</span> Logout
+                </a>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 min-h-screen">
+<!-- TopNavBar (Authority: JSON) -->
+<header class="bg-[#f8faf7] dark:bg-stone-950 flex justify-between items-center px-6 py-3 w-full sticky top-0 z-40 font-['Manrope'] antialiased">
+<div class="flex items-center bg-[#edeeec] dark:bg-stone-900 rounded-full px-4 py-1.5 w-72">
+<span class="material-symbols-outlined text-stone-400 mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full font-body" placeholder="Search tables or guests..." type="text"/>
+</div>
+<div class="flex items-center space-x-4">
+<button class="p-2 text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors scale-98 active:opacity-80">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors scale-98 active:opacity-80">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-emerald-900/10">
+<img class="w-full h-full object-cover" data-alt="professional portrait of a high-end restaurant manager in a charcoal suit, soft studio lighting, blurred restaurant background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0k0WOv6OVoCbMBAY3GJ6sABh7vDACZ3H8EVAzWaCAViRgCKepdtgHOVOycbATYeAWxjGaaa6q0sGP_SaXFk-YenvYlp2GHKSNSLpdjjrWo9nn_JvmBiRtKS_o9ouRoG-WIsNJSYCwDeNrNy3aLf0yP0drrVJfbiZIic5eH2asFtlI-QmI_cELK_-dMyb9DviMV0Vli5UlVQkiMU_tnCsVgit6x_yJtnIxRCOrmQ-9yGCgWkKP1CYMwHbouysmS6LOvOrRkjOKf2-k"/>
+</div>
+</div>
+</header>
+<!-- Page Header -->
+<div class="px-8 pt-8 pb-4 flex justify-between items-end">
+<div>
+<nav class="flex space-x-6 mb-2">
+<button class="text-emerald-900 font-headline font-bold border-b-2 border-emerald-900 pb-1">Main Dining Room</button>
+<button class="text-stone-400 font-headline font-semibold hover:text-stone-600 transition-colors pb-1">Patio</button>
+<button class="text-stone-400 font-headline font-semibold hover:text-stone-600 transition-colors pb-1">Private Cellar</button>
+</nav>
+<h2 class="text-3xl font-headline font-extrabold text-on-surface tracking-tight">Table Management</h2>
+</div>
+<div class="flex items-center space-x-6 bg-surface-container-high/50 p-2 px-4 rounded-full backdrop-blur-sm">
+<div class="flex items-center space-x-2">
+<div class="w-3 h-3 rounded-full bg-primary"></div>
+<span class="text-xs font-label font-semibold text-stone-600 uppercase tracking-tighter">Available (12)</span>
+</div>
+<div class="flex items-center space-x-2">
+<div class="w-3 h-3 rounded-full bg-tertiary-container"></div>
+<span class="text-xs font-label font-semibold text-stone-600 uppercase tracking-tighter">Occupied (8)</span>
+</div>
+<div class="flex items-center space-x-2">
+<div class="w-3 h-3 rounded-full bg-error"></div>
+<span class="text-xs font-label font-semibold text-stone-600 uppercase tracking-tighter">Needs Cleaning (3)</span>
+</div>
+</div>
+</div>
+<!-- Floor Plan Canvas -->
+<div class="p-8">
+<div class="relative bg-surface-container-lowest rounded-[2rem] h-[calc(100vh-280px)] floor-grid overflow-hidden flex items-center justify-center border border-outline-variant/10 shadow-sm">
+<!-- Floor Map Layout (Asymmetric/Artistic Grid) -->
+<div class="relative w-full h-full max-w-5xl max-h-[600px] p-12">
+<!-- Top Section: Window Seats -->
+<div class="absolute top-12 left-12 flex space-x-12">
+<!-- Table 1: Occupied (Amber) -->
+<div class="relative group">
+<div class="w-24 h-24 bg-tertiary-container rounded-full flex items-center justify-center text-on-tertiary font-headline font-bold text-xl cursor-pointer hover:ring-8 hover:ring-tertiary-container/10 transition-all active:scale-95 shadow-md">
+                                T1
+                            </div>
+<!-- Tooltip/Summary -->
+<div class="absolute -top-24 left-1/2 -translate-x-1/2 w-48 bg-surface-container-lowest/90 backdrop-blur-xl p-4 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 border border-outline-variant/20">
+<p class="text-xs font-label text-stone-500 uppercase tracking-widest mb-1">Party of 4</p>
+<p class="font-headline font-bold text-on-surface">The Thompson Party</p>
+<p class="text-[10px] text-emerald-700 font-semibold mt-2 flex items-center">
+<span class="material-symbols-outlined text-xs mr-1">schedule</span> Seated 42m ago
+                                </p>
+</div>
+</div>
+<!-- Table 2: Available (Green) -->
+<div class="w-24 h-24 bg-primary rounded-full flex items-center justify-center text-on-primary font-headline font-bold text-xl cursor-pointer hover:ring-8 hover:ring-primary/10 transition-all active:scale-95 shadow-md">
+                            T2
+                        </div>
+<!-- Table 3: Needs Cleaning (Red) -->
+<div class="w-24 h-24 bg-error rounded-full flex items-center justify-center text-on-error font-headline font-bold text-xl cursor-pointer hover:ring-8 hover:ring-error/10 transition-all active:scale-95 shadow-md">
+                            T3
+                        </div>
+</div>
+<!-- Right Section: Large Rectangles (Booths) -->
+<div class="absolute top-12 right-12 space-y-12">
+<div class="w-40 h-24 bg-tertiary-container rounded-xl flex items-center justify-center text-on-tertiary font-headline font-bold text-xl cursor-pointer hover:ring-8 hover:ring-tertiary-container/10 transition-all active:scale-95 shadow-md">
+                            B1
+                        </div>
+<div class="w-40 h-24 bg-primary rounded-xl flex items-center justify-center text-on-primary font-headline font-bold text-xl cursor-pointer hover:ring-8 hover:ring-primary/10 transition-all active:scale-95 shadow-md">
+                            B2
+                        </div>
+</div>
+<!-- Center Feature: Communal Table -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+<div class="w-64 h-32 bg-primary/10 border-2 border-dashed border-primary/30 rounded-[2rem] flex flex-col items-center justify-center group cursor-pointer hover:bg-primary/20 transition-all">
+<span class="text-primary font-headline font-extrabold text-2xl">COMMUNAL 01</span>
+<span class="text-primary/60 font-label text-[10px] uppercase tracking-[0.2em] mt-1">12 Seats Available</span>
+</div>
+</div>
+<!-- Bottom Section: Intimate 2-Tops -->
+<div class="absolute bottom-12 left-12 flex space-x-8">
+<div class="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-on-primary font-headline font-bold cursor-pointer hover:ring-4 hover:ring-primary/10 transition-all active:scale-95 shadow-md">10</div>
+<div class="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-on-primary font-headline font-bold cursor-pointer hover:ring-4 hover:ring-primary/10 transition-all active:scale-95 shadow-md">11</div>
+<div class="w-16 h-16 bg-tertiary-container rounded-lg flex items-center justify-center text-on-tertiary font-headline font-bold cursor-pointer hover:ring-4 hover:ring-tertiary-container/10 transition-all active:scale-95 shadow-md">12</div>
+<div class="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-on-primary font-headline font-bold cursor-pointer hover:ring-4 hover:ring-primary/10 transition-all active:scale-95 shadow-md">13</div>
+</div>
+<!-- Bar Area -->
+<div class="absolute bottom-12 right-12 w-64 h-12 bg-surface-container-high rounded-full flex items-center px-6 justify-between border border-outline-variant/30">
+<span class="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Bar Seating</span>
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-primary border-2 border-surface-container-lowest"></div>
+<div class="w-6 h-6 rounded-full bg-primary border-2 border-surface-container-lowest"></div>
+<div class="w-6 h-6 rounded-full bg-tertiary-container border-2 border-surface-container-lowest"></div>
+<div class="w-6 h-6 rounded-full bg-primary border-2 border-surface-container-lowest"></div>
+<div class="w-6 h-6 rounded-full bg-primary border-2 border-surface-container-lowest"></div>
+</div>
+</div>
+</div>
+<!-- Modifier/Info Panel (Slide-over mimicry) -->
+<div class="absolute right-0 top-0 h-full w-80 bg-surface-container-lowest/80 backdrop-blur-2xl border-l border-outline-variant/10 p-8 transform translate-x-0 transition-transform shadow-2xl z-20">
+<div class="flex justify-between items-center mb-10">
+<h3 class="text-xl font-headline font-extrabold text-on-surface">Live Feed</h3>
+<span class="material-symbols-outlined text-stone-400 cursor-pointer hover:text-on-surface">close</span>
+</div>
+<div class="space-y-8">
+<div class="group border-b border-outline-variant/20 pb-6">
+<p class="text-[10px] font-label font-bold text-emerald-800 uppercase tracking-widest mb-3">Recent Update</p>
+<div class="flex items-start space-x-4">
+<div class="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-error text-xl">cleaning_services</span>
+</div>
+<div>
+<h4 class="font-headline font-bold text-sm">Table T3 Cleared</h4>
+<p class="text-xs text-stone-500 mt-1 leading-relaxed">Party of 2 finished. Needs sanitization for next reservation.</p>
+<span class="text-[10px] text-stone-400 mt-2 block">2 mins ago</span>
+</div>
+</div>
+</div>
+<div class="group border-b border-outline-variant/20 pb-6">
+<p class="text-[10px] font-label font-bold text-emerald-800 uppercase tracking-widest mb-3">Upcoming Reso</p>
+<div class="flex items-start space-x-4">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-emerald-900 text-xl">event</span>
+</div>
+<div>
+<h4 class="font-headline font-bold text-sm">Gomez Party (6)</h4>
+<p class="text-xs text-stone-500 mt-1 leading-relaxed">Requested Window Booth B1. Arriving in 15 mins.</p>
+<span class="text-[10px] text-stone-400 mt-2 block">Scheduled 7:30 PM</span>
+</div>
+</div>
+</div>
+<div class="pt-4">
+<button class="w-full border-2 border-emerald-900/10 text-emerald-900 font-headline font-bold py-3 rounded-xl hover:bg-emerald-900/5 transition-colors">
+                                View Full Guest List
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual FAB (Authority: Logic - Dashboard/Home equivalent) -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined text-2xl">add</span>
+</button>
+</body></html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kitchen Display System | The Culinary Atelier</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#c8eadc",
+                        "surface-bright": "#f8faf7",
+                        "surface-variant": "#e1e3e1",
+                        "secondary-fixed-dim": "#adcec0",
+                        "inverse-primary": "#82d7ba",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#ffcdc5",
+                        "primary-container": "#006b54",
+                        "on-tertiary-fixed": "#3c0804",
+                        "on-surface-variant": "#3e4944",
+                        "primary": "#00513f",
+                        "primary-fixed": "#9ef3d6",
+                        "inverse-surface": "#2e3130",
+                        "tertiary-fixed": "#ffdad4",
+                        "surface-container-low": "#f2f4f2",
+                        "on-secondary-fixed-variant": "#2f4d42",
+                        "inverse-on-surface": "#f0f1ef",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#e7e9e6",
+                        "on-primary-container": "#94e8cb",
+                        "outline-variant": "#bec9c3",
+                        "surface-container": "#edeeec",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed-dim": "#82d7ba",
+                        "tertiary-container": "#92493e",
+                        "secondary-container": "#c8eadc",
+                        "on-tertiary-fixed-variant": "#753229",
+                        "on-primary-fixed": "#002118",
+                        "on-surface": "#191c1b",
+                        "surface-tint": "#016b54",
+                        "on-secondary-fixed": "#012018",
+                        "on-secondary": "#ffffff",
+                        "surface-container-highest": "#e1e3e1",
+                        "secondary": "#466559",
+                        "on-error": "#ffffff",
+                        "on-background": "#191c1b",
+                        "surface-dim": "#d9dad8",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-container": "#4c6b5f",
+                        "on-error-container": "#93000a",
+                        "background": "#f8faf7",
+                        "outline": "#6f7a74",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb4a8",
+                        "on-primary-fixed-variant": "#00513f",
+                        "surface": "#f8faf7",
+                        "tertiary": "#753229"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8faf7;
+        }
+        .headline-font {
+            font-family: 'Manrope', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased overflow-hidden">
+<!-- SideNavBar (Active: Kitchen) -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-surface-container flex flex-col py-6 z-40 transition-all duration-300 ease-in-out">
+<div class="px-6 mb-8">
+<h1 class="text-lg font-black text-primary tracking-tight headline-font">The Culinary Atelier</h1>
+<p class="text-xs font-semibold text-secondary opacity-70 headline-font">Digital Maître d'</p>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="text-stone-600 hover:text-emerald-800 px-6 py-4 flex items-center gap-3 transition-all cursor-pointer">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-semibold text-sm headline-font">Dashboard</span>
+</div>
+<div class="text-stone-600 hover:text-emerald-800 px-6 py-4 flex items-center gap-3 transition-all cursor-pointer">
+<span class="material-symbols-outlined" data-icon="restaurant_menu">restaurant_menu</span>
+<span class="font-semibold text-sm headline-font">Menu</span>
+</div>
+<div class="text-stone-600 hover:text-emerald-800 px-6 py-4 flex items-center gap-3 transition-all cursor-pointer">
+<span class="material-symbols-outlined" data-icon="table_restaurant">table_restaurant</span>
+<span class="font-semibold text-sm headline-font">Floor Plan</span>
+</div>
+<div class="text-stone-600 hover:text-emerald-800 px-6 py-4 flex items-center gap-3 transition-all cursor-pointer">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-semibold text-sm headline-font">Payments</span>
+</div>
+<!-- Active Tab -->
+<div class="bg-surface-container-lowest text-primary rounded-l-full ml-4 shadow-sm px-6 py-4 flex items-center gap-3 transition-all cursor-pointer">
+<span class="material-symbols-outlined" data-icon="soup_kitchen">soup_kitchen</span>
+<span class="font-semibold text-sm headline-font">Kitchen</span>
+</div>
+</nav>
+<div class="px-6 mt-auto space-y-1">
+<div class="text-stone-600 px-6 py-4 flex items-center gap-3 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-semibold text-sm headline-font">Help</span>
+</div>
+<div class="text-stone-600 px-6 py-4 flex items-center gap-3 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-semibold text-sm headline-font">Logout</span>
+</div>
+</div>
+</aside>
+<!-- Main Stage -->
+<main class="ml-64 h-screen flex flex-col bg-surface">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center px-6 py-3 w-full sticky top-0 z-50 bg-surface-bright">
+<div class="flex items-center gap-4">
+<div class="bg-surface-container px-4 py-2 rounded-xl flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm font-medium w-48" placeholder="Search orders..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<span class="inline-block w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-xs font-bold headline-font text-primary tracking-widest uppercase">Live Kitchen Status</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-surface-container transition-colors rounded-full text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 hover:bg-surface-container transition-colors rounded-full text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container text-sm" data-icon="account_circle">account_circle</span>
+</div>
+</div>
+</div>
+</header>
+<!-- KDS Grid Stage -->
+<div class="flex-1 p-6 overflow-x-auto overflow-y-hidden">
+<div class="flex gap-6 h-full items-start">
+<!-- Ticket: LATE/PRIORITY (High Contrast Red Accents) -->
+<article class="flex-shrink-0 w-80 bg-surface-container-lowest shadow-sm rounded-xl border-t-4 border-error overflow-hidden flex flex-col h-[calc(100vh-140px)]">
+<div class="p-4 bg-error-container/20 flex justify-between items-start">
+<div>
+<span class="block text-[10px] font-extrabold uppercase tracking-[0.2em] text-error headline-font">Table 12</span>
+<h2 class="text-xl font-black headline-font text-on-surface tracking-tighter">Order #422</h2>
+</div>
+<div class="text-right">
+<span class="block text-[10px] font-extrabold uppercase tracking-widest text-error headline-font">Late</span>
+<span class="text-xl font-bold text-error headline-font">18:42</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4">
+<div class="space-y-1">
+<div class="flex justify-between items-start">
+<p class="text-on-surface font-bold text-sm">2x Wagyu Beef Tartare</p>
+<span class="text-[10px] bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full font-bold uppercase">Ready</span>
+</div>
+<p class="text-xs text-error font-medium italic">No capers, extra yolk</p>
+</div>
+<div class="space-y-1 opacity-50">
+<div class="flex justify-between items-start">
+<p class="text-on-surface font-bold text-sm">1x Truffle Risotto</p>
+<span class="text-[10px] bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full font-bold uppercase">Done</span>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between items-start">
+<p class="text-on-surface font-bold text-sm">1x Pan Seared Scallops</p>
+<span class="text-[10px] bg-primary text-on-primary px-2 py-0.5 rounded-full font-bold uppercase">In Progress</span>
+</div>
+<p class="text-xs text-on-surface-variant">Course: Entree</p>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low mt-auto">
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-bold text-xs uppercase tracking-widest headline-font flex items-center justify-center gap-2 hover:opacity-90 transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
+                            Complete Order
+                        </button>
+</div>
+</article>
+<!-- Ticket: IN PROGRESS -->
+<article class="flex-shrink-0 w-80 bg-surface-container-lowest shadow-sm rounded-xl border-t-4 border-primary overflow-hidden flex flex-col h-[calc(100vh-140px)]">
+<div class="p-4 bg-surface-container-low flex justify-between items-start">
+<div>
+<span class="block text-[10px] font-extrabold uppercase tracking-[0.2em] text-on-surface-variant headline-font">Table 04</span>
+<h2 class="text-xl font-black headline-font text-on-surface tracking-tighter">Order #425</h2>
+</div>
+<div class="text-right">
+<span class="block text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant headline-font">Elapsed</span>
+<span class="text-xl font-bold text-on-surface headline-font">08:15</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4">
+<div class="space-y-1">
+<div class="flex justify-between items-start">
+<p class="text-on-surface font-bold text-sm">4x Roasted Bone Marrow</p>
+<span class="text-[10px] bg-primary text-on-primary px-2 py-0.5 rounded-full font-bold uppercase">In Progress</span>
+</div>
+<p class="text-xs text-on-surface-variant">Sourdough crisp on side</p>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between items-start">
+<p class="text-on-surface font-bold text-sm">1x Duck L'Orange</p>
+<span class="text-[10px] bg-primary text-on-primary px-2 py-0.5 rounded-full font-bold uppercase">In Progress</span>
+</div>
+<p class="text-xs text-on-surface-variant">Medium Rare</p>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low mt-auto">
+<button class="w-full bg-secondary-container text-on-secondary-container py-3 rounded-lg font-bold text-xs uppercase tracking-widest headline-font flex items-center justify-center gap-2 hover:opacity-90 transition-all">
+                            Mark All Items Ready
+                        </button>
+</div>
+</article>
+<!-- Ticket: NEW -->
+<article class="flex-shrink-0 w-80 bg-surface-container-lowest shadow-sm rounded-xl border-t-4 border-secondary overflow-hidden flex flex-col h-[calc(100vh-140px)]">
+<div class="p-4 bg-primary text-on-primary flex justify-between items-start">
+<div>
+<span class="block text-[10px] font-extrabold uppercase tracking-[0.2em] text-primary-fixed headline-font">Bar 02</span>
+<h2 class="text-xl font-black headline-font text-white tracking-tighter">Order #426</h2>
+</div>
+<div class="text-right">
+<span class="block text-[10px] font-extrabold uppercase tracking-widest text-primary-fixed headline-font">New</span>
+<span class="text-xl font-bold text-white headline-font">01:04</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4">
+<div class="space-y-1">
+<div class="flex justify-between items-start">
+<p class="text-on-surface font-bold text-sm">1x Caviar Service</p>
+<span class="text-[10px] bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full font-bold uppercase">New</span>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between items-start">
+<p class="text-on-surface font-bold text-sm">2x Atelier Martini</p>
+<span class="text-[10px] bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full font-bold uppercase">New</span>
+</div>
+<p class="text-xs text-on-surface-variant">Vesper style</p>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low mt-auto">
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-bold text-xs uppercase tracking-widest headline-font flex items-center justify-center gap-2 hover:opacity-90 transition-all">
+                            Start Preparation
+                        </button>
+</div>
+</article>
+<!-- Ticket: DONE (Ghosted) -->
+<article class="flex-shrink-0 w-80 bg-surface-container-low opacity-60 shadow-none rounded-xl border-t-4 border-outline-variant overflow-hidden flex flex-col h-[calc(100vh-140px)]">
+<div class="p-4 flex justify-between items-start">
+<div>
+<span class="block text-[10px] font-extrabold uppercase tracking-[0.2em] text-on-surface-variant headline-font">Table 08</span>
+<h2 class="text-xl font-black headline-font text-on-surface-variant tracking-tighter">Order #419</h2>
+</div>
+<div class="text-right">
+<span class="block text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant headline-font">Fulfilled</span>
+<span class="text-xl font-bold text-on-surface-variant headline-font">24:10</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4 grayscale">
+<p class="text-center py-10 text-xs font-bold uppercase tracking-widest text-outline">Order Completed</p>
+</div>
+<div class="p-4 bg-surface-container-high mt-auto">
+<button class="w-full bg-surface-container-highest text-on-surface-variant py-3 rounded-lg font-bold text-xs uppercase tracking-widest headline-font flex items-center justify-center gap-2">
+                            Recall Ticket
+                        </button>
+</div>
+</article>
+</div>
+</div>
+<!-- Footer Stats Bar -->
+<footer class="h-12 bg-surface-container-high flex items-center justify-between px-6 border-t border-outline-variant/10">
+<div class="flex gap-6 items-center">
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-extrabold text-on-surface-variant headline-font tracking-widest uppercase">Active Tickets:</span>
+<span class="text-sm font-black text-primary headline-font">08</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-extrabold text-on-surface-variant headline-font tracking-widest uppercase">Avg Prep Time:</span>
+<span class="text-sm font-black text-primary headline-font">14:20</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-[10px] font-extrabold text-on-surface-variant headline-font tracking-widest uppercase">Kitchen Load:</span>
+<div class="w-32 h-1.5 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 65%;"></div>
+</div>
+<span class="text-xs font-bold text-on-surface headline-font">65%</span>
+</div>
+</footer>
+</main>
+<!-- Contextual FAB (Only for Global Kitchen Action) -->
+<button class="fixed bottom-10 right-10 bg-primary text-on-primary w-16 h-16 rounded-full flex items-center justify-center shadow-[0_12px_32px_rgba(25,28,27,0.15)] hover:scale-105 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined text-3xl" data-icon="add">add</span>
+</button>
+</body></html>
