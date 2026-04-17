@@ -21,6 +21,8 @@ const createDiscountSchema = z.object({
   categoryIds: z.string().optional(),
 });
 
+const updateDiscountSchema = createDiscountSchema.partial();
+
 // Get discounts
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
@@ -104,7 +106,22 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
 router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createDiscountSchema.parse(req.body);
-    const discount = await prisma.discount.create({ data });
+    const discount = await prisma.discount.create({
+      data: {
+        name: data.name,
+        code: data.code,
+        type: data.type,
+        value: data.value,
+        minValue: data.minValue,
+        maxValue: data.maxValue,
+        usageLimit: data.usageLimit,
+        validFrom: data.validFrom ? new Date(data.validFrom) : undefined,
+        validUntil: data.validUntil ? new Date(data.validUntil) : undefined,
+        applicableTo: data.applicableTo,
+        itemIds: data.itemIds,
+        categoryIds: data.categoryIds,
+      },
+    });
     res.status(201).json({ success: true, data: { discount } });
   } catch (error) {
     next(error);
@@ -114,9 +131,14 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
 // Update discount
 router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    const data = updateDiscountSchema.parse(req.body);
     const discount = await prisma.discount.update({
       where: { id: req.params.id },
-      data: req.body,
+      data: {
+        ...data,
+        validFrom: data.validFrom ? new Date(data.validFrom) : undefined,
+        validUntil: data.validUntil ? new Date(data.validUntil) : undefined,
+      },
     });
     res.json({ success: true, data: { discount } });
   } catch (error) {

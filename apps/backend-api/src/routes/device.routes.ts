@@ -15,6 +15,8 @@ const createDeviceSchema = z.object({
   config: z.string().optional(),
 });
 
+const updateDeviceSchema = createDeviceSchema.partial();
+
 // Get devices
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
@@ -45,7 +47,16 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
 router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createDeviceSchema.parse(req.body);
-    const device = await prisma.device.create({ data });
+    const device = await prisma.device.create({
+      data: {
+        name: data.name,
+        type: data.type,
+        model: data.model,
+        ipAddress: data.ipAddress,
+        port: data.port,
+        config: data.config,
+      },
+    });
     res.status(201).json({ success: true, data: { device } });
   } catch (error) {
     next(error);
@@ -55,9 +66,10 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
 // Update device
 router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    const data = updateDeviceSchema.parse(req.body);
     const device = await prisma.device.update({
       where: { id: req.params.id },
-      data: req.body,
+      data,
     });
     res.json({ success: true, data: { device } });
   } catch (error) {

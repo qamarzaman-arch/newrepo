@@ -15,32 +15,54 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
-const menuItems = [
-  { icon: LayoutDashboard, label: 'POS', path: '/pos', roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
-  { icon: ShoppingCart, label: 'Orders', path: '/orders', roles: ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF'] },
-  { icon: History, label: 'History', path: '/orders?tab=history', roles: ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF'] },
-  { icon: ChefHat, label: 'Kitchen', path: '/kitchen', roles: ['ADMIN', 'MANAGER', 'KITCHEN'] },
-  { icon: Table, label: 'Tables', path: '/tables', roles: ['ADMIN', 'MANAGER', 'STAFF'] },
-  { icon: Package, label: 'Menu', path: '/menu', roles: ['ADMIN', 'MANAGER'] },
-  { icon: Users, label: 'Customers', path: '/customers', roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
-  { icon: Package, label: 'Inventory', path: '/inventory', roles: ['ADMIN', 'MANAGER'] },
-  { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['ADMIN', 'MANAGER'] },
-  { icon: Settings, label: 'Settings', path: '/settings', roles: ['ADMIN', 'MANAGER'] },
+// Admin/Manager Navigation
+const adminMenuItems = [
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+  { icon: ShoppingCart, label: 'Orders', path: '/orders' },
+  { icon: ChefHat, label: 'Kitchen Display', path: '/kitchen' },
+  { icon: Table, label: 'Tables & Reservations', path: '/tables' },
+  { icon: Package, label: 'Menu Management', path: '/menu' },
+  { icon: Package, label: 'Inventory Control', path: '/inventory' },
+  { icon: Users, label: 'Customer CRM', path: '/customers' },
+  { icon: BarChart3, label: 'Staff Management', path: '/staff' },
+  { icon: BarChart3, label: 'Vendor Management', path: '/vendors' },
+  { icon: BarChart3, label: 'Financial Reports', path: '/reports' },
+  { icon: Settings, label: 'Settings', path: '/settings' },
+];
+
+// Kitchen Staff Navigation
+const kitchenMenuItems = [
+  { icon: ChefHat, label: 'Kitchen Display', path: '/kitchen' },
+  { icon: ShoppingCart, label: 'Order Queue', path: '/orders?tab=active' },
+];
+
+// Delivery Rider Navigation
+const riderMenuItems = [
+  { icon: ShoppingCart, label: 'Deliveries', path: '/delivery' },
+  { icon: History, label: 'Delivery History', path: '/delivery?tab=history' },
 ];
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuthStore();
 
-  const filteredMenu = menuItems.filter((item) =>
-    user?.role && item.roles.includes(user.role)
-  );
+  // Select menu based on user role
+  let menuItems: typeof adminMenuItems = [];
+  
+  if (user?.role === 'ADMIN' || user?.role === 'MANAGER') {
+    menuItems = adminMenuItems;
+  } else if (user?.role === 'KITCHEN') {
+    menuItems = kitchenMenuItems;
+  } else if (user?.role === 'RIDER') {
+    menuItems = riderMenuItems;
+  }
+  // Cashiers use CashierLayout with minimal sidebar
 
   return (
     <aside className="w-72 bg-gradient-to-b from-primary to-primary-container text-white flex flex-col shadow-large">
       {/* Logo */}
       <div className="p-6 border-b border-white/10">
-        <Link to="/pos" className="flex items-center gap-3 group">
+        <Link to={user?.role === 'CASHIER' ? '/cashier-pos' : '/dashboard'} className="flex items-center gap-3 group">
           <motion.div
             whileHover={{ scale: 1.1, rotate: 5 }}
             transition={{ type: "spring", stiffness: 300 }}
@@ -68,7 +90,7 @@ const Sidebar: React.FC = () => {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-2">
-        {filteredMenu.map((item, index) => {
+        {menuItems.map((item, index) => {
           const isActive = location.pathname === item.path.split('?')[0];
           const Icon = item.icon;
 

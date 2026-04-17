@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { kitchenService } from '../services/kitchenService';
-import { Clock, AlertCircle, CheckCircle, PlayCircle } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const KitchenScreen: React.FC = () => {
@@ -14,7 +14,7 @@ const KitchenScreen: React.FC = () => {
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
-  const handleStatusUpdate = async (ticketId: string, status: string) => {
+  const handleStatusUpdate = async (ticketId: string, status: 'NEW' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED') => {
     try {
       await kitchenService.updateStatus(ticketId, status);
       toast.success(`Ticket marked as ${status}`);

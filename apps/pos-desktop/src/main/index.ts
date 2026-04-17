@@ -3,6 +3,7 @@ import path from 'path';
 // import Database from 'better-sqlite3'; // Temporarily disabled - requires C++ build tools
 import Store from 'electron-store';
 import log from 'electron-log';
+import { setupHardwareHandlers } from './hardware-handlers';
 
 // Configure logging
 log.transports.file.level = 'info';
@@ -105,6 +106,12 @@ ipcMain.handle('get-app-info', () => {
 app.whenReady().then(() => {
   // initializeDatabase(); // Temporarily disabled - better-sqlite3 requires C++ build tools
   log.info('Database initialization skipped (better-sqlite3 not available)');
+  
+  // Setup hardware handlers
+  const hardwareConfigPath = path.join(app.getPath('userData'), 'hardware-config.json');
+  setupHardwareHandlers(hardwareConfigPath);
+  log.info('Hardware handlers initialized');
+  
   createWindow();
 
   app.on('activate', () => {

@@ -7,8 +7,10 @@ import { orderService } from '../services/orderService';
 import { inventoryService } from '../services/inventoryService';
 import { tableService } from '../services/tableService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useCurrencyFormatter } from '../hooks/useCurrency';
 
 const DashboardScreen: React.FC = () => {
+  const { formatCurrency } = useCurrencyFormatter();
   const { data: dailySales } = useQuery({
     queryKey: ['daily-sales'],
     queryFn: async () => {
@@ -60,7 +62,7 @@ const DashboardScreen: React.FC = () => {
   const stats = [
     {
       title: "Today's Revenue",
-      value: `$${dailySales?.totalRevenue.toFixed(2) || '0.00'}`,
+      value: formatCurrency(dailySales?.totalRevenue || 0),
       icon: TrendingUp,
       color: 'bg-green-500',
     },
@@ -72,7 +74,7 @@ const DashboardScreen: React.FC = () => {
     },
     {
       title: 'Avg Order Value',
-      value: `$${dailySales?.avgOrderValue.toFixed(2) || '0.00'}`,
+      value: formatCurrency(dailySales?.avgOrderValue || 0),
       icon: Users,
       color: 'bg-purple-500',
     },
@@ -145,7 +147,7 @@ const DashboardScreen: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-primary">{item.totalQuantity} sold</p>
-                  <p className="text-xs text-gray-500">${item.totalRevenue?.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500">{formatCurrency(item.totalRevenue)}</p>
                 </div>
               </div>
             ))}
@@ -199,7 +201,7 @@ const DashboardScreen: React.FC = () => {
                     </div>
                   </div>
                   <div className="text-right ml-3">
-                    <p className="font-bold text-primary text-sm">${order.totalAmount.toFixed(2)}</p>
+                    <p className="font-bold text-primary text-sm">{formatCurrency(order.totalAmount)}</p>
                     <p className="text-xs text-gray-500 mt-1">
                       {new Date(order.orderedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>

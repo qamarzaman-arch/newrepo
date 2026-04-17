@@ -32,5 +32,5 @@
     }
   },
   "include": ["src/renderer/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "src/renderer/**/*.test.ts", "src/renderer/**/*.test.tsx", "src/renderer/**/*.spec.ts", "src/renderer/__tests__/**/*"]
 }

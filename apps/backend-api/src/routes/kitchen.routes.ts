@@ -1,9 +1,10 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { prisma, io } from '../server';
+import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { getWebSocketManager } from '../utils/websocket';
 
 const router = Router();
 
@@ -251,9 +252,13 @@ router.patch('/tickets/:id/status', authenticate, async (req: AuthRequest, res: 
       },
     });
 
-    // Emit real-time event
-    io.emit('kot-updated', updatedTicket);
-    io.to('kitchen').emit('ticket-status-changed', updatedTicket);
+    // Emit real-time event via WebSocket
+    const ws = getWebSocketManager();
+    if (data.status === 'COMPLETED') {
+      ws.emitTicketCompleted(updatedTicket.id);
+    } else {
+      ws.emitTicketUpdated(updatedTicket.id, updatedTicket);
+    }
 
     logger.info(`KOT ticket ${ticket.ticketNumber} status updated to ${data.status} by ${req.user!.username}`);
 
@@ -291,8 +296,9 @@ router.patch('/tickets/:id/assign', authenticate, async (req: AuthRequest, res: 
       },
     });
 
-    // Emit real-time event
-    io.to('kitchen').emit('ticket-assigned', ticket);
+    // Emit real-time event via WebSocket
+    const ws = getWebSocketManager();
+    ws.emitTicketUpdated(ticket.id, ticket);
 
     res.json({
       success: true,
@@ -339,8 +345,9 @@ router.post('/tickets/:id/delay', authenticate, async (req: AuthRequest, res: Re
       },
     });
 
-    // Emit real-time event
-    io.to('kitchen').emit('ticket-delayed', ticket);
+    // Emit real-time event via WebSocket
+    const ws = getWebSocketManager();
+    ws.emitTicketUpdated(ticket.id, ticket);
 
     logger.info(`KOT ticket ${ticket.ticketNumber} marked as delayed: ${data.reason} by ${req.user!.username}`);
 

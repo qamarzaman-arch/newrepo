@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useCustomers } from '../hooks/useCustomers';
-import { customerService } from '../services/customerService';
 import { Search, Plus, UserCircle, History } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useCurrencyFormatter } from '../hooks/useCurrency';
 
 const CustomersScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const { formatCurrency } = useCurrencyFormatter();
   const [page, setPage] = useState(1);
 
-  const { data: customersData, refetch } = useCustomers({
+  const { data: customersData } = useCustomers({
     search: searchQuery || undefined,
     page,
     limit: 20,
@@ -72,7 +72,7 @@ const CustomersScreen: React.FC = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">{customer.totalOrders}</td>
-                <td className="px-6 py-4 font-bold text-primary">${customer.totalSpent.toFixed(2)}</td>
+                <td className="px-6 py-4 font-bold text-primary">{formatCurrency(customer.totalSpent)}</td>
                 <td className="px-6 py-4">
                   <button className="p-2 hover:bg-blue-100 rounded-lg transition-colors">
                     <History className="w-4 h-4 text-blue-600" />

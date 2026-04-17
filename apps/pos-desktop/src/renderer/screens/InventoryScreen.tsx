@@ -2,8 +2,10 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { inventoryService } from '../services/inventoryService';
 import { AlertTriangle, Package } from 'lucide-react';
+import { useCurrencyFormatter } from '../hooks/useCurrency';
 
 const InventoryScreen: React.FC = () => {
+  const { formatCurrency } = useCurrencyFormatter();
   const { data: inventoryData } = useQuery({
     queryKey: ['inventory'],
     queryFn: async () => {
@@ -111,7 +113,7 @@ const InventoryScreen: React.FC = () => {
                     {item.status.replace('_', ' ')}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-600">${item.costPerUnit.toFixed(2)}</td>
+                <td className="px-6 py-4 text-sm text-gray-600">{formatCurrency(item.costPerUnit)}</td>
               </tr>
             ))}
           </tbody>

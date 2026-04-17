@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useOrders, useOrder } from '../hooks/useOrders';
 import { orderService } from '../services/orderService';
-import { Search, Filter, Eye, Printer, XCircle } from 'lucide-react';
+import { Search, Eye, Printer, XCircle } from 'lucide-react';
+import { useCurrencyFormatter } from '../hooks/useCurrency';
 import toast from 'react-hot-toast';
 
 const OrdersScreen: React.FC = () => {
@@ -9,6 +10,7 @@ const OrdersScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const { formatCurrency } = useCurrencyFormatter();
 
   const { data: ordersData, refetch } = useOrders({
     status: statusFilter || undefined,
@@ -113,7 +115,7 @@ const OrdersScreen: React.FC = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">{order.items?.length || 0} items</td>
-                <td className="px-6 py-4 font-bold text-primary">${order.totalAmount.toFixed(2)}</td>
+                <td className="px-6 py-4 font-bold text-primary">{formatCurrency(order.totalAmount)}</td>
                 <td className="px-6 py-4 text-sm text-gray-600">{order.paymentStatus}</td>
                 <td className="px-6 py-4 text-sm text-gray-600">
                   {new Date(order.orderedAt).toLocaleTimeString()}
@@ -213,7 +215,7 @@ const OrdersScreen: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Total</p>
-                  <p className="font-bold text-primary">${selectedOrderData.totalAmount.toFixed(2)}</p>
+                  <p className="font-bold text-primary">{formatCurrency(selectedOrderData.totalAmount)}</p>
                 </div>
               </div>
 
@@ -226,7 +228,7 @@ const OrdersScreen: React.FC = () => {
                         <p className="font-semibold">{item.menuItem?.name}</p>
                         <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
                       </div>
-                      <p className="font-bold">${item.totalPrice.toFixed(2)}</p>
+                      <p className="font-bold">{formatCurrency(item.totalPrice)}</p>
                     </div>
                   ))}
                 </div>

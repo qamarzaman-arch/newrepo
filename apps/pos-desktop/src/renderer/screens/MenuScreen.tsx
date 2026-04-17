@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { useMenuCategories, useMenuItems } from '../hooks/useMenu';
 import { menuService } from '../services/menuService';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { useCurrencyFormatter } from '../hooks/useCurrency';
 import toast from 'react-hot-toast';
 
 const MenuScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'categories' | 'items'>('items');
   const [searchQuery, setSearchQuery] = useState('');
+  const { formatCurrency } = useCurrencyFormatter();
 
-  const { data: categories, refetch: refetchCategories } = useMenuCategories();
+  const { data: categories } = useMenuCategories();
   const { data: items, refetch: refetchItems } = useMenuItems({ search: searchQuery || undefined });
 
   const handleToggleAvailability = async (itemId: string, currentStatus: boolean) => {
@@ -90,7 +92,7 @@ const MenuScreen: React.FC = () => {
               <div className="text-4xl mb-3">{item.image || '🍽️'}</div>
               <h3 className="font-bold text-gray-900 mb-1">{item.name}</h3>
               <p className="text-xs text-gray-500 mb-2">{item.category?.name}</p>
-              <p className="text-lg font-bold text-primary mb-3">${item.price.toFixed(2)}</p>
+              <p className="text-lg font-bold text-primary mb-3">{formatCurrency(item.price)}</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => handleToggleAvailability(item.id, item.isAvailable)}

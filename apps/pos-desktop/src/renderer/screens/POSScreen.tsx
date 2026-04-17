@@ -19,10 +19,9 @@ import {
 } from 'lucide-react';
 import { useOrderStore, OrderItem } from '../stores/orderStore';
 import { useMenuCategories, useMenuItems } from '../hooks/useMenu';
-import { useTables } from '../hooks/useTables';
 import { orderService } from '../services/orderService';
+import { useCurrencyFormatter } from '../hooks/useCurrency';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../stores/authStore';
 
 const POSScreen: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -33,6 +32,7 @@ const POSScreen: React.FC = () => {
   const [orderType, setOrderType] = useState<'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'RESERVATION'>('DINE_IN');
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { formatCurrency } = useCurrencyFormatter();
 
   const { currentOrder, addItem, removeItem, updateQuantity, clearOrder, getSubtotal, getTotal } = useOrderStore();
 
@@ -43,7 +43,9 @@ const POSScreen: React.FC = () => {
     search: searchQuery || undefined,
     available: true,
   });
-  const { data: tables } = useTables({ isActive: true });
+  
+  // Note: tables removed - use new CashierPOS flow for table selection
+  const tables: any[] = [];
 
   const filteredItems = menuItems?.filter((item: any) => {
     if (searchQuery) {
@@ -189,7 +191,7 @@ const POSScreen: React.FC = () => {
                 <div className="text-4xl md:text-5xl mb-2 md:mb-3">{item.image || '🍽️'}</div>
                 <h3 className="font-bold text-gray-900 mb-1 text-sm md:text-base">{item.name}</h3>
                 <p className="text-xs text-gray-500 mb-2 line-clamp-2 hidden sm:block">{item.description}</p>
-                <p className="text-base md:text-lg font-bold text-primary">${item.price.toFixed(2)}</p>
+                <p className="text-base md:text-lg font-bold text-primary">{formatCurrency(item.price)}</p>
                 {!item.isAvailable && (
                   <p className="text-xs text-red-500 mt-1">Unavailable</p>
                 )}
@@ -311,7 +313,7 @@ const POSScreen: React.FC = () => {
         <div className="p-6 border-t border-gray-200 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Subtotal</span>
-            <span className="font-semibold">${subtotal.toFixed(2)}</span>
+            <span className="font-semibold">{formatCurrency(subtotal)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Tax</span>
@@ -319,7 +321,7 @@ const POSScreen: React.FC = () => {
           </div>
           <div className="flex justify-between text-lg font-bold pt-3 border-t border-gray-200">
             <span>Total</span>
-            <span className="text-primary">${total.toFixed(2)}</span>
+            <span className="text-primary">{formatCurrency(total)}</span>
           </div>
 
           {/* Action Buttons */}
@@ -385,6 +387,8 @@ const OrderItemCard: React.FC<{
   onRemove: (id: string) => void;
   onAddNote: () => void;
 }> = ({ item, onUpdateQuantity, onRemove, onAddNote }) => {
+  const { formatCurrency } = useCurrencyFormatter();
+
   return (
     <motion.div
       layout
@@ -396,7 +400,7 @@ const OrderItemCard: React.FC<{
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
           <h4 className="font-semibold text-gray-900">{item.name}</h4>
-          <p className="text-sm text-gray-600">${item.price.toFixed(2)} each</p>
+          <p className="text-sm text-gray-600">{formatCurrency(item.price)} each</p>
         </div>
         <button
           onClick={() => onRemove(item.id)}
@@ -424,7 +428,7 @@ const OrderItemCard: React.FC<{
         </div>
 
         <div className="text-right">
-          <p className="font-bold text-primary">${(item.price * item.quantity).toFixed(2)}</p>
+          <p className="font-bold text-primary">{formatCurrency(item.price * item.quantity)}</p>
           <button
             onClick={onAddNote}
             className="text-xs text-gray-500 hover:text-primary"
@@ -450,6 +454,7 @@ const PaymentModal: React.FC<{
   onPayment: (method: string) => void;
   isProcessing: boolean;
 }> = ({ total, onClose, onPayment, isProcessing }) => {
+  const { formatCurrency } = useCurrencyFormatter();
   const paymentMethods = [
     { id: 'cash', name: 'Cash', icon: Banknote, color: 'bg-green-500' },
     { id: 'card', name: 'Card', icon: CreditCard, color: 'bg-blue-500' },
@@ -478,7 +483,7 @@ const PaymentModal: React.FC<{
 
         <div className="text-center mb-8">
           <p className="text-sm text-gray-600 mb-2">Total Amount</p>
-          <p className="text-5xl font-bold text-primary">${total.toFixed(2)}</p>
+          <p className="text-5xl font-bold text-primary">{formatCurrency(total)}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6">

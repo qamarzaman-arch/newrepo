@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportService } from '../services/reportService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { useCurrencyFormatter } from '../hooks/useCurrency';
 
 const ReportsScreen: React.FC = () => {
   const [reportType, setReportType] = useState<'sales' | 'products' | 'expenses'>('sales');
   const [days, setDays] = useState(30);
+  const { formatCurrency } = useCurrencyFormatter();
 
   const { data: salesData } = useQuery({
     queryKey: ['monthly-sales', days],
@@ -85,7 +87,7 @@ const ReportsScreen: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-surface-lowest rounded-xl p-6 shadow-soft">
               <p className="text-sm text-gray-600">Total Revenue</p>
-              <p className="text-3xl font-bold text-primary">${salesData.totalRevenue.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-primary">{formatCurrency(salesData.totalRevenue)}</p>
             </div>
             <div className="bg-surface-lowest rounded-xl p-6 shadow-soft">
               <p className="text-sm text-gray-600">Total Orders</p>
@@ -93,7 +95,7 @@ const ReportsScreen: React.FC = () => {
             </div>
             <div className="bg-surface-lowest rounded-xl p-6 shadow-soft">
               <p className="text-sm text-gray-600">Avg Order Value</p>
-              <p className="text-3xl font-bold text-gray-900">${salesData.avgOrderValue.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-gray-900">{formatCurrency(salesData.avgOrderValue)}</p>
             </div>
           </div>
 
@@ -130,7 +132,7 @@ const ReportsScreen: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-primary">{item.totalQuantity} sold</p>
-                  <p className="text-sm text-gray-600">${item.totalRevenue?.toFixed(2)}</p>
+                  <p className="text-sm text-gray-600">{formatCurrency(item.totalRevenue)}</p>
                 </div>
               </div>
             ))}
@@ -143,7 +145,7 @@ const ReportsScreen: React.FC = () => {
         <div className="space-y-6">
           <div className="bg-surface-lowest rounded-xl p-6 shadow-soft">
             <p className="text-sm text-gray-600">Total Expenses</p>
-            <p className="text-3xl font-bold text-red-600">${expenseData.totalExpenses.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-red-600">{formatCurrency(expenseData.totalExpenses)}</p>
           </div>
 
           <div className="bg-surface-lowest rounded-2xl p-6 shadow-soft">
@@ -160,7 +162,7 @@ const ReportsScreen: React.FC = () => {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {Object.entries(expenseData.byCategory).map((entry, index) => (
+                  {Object.entries(expenseData.byCategory).map(([_category, _value], index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useSettingsStore } from './settingsStore';
 
 export interface OrderItem {
   id: string;
@@ -10,6 +11,16 @@ export interface OrderItem {
   modifiers?: string;
 }
 
+export interface HeldOrder {
+  id: string;
+  orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'PICKUP';
+  tableId?: string;
+  customerName?: string;
+  items: OrderItem[];
+  notes?: string;
+  heldAt: string;
+}
+
 interface OrderState {
   currentOrder: {
     items: OrderItem[];
@@ -19,7 +30,10 @@ interface OrderState {
     customerName?: string;
     customerPhone?: string;
     notes?: string;
+    discountPercent: number;
+    discountAmount: number;
   };
+  heldOrders: HeldOrder[];
   addItem: (item: Omit<OrderItem, 'id'>) => void;
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
@@ -28,18 +42,23 @@ interface OrderState {
   setOrderType: (type: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'PICKUP') => void;
   setTable: (tableId: string) => void;
   setCustomer: (customer: { id: string; name: string; phone: string }) => void;
+  applyDiscount: (percent: number) => void;
+  holdOrder: () => void;
+  resumeOrder: (heldOrderId: string) => void;
+  removeHeldOrder: (heldOrderId: string) => void;
   getSubtotal: () => number;
+  getDiscount: () => number;
   getTotal: () => number;
 }
-
-const TAX_RATE = 0; // Can be configured from settings
-const DISCOUNT_PERCENT = 0;
 
 export const useOrderStore = create<OrderState>((set, get) => ({
   currentOrder: {
     items: [],
     orderType: 'DINE_IN',
+    discountPercent: 0,
+    discountAmount: 0,
   },
+  heldOrders: [],
 
   addItem: (item) => {
     set((state) => {
@@ -113,6 +132,8 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       currentOrder: {
         items: [],
         orderType: 'DINE_IN',
+        discountPercent: 0,
+        discountAmount: 0,
       },
     });
   },
@@ -146,6 +167,74 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     }));
   },
 
+  applyDiscount: (percent) => {
+    set((state) => {
+      const subtotal = state.currentOrder.items.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+      const discountAmount = subtotal * (percent / 100);
+      return {
+        currentOrder: {
+          ...state.currentOrder,
+          discountPercent: percent,
+          discountAmount,
+        },
+      };
+    });
+  },
+
+  holdOrder: () => {
+    const state = get();
+    if (state.currentOrder.items.length === 0) return;
+
+    const heldOrder: HeldOrder = {
+      id: crypto.randomUUID(),
+      orderType: state.currentOrder.orderType,
+      tableId: state.currentOrder.tableId,
+      customerName: state.currentOrder.customerName,
+      items: state.currentOrder.items,
+      notes: state.currentOrder.notes,
+      heldAt: new Date().toISOString(),
+    };
+
+    set((state) => ({
+      heldOrders: [...state.heldOrders, heldOrder],
+      currentOrder: {
+        items: [],
+        orderType: 'DINE_IN',
+        discountPercent: 0,
+        discountAmount: 0,
+      },
+    }));
+  },
+
+  resumeOrder: (heldOrderId) => {
+    set((state) => {
+      const heldOrder = state.heldOrders.find((o) => o.id === heldOrderId);
+      if (!heldOrder) return state;
+
+      return {
+        heldOrders: state.heldOrders.filter((o) => o.id !== heldOrderId),
+        currentOrder: {
+          items: heldOrder.items,
+          orderType: heldOrder.orderType,
+          tableId: heldOrder.tableId,
+          customerName: heldOrder.customerName,
+          notes: heldOrder.notes,
+          discountPercent: 0,
+          discountAmount: 0,
+        },
+      };
+    });
+  },
+
+  removeHeldOrder: (heldOrderId) => {
+    set((state) => ({
+      heldOrders: state.heldOrders.filter((o) => o.id !== heldOrderId),
+    }));
+  },
+
   getSubtotal: () => {
     const state = get();
     return state.currentOrder.items.reduce(
@@ -154,11 +243,21 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     );
   },
 
+  getDiscount: () => {
+    const state = get();
+    return state.currentOrder.discountAmount;
+  },
+
   getTotal: () => {
     const subtotal = get().getSubtotal();
-    const discount = subtotal * (DISCOUNT_PERCENT / 100);
+    const discount = get().getDiscount();
     const afterDiscount = subtotal - discount;
-    const tax = afterDiscount * (TAX_RATE / 100);
+    
+    // Get tax rate from settings
+    const settings = useSettingsStore.getState();
+    const taxRate = settings.settings.taxRate || 0;
+    const tax = afterDiscount * (taxRate / 100);
+    
     return afterDiscount + tax;
   },
 }));

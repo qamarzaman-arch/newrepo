@@ -1,9 +1,10 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { prisma, io } from '../server';
+import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { getWebSocketManager } from '../utils/websocket';
 
 const router = Router();
 
@@ -266,9 +267,9 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
       return newOrder;
     });
 
-    // Emit real-time event
-    io.emit('order-created', order);
-    io.to('kitchen').emit('new-kot', order);
+    // Emit real-time event via WebSocket
+    const ws = getWebSocketManager();
+    ws.emitOrderCreated(order);
 
     logger.info(`Order created: ${orderNumber} by ${req.user!.username}`);
 
@@ -327,8 +328,9 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res: Response
       });
     }
 
-    // Emit real-time event
-    io.emit('order-updated', updatedOrder);
+    // Emit real-time event via WebSocket
+    const ws = getWebSocketManager();
+    ws.emitOrderUpdated(updatedOrder.id, updatedOrder);
 
     res.json({
       success: true,
@@ -406,8 +408,9 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
       }
     }
 
-    // Emit real-time event
-    io.emit('payment-processed', updatedOrder);
+    // Emit real-time event via WebSocket
+    const ws = getWebSocketManager();
+    ws.emitOrderStatusChanged(updatedOrder.id, updatedOrder.status);
 
     logger.info(`Payment processed for order ${order.orderNumber}: ${amount}`);
 

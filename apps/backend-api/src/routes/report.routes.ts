@@ -195,13 +195,26 @@ router.get('/staff/performance', authenticate, async (req: AuthRequest, res: Res
 
     const performances = await prisma.staffPerformance.findMany({
       where: { date: { gte: startDate } },
-      include: {
-        user: { select: { id: true, fullName: true, role: true } },
-      },
       orderBy: { date: 'desc' },
     });
 
-    res.json({ success: true, data: { performances } });
+    const users = await prisma.user.findMany({
+      where: {
+        id: {
+          in: performances.map((performance) => performance.userId),
+        },
+      },
+      select: { id: true, fullName: true, role: true },
+    });
+
+    const userMap = new Map(users.map((user) => [user.id, user]));
+
+    const enrichedPerformances = performances.map((performance) => ({
+      ...performance,
+      user: userMap.get(performance.userId) ?? null,
+    }));
+
+    res.json({ success: true, data: { performances: enrichedPerformances } });
   } catch (error) {
     next(error);
   }

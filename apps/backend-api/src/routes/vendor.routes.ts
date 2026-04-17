@@ -17,6 +17,8 @@ const createVendorSchema = z.object({
   notes: z.string().optional(),
 });
 
+const updateVendorSchema = createVendorSchema.partial();
+
 // Get vendors
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
@@ -49,7 +51,18 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
 router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createVendorSchema.parse(req.body);
-    const vendor = await prisma.vendor.create({ data });
+    const vendor = await prisma.vendor.create({
+      data: {
+        name: data.name,
+        contactName: data.contactName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        city: data.city,
+        website: data.website,
+        notes: data.notes,
+      },
+    });
     res.status(201).json({ success: true, data: { vendor } });
   } catch (error) {
     next(error);
@@ -59,9 +72,10 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
 // Update vendor
 router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    const data = updateVendorSchema.parse(req.body);
     const vendor = await prisma.vendor.update({
       where: { id: req.params.id },
-      data: req.body,
+      data,
     });
     res.json({ success: true, data: { vendor } });
   } catch (error) {

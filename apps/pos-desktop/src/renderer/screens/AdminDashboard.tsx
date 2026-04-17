@@ -1,19 +1,24 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  TrendingUp,
-  TrendingDown,
   ShoppingCart,
   Users,
   DollarSign,
   Package,
-  Calendar,
   Clock,
   ArrowUpRight,
   ArrowDownRight,
   Activity,
   BarChart3,
   PieChart,
+  Plus,
+  FileText,
+  Printer,
+  RefreshCw,
+  AlertTriangle,
+  Bell,
+  TrendingDown,
+  CheckCircle,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { reportService } from '../services/reportService';
@@ -21,8 +26,6 @@ import { orderService } from '../services/orderService';
 import { inventoryService } from '../services/inventoryService';
 import { tableService } from '../services/tableService';
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
   XAxis,
@@ -35,10 +38,7 @@ import {
   Cell,
   AreaChart,
   Area,
-  Legend,
 } from 'recharts';
-
-const COLORS = ['#00513f', '#006b54', '#60a5fa', '#3b82f6', '#f59e0b', '#ef4444'];
 
 const AdminDashboard: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('7d');
@@ -68,14 +68,6 @@ const AdminDashboard: React.FC = () => {
     },
   });
 
-  const { data: lowPerforming } = useQuery({
-    queryKey: ['lowPerforming'],
-    queryFn: async () => {
-      const response = await reportService.getLowPerforming(7);
-      return response.data.data;
-    },
-  });
-
   const { data: pendingOrders } = useQuery({
     queryKey: ['pendingOrders'],
     queryFn: async () => {
@@ -87,8 +79,8 @@ const AdminDashboard: React.FC = () => {
   const { data: occupiedTables } = useQuery({
     queryKey: ['occupiedTables'],
     queryFn: async () => {
-      const response = await tableService.getTables({ isActive: true });
-      return response.data.data.tables?.filter((t: any) => t.status === 'OCCUPIED') || [];
+      const response = await tableService.getTables({ status: 'OCCUPIED' });
+      return response.data.data.tables || [];
     },
   });
 
@@ -97,14 +89,6 @@ const AdminDashboard: React.FC = () => {
     queryFn: async () => {
       const response = await inventoryService.getInventory({ lowStock: true });
       return response.data.data.items || [];
-    },
-  });
-
-  const { data: expenseSummary } = useQuery({
-    queryKey: ['expenseSummary'],
-    queryFn: async () => {
-      const response = await reportService.getExpenseSummary(7);
-      return response.data.data;
     },
   });
 
@@ -372,7 +356,7 @@ const AdminDashboard: React.FC = () => {
             <p className="text-sm text-gray-600 mt-1">Best performers this week</p>
           </div>
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
-            {topProducts?.slice(0, 8).map((item: any, index: number) => (
+            {Array.isArray(topProducts) && topProducts.length > 0 && topProducts.slice(0, 8).map((item: any, index: number) => (
               <motion.div
                 key={item.id}
                 initial={{ opacity: 0, x: -20 }}
@@ -395,7 +379,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </motion.div>
             ))}
-            {!topProducts || topProducts.length === 0 && (
+            {(!Array.isArray(topProducts) || topProducts.length === 0) && (
               <div className="text-center py-8">
                 <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                 <p className="text-gray-500 text-sm">No sales data yet</p>
@@ -522,6 +506,182 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Quick Actions Panel */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100"
+      >
+        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <Plus className="w-5 h-5 text-primary" />
+          Quick Actions
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <motion.button
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-4 bg-gradient-to-br from-primary/10 to-primary-container/10 rounded-xl border border-primary/20 hover:border-primary/40 transition-all group"
+          >
+            <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-primary group-hover:scale-110 transition-transform" />
+            <p className="text-xs font-semibold text-gray-700 text-center">New Order</p>
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-200 hover:border-blue-400 transition-all group"
+          >
+            <Plus className="w-8 h-8 mx-auto mb-2 text-blue-600 group-hover:scale-110 transition-transform" />
+            <p className="text-xs font-semibold text-gray-700 text-center">Add Item</p>
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200 hover:border-orange-400 transition-all group"
+          >
+            <RefreshCw className="w-8 h-8 mx-auto mb-2 text-orange-600 group-hover:scale-110 transition-transform" />
+            <p className="text-xs font-semibold text-gray-700 text-center">Process Refund</p>
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200 hover:border-purple-400 transition-all group"
+          >
+            <FileText className="w-8 h-8 mx-auto mb-2 text-purple-600 group-hover:scale-110 transition-transform" />
+            <p className="text-xs font-semibold text-gray-700 text-center">Generate Report</p>
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200 hover:border-green-400 transition-all group"
+          >
+            <Printer className="w-8 h-8 mx-auto mb-2 text-green-600 group-hover:scale-110 transition-transform" />
+            <p className="text-xs font-semibold text-gray-700 text-center">Print Z-Report</p>
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-4 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-200 hover:border-indigo-400 transition-all group"
+          >
+            <Users className="w-8 h-8 mx-auto mb-2 text-indigo-600 group-hover:scale-110 transition-transform" />
+            <p className="text-xs font-semibold text-gray-700 text-center">Manage Staff</p>
+          </motion.button>
+        </div>
+      </motion.div>
+
+      {/* Alerts & Notifications Center */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <Bell className="w-5 h-5 text-primary" />
+            Alerts & Notifications
+          </h3>
+          <span className="px-3 py-1 bg-red-100 text-red-600 rounded-full text-xs font-bold">
+            {lowStockItems?.length || 0} Active Alerts
+          </span>
+        </div>
+
+        <div className="space-y-3 max-h-96 overflow-y-auto">
+          {/* Low Stock Alerts */}
+          {lowStockItems && lowStockItems.length > 0 ? (
+            lowStockItems.slice(0, 5).map((item: any, index: number) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border-l-4 border-orange-500 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-orange-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Low Stock: {item.name}</p>
+                    <p className="text-xs text-gray-600">
+                      Current: {item.currentStock} {item.unit} | Min: {item.minStock} {item.unit}
+                    </p>
+                  </div>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-3 py-1.5 bg-orange-600 text-white text-xs font-semibold rounded-lg hover:bg-orange-700 transition-colors"
+                >
+                  Reorder
+                </motion.button>
+              </motion.div>
+            ))
+          ) : (
+            <div className="p-8 text-center">
+              <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-500" />
+              <p className="text-gray-600">No active alerts</p>
+              <p className="text-xs text-gray-400 mt-1">All systems running smoothly</p>
+            </div>
+          )}
+
+          {/* Pending Orders Alert */}
+          {pendingOrders && pendingOrders.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border-l-4 border-blue-500 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {pendingOrders.length} Pending Order{pendingOrders.length > 1 ? 's' : ''}
+                  </p>
+                  <p className="text-xs text-gray-600">Requires confirmation</p>
+                </div>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                View Orders
+              </motion.button>
+            </motion.div>
+          )}
+
+          {/* Occupied Tables Alert */}
+          {occupiedTables && occupiedTables.length > 8 && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border-l-4 border-purple-500 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <TrendingDown className="w-5 h-5 text-purple-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">High Table Occupancy</p>
+                  <p className="text-xs text-gray-600">
+                    {occupiedTables.length} tables currently occupied
+                  </p>
+                </div>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-3 py-1.5 bg-purple-600 text-white text-xs font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                View Tables
+              </motion.button>
+            </motion.div>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 };

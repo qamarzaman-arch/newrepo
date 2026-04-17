@@ -92,7 +92,19 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
     const expenseNumber = `EXP-${today}-${String(count + 1).padStart(3, '0')}`;
 
     const expense = await prisma.expense.create({
-      data: { ...data, expenseNumber, createdById: req.user!.userId },
+      data: {
+        expenseNumber,
+        category: data.category,
+        description: data.description,
+        amount: data.amount,
+        paymentMethod: data.paymentMethod,
+        receipt: data.receipt,
+        notes: data.notes,
+        approvedById: data.approvedById,
+        createdBy: {
+          connect: { id: req.user!.userId },
+        },
+      },
       include: { createdBy: { select: { id: true, fullName: true } } },
     });
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings as SettingsIcon, Store, CreditCard, Printer, Users, Wifi } from 'lucide-react';
+import { Store, CreditCard, Printer, Users, Wifi } from 'lucide-react';
 
 const SettingsScreen: React.FC = () => {
   const settingsSections = [
@@ -85,7 +85,7 @@ const SettingsScreen: React.FC = () => {
                     ) : (
                       <input
                         type={item.type}
-                        defaultValue={item.value}
+                        defaultValue={String(item.value)}
                         className="px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-primary focus:outline-none w-48"
                       />
                     )}
