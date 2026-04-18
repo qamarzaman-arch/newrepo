@@ -6,6 +6,8 @@ import LoginScreen from './screens/LoginScreen';
 import POSScreen from './screens/POSScreen';
 import CashierPOS from './screens/CashierPOS/AdvancedCashierPOS';
 import ShiftSummary from './screens/CashierPOS/ShiftSummary';
+import CashierOrderHistory from './screens/CashierPOS/CashierOrderHistory';
+import CashierActiveOrders from './screens/CashierPOS/CashierActiveOrders';
 import DashboardScreen from './screens/DashboardScreen';
 import AdminDashboard from './screens/AdminDashboard';
 import OrdersScreen from './screens/AdvancedOrdersScreen';
@@ -124,6 +126,22 @@ function AnimatedRoutes() {
           element={
             <ProtectedRoute>
               <ShiftSummary />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cashier-orders"
+          element={
+            <ProtectedRoute>
+              <CashierActiveOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cashier-history"
+          element={
+            <ProtectedRoute>
+              <CashierOrderHistory />
             </ProtectedRoute>
           }
         />

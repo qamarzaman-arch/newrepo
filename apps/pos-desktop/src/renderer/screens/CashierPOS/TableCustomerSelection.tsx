@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Users, MapPin, Phone, User, Search, X, Loader2 } from 'lucide-react';
 import { useTables } from '../../hooks/useTables';
 import { customerService } from '../../services/customerService';
+import { getTableLockService } from '../../services/tableLockService';
+import { useAuthStore } from '../../stores/authStore';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
@@ -95,6 +97,7 @@ const CustomerSearchDropdown: React.FC<{
 };
 
 const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, onSelect, onBack }) => {
+  const { user } = useAuthStore();
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
@@ -104,9 +107,24 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
   const [validationError, setValidationError] = useState('');
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [lockedTables, setLockedTables] = useState<Set<string>>(new Set());
 
   // Real-time table polling with reduced frequency and optimistic updates
   const { data: tables, refetch: refetchTables } = useTables({ isActive: true });
+
+  // Check for locked tables
+  useEffect(() => {
+    const tableLockService = getTableLockService();
+    const locked = new Set<string>();
+    
+    tables?.forEach((table: any) => {
+      if (tableLockService.isTableLocked(table.id, user?.id)) {
+        locked.add(table.id);
+      }
+    });
+    
+    setLockedTables(locked);
+  }, [tables, user?.id]);
 
   useEffect(() => {
     // Poll tables every 10 seconds instead of 5 to reduce race conditions
@@ -119,9 +137,25 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
   const occupiedTables = tables?.filter((t: any) => t.status !== 'AVAILABLE') || [];
 
   const handleTableSelect = (table: any) => {
+    const tableLockService = getTableLockService();
+    
+    // Try to lock the table
+    const locked = tableLockService.lockTable(table.id, user?.id || 'unknown');
+    
+    if (!locked) {
+      toast.error('This table is currently being selected by another cashier. Please choose a different table.');
+      return;
+    }
+    
+    // Unlock previous table if any
+    if (localTableId && localTableId !== table.id) {
+      tableLockService.unlockTable(localTableId, user?.id || 'unknown');
+    }
+    
     setLocalTableId(table.id);
     setLocalTableNumber(table.number);
     setValidationError('');
+    toast.success(`Table ${table.number} locked for your order`);
   };
 
   const handleProceed = () => {
@@ -133,6 +167,13 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
       setValidationError('Customer name is required for delivery');
       return;
     }
+    
+    // Extend table lock when proceeding
+    if (localTableId && user?.id) {
+      const tableLockService = getTableLockService();
+      tableLockService.extendLock(localTableId, user.id);
+    }
+    
     onSelect({
       tableId: localTableId || undefined,
       tableNumber: localTableNumber || undefined,
@@ -201,8 +242,11 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleTableSelect(table)}
+                    disabled={lockedTables.has(table.id)}
                     className={`aspect-square bg-white rounded-2xl p-4 flex flex-col justify-between items-center border-2 transition-all shadow-md ${
-                      localTableId === table.id
+                      lockedTables.has(table.id)
+                        ? 'opacity-50 cursor-not-allowed border-orange-300 bg-orange-50'
+                        : localTableId === table.id
                         ? 'border-primary bg-primary/10 shadow-primary/20 shadow-lg'
                         : 'border-gray-200 hover:border-primary'
                     }`}
@@ -212,9 +256,15 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
                     </span>
                     <Users className={`w-8 h-8 ${localTableId === table.id ? 'text-primary' : 'text-gray-400'}`} />
                     <div className="flex flex-col items-center gap-0.5">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                        Available
-                      </span>
+                      {lockedTables.has(table.id) ? (
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">
+                          In Use
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                          Available
+                        </span>
+                      )}
                       {table.capacity && (
                         <span className="text-[9px] text-gray-400">{table.capacity} seats</span>
                       )}

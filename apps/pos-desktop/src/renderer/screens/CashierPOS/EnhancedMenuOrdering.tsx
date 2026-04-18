@@ -7,6 +7,7 @@ import {
 import { useMenuCategories, useMenuItems } from '../../hooks/useMenu';
 import { useOrderStore } from '../../stores/orderStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useAuthStore } from '../../stores/authStore';
 import { getHardwareManager } from '../../services/hardwareManager';
 import { useCurrencyFormatter } from '../../hooks/useCurrency';
 import { orderService } from '../../services/orderService';
@@ -49,10 +50,10 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [voidItemId, setVoidItemId] = useState<string | null>(null);
   const [voidReason, setVoidReason] = useState('');
-  const [voidedItems, setVoidedItems] = useState<Array<{itemId: string, itemName: string, reason: string, timestamp: string}>>([]);
 
-  const { currentOrder, addItem, removeItem, updateQuantity, updateNotes, setOrderNotes, holdOrder, resumeOrder, removeHeldOrder, heldOrders, getSubtotal, getTax, getServiceCharge, getTotal } = useOrderStore();
+  const { currentOrder, addItem, removeItem, voidItem, updateQuantity, updateNotes, setOrderNotes, holdOrder, resumeOrder, removeHeldOrder, heldOrders, getSubtotal, getTax, getServiceCharge, getTotal } = useOrderStore();
   const { settings } = useSettingsStore();
+  const { user } = useAuthStore();
   const { formatCurrency } = useCurrencyFormatter();
 
   const { data: categories, isLoading: isLoadingCategories } = useMenuCategories();
@@ -627,23 +628,9 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
                     const itemToVoid = currentOrder.items.find(item => item.id === voidItemId);
                     if (!itemToVoid) return;
 
-                    // Record audit trail for pre-order voids in order notes
-                    const voidNote = `VOID: ${itemToVoid.name} (${voidReason}) at ${new Date().toLocaleTimeString()}`;
-                    const currentNotes = currentOrder.notes || '';
-                    setOrderNotes(currentNotes ? `${currentNotes}\n${voidNote}` : voidNote);
+                    // Use proper void function with audit trail
+                    voidItem(voidItemId!, voidReason, user?.fullName || 'Cashier');
                     
-                    // Track voided items for audit
-                    setVoidedItems(prev => [
-                      ...prev,
-                      {
-                        itemId: voidItemId!,
-                        itemName: itemToVoid.name,
-                        reason: voidReason,
-                        timestamp: new Date().toISOString(),
-                      }
-                    ]);
-                    
-                    removeItem(voidItemId!);
                     toast.success(`Item voided: ${voidReason}`);
                     setShowVoidModal(false);
                     setVoidItemId(null);

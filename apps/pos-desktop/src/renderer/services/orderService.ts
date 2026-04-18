@@ -24,6 +24,7 @@ export const orderService = {
     api.get('/orders', { params }),
   getOrder: (id: string) => api.get(`/orders/${id}`),
   createOrder: (data: CreateOrderData) => api.post('/orders', data),
+  updateOrder: (id: string, data: Partial<CreateOrderData>) => api.put(`/orders/${id}`, data),
   updateStatus: (id: string, status: string, cancelReason?: string) =>
     api.patch(`/orders/${id}/status`, { status, cancelReason }),
   processPayment: (id: string, paymentData: { method: string; amount: number; reference?: string; notes?: string }) =>

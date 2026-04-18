@@ -17,8 +17,8 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
   // Cashier-specific menu items
   const cashierMenuItems = [
     { icon: LayoutDashboard, label: 'POS Terminal', path: '/cashier-pos' },
-    { icon: ShoppingCart, label: 'Orders', path: '/orders' },
-    { icon: History, label: 'Order History', path: '/orders?tab=history' },
+    { icon: ShoppingCart, label: 'Active Orders', path: '/cashier-orders' },
+    { icon: History, label: 'Order History', path: '/cashier-history' },
     { icon: Clock, label: 'Shift Summary', path: '/shift-summary' },
   ];
 

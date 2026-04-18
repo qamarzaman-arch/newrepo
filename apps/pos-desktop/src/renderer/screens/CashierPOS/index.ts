@@ -5,3 +5,5 @@ export { default as MenuOrdering } from './MenuOrdering';
 export { default as KitchenDispatchConfirmation } from './KitchenDispatchConfirmation';
 export { default as CheckoutPayment } from './CheckoutPayment';
 export { default as OrderSuccess } from './OrderSuccess';
+export { default as CashierOrderHistory } from './CashierOrderHistory';
+export { default as CashierActiveOrders } from './CashierActiveOrders';

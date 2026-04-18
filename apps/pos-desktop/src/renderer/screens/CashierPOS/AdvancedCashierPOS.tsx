@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useCurrencyFormatter } from '../../hooks/useCurrency';
 import toast from 'react-hot-toast';
 import ErrorBoundary from '../../components/ErrorBoundary';
+import OfflineQueueStatus from '../../components/OfflineQueueStatus';
 
 import OrderTypeSelection from './OrderTypeSelection';
 import TableCustomerSelection from './TableCustomerSelection';
@@ -363,6 +364,9 @@ const AdvancedCashierPOS: React.FC = () => {
         )}
       </AnimatePresence>
       </div>
+
+      {/* Offline Queue Status */}
+      <OfflineQueueStatus />
     </ErrorBoundary>
   );
 };

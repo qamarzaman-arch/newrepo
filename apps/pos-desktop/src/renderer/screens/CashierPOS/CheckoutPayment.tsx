@@ -11,7 +11,9 @@ import {
   Gift,
   Heart,
   Shield,
+  Calculator,
 } from 'lucide-react';
+import CashCountingHelper from '../../components/CashCountingHelper';
 import { useOrderStore } from '../../stores/orderStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -19,6 +21,8 @@ import { formatCurrency } from '../../utils/currency';
 import { orderService } from '../../services/orderService';
 import { getHardwareManager } from '../../services/hardwareManager';
 import { validationService } from '../../services/validationService';
+import { getOfflineQueueManager } from '../../services/offlineQueueManager';
+import { getPaymentValidationService } from '../../services/paymentValidationService';
 import toast from 'react-hot-toast';
 
 interface CheckoutPaymentProps {
@@ -49,8 +53,10 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
   const [showCardConfirmationModal, setShowCardConfirmationModal] = useState(false);
   const [cardLastFour, setCardLastFour] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastSubmitTime, setLastSubmitTime] = useState(0);
   const [splitPayment, setSplitPayment] = useState<SplitPayment>({ cash: 0, card: 0 });
-  const { currentOrder, getSubtotal, getTotal, getDiscount, getTip, applyDiscount, setTip, setCompletedOrderId } = useOrderStore();
+  const [showCashCounter, setShowCashCounter] = useState(false);
+  const { currentOrder, getSubtotal, getTotal, getDiscount, getTip, applyDiscount, setTip, setCompletedOrderId, setProcessing } = useOrderStore();
   const { settings } = useSettingsStore();
 
   const subtotal = getSubtotal();
@@ -93,6 +99,21 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
   };
 
   const handlePlaceOrder = async () => {
+    // Prevent duplicate submissions
+    const now = Date.now();
+    if (isSubmitting) {
+      toast.error('Order is already being processed. Please wait.');
+      return;
+    }
+
+    // Prevent rapid clicking (debounce)
+    if (now - lastSubmitTime < 2000) {
+      toast.error('Please wait before submitting again.');
+      return;
+    }
+
+    setLastSubmitTime(now);
+
     // Empty order validation
     if (currentOrder.items.length === 0) {
       toast.error('Cannot place an empty order. Please add items to the order.');
@@ -104,12 +125,27 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
       toast.error('Cash received is less than total amount');
       return;
     }
+
+    if (paymentMethod === 'CARD' && !cardPaymentConfirmed) {
+      toast.error('Please confirm card payment before proceeding');
+      return;
+    }
+
     if (paymentMethod === 'SPLIT') {
-      const splitTotal = splitPayment.cash + splitPayment.card;
-      if (Math.abs(splitTotal - total) > 0.01) {
-        toast.error(`Split payment must equal total. Current: ${formatCurrency(splitTotal, currencyCode)}`);
+      const paymentService = getPaymentValidationService();
+      const validation = paymentService.validateSplitPayment(
+        [
+          { method: 'CASH', amount: splitPayment.cash },
+          { method: 'CARD', amount: splitPayment.card },
+        ].filter(p => p.amount > 0),
+        total
+      );
+
+      if (!validation.valid) {
+        toast.error(validation.error || 'Invalid split payment');
         return;
       }
+
       if (splitPayment.cash > 0 && cashReceivedNum < splitPayment.cash) {
         toast.error('Cash received is less than cash portion');
         return;
@@ -117,9 +153,10 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
     }
 
     setIsSubmitting(true);
+    setProcessing(true);
+
     try {
-      // 1. Create the order
-      const orderResponse = await orderService.createOrder({
+      const orderData = {
         orderType: currentOrder.orderType as any,
         tableId: currentOrder.tableId,
         customerId: currentOrder.customerId,
@@ -132,39 +169,68 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
           notes: item.notes,
           modifiers: item.modifiers,
         })),
-      });
+      };
 
+      // Prepare payment data
+      const paymentData = {
+        method: paymentMethod,
+        amount: total,
+        cashReceived: paymentMethod === 'CASH' || paymentMethod === 'SPLIT' ? cashReceivedNum : undefined,
+        splitPayments: paymentMethod === 'SPLIT' ? [
+          ...(splitPayment.cash > 0 ? [{ method: 'CASH' as const, amount: splitPayment.cash }] : []),
+          ...(splitPayment.card > 0 ? [{ method: 'CARD' as const, amount: splitPayment.card }] : []),
+        ] : undefined,
+        notes: paymentMethod === 'CASH' ? `Cash received: ${cashReceived}` : undefined,
+      };
+
+      // Check if online
+      if (!navigator.onLine) {
+        // Queue order for later sync with payment info
+        const offlineQueue = getOfflineQueueManager();
+        const queueId = offlineQueue.addToQueue(orderData, paymentData);
+        
+        // Store order ID for receipt
+        setCompletedOrderId(queueId);
+        
+        toast.success('Order queued offline. Will sync when connection is restored.');
+        onComplete(queueId, Math.max(0, change));
+        return;
+      }
+
+      // 1. Create the order
+      const orderResponse = await orderService.createOrder(orderData);
       const orderId = orderResponse.data.data.order.id;
 
       // Invalidate orders cache to refresh order history
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['cashier-daily-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['cashier-active-orders'] });
 
-      // 2. Process the payment(s)
-      if (paymentMethod === 'SPLIT') {
-        // Process cash portion if any
-        if (splitPayment.cash > 0) {
-          await orderService.processPayment(orderId, {
-            method: 'CASH',
-            amount: splitPayment.cash,
-            notes: `Split payment - Cash portion. Cash received: ${cashReceived}`,
-          });
-        }
-        // Process card portion if any
-        if (splitPayment.card > 0) {
-          await orderService.processPayment(orderId, {
-            method: 'CARD',
-            amount: splitPayment.card,
-            notes: 'Split payment - Card portion',
-          });
-        }
-      } else {
-        // Single payment method
-        await orderService.processPayment(orderId, {
+      // 2. Process the payment(s) using payment validation service
+      const paymentService = getPaymentValidationService();
+      const paymentResult = await paymentService.processPayment(
+        {
+          orderId,
           method: paymentMethod,
           amount: total,
-          notes: paymentMethod === 'CASH' ? `Cash received: ${cashReceived}` : undefined,
-        });
+          cashReceived: cashReceivedNum,
+          splitPayments: paymentMethod === 'SPLIT' ? paymentData.splitPayments : undefined,
+          cardLastFour: cardLastFour || undefined,
+          notes: paymentData.notes,
+        },
+        total
+      );
+
+      if (!paymentResult.success) {
+        toast.error(paymentResult.error || 'Payment processing failed');
+        
+        if (paymentResult.requiresRollback) {
+          toast.error('Order created but payment failed. Please contact manager.');
+        }
+        
+        setIsSubmitting(false);
+        setProcessing(false);
+        return;
       }
 
       // 3. Store the order ID for receipt display
@@ -212,6 +278,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
       toast.error(error.response?.data?.message || 'Failed to place order. Please try again.');
     } finally {
       setIsSubmitting(false);
+      setProcessing(false);
     }
   };
 
@@ -390,9 +457,33 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
         {/* Cash Input Section (only for CASH payment) */}
         {paymentMethod === 'CASH' && (
           <div className="bg-white rounded-[2.5rem] p-8 shadow-lg border border-gray-100">
-            <h3 className="font-manrope text-lg font-bold text-gray-900 mb-4">
-              Cash Received
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-manrope text-lg font-bold text-gray-900">
+                Cash Received
+              </h3>
+              <button
+                onClick={() => setShowCashCounter(!showCashCounter)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors ${
+                  showCashCounter
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Calculator className="w-4 h-4" />
+                {showCashCounter ? 'Hide' : 'Show'} Counter
+              </button>
+            </div>
+
+            {/* Cash Counting Helper */}
+            {showCashCounter && (
+              <div className="mb-6">
+                <CashCountingHelper
+                  onTotalCalculated={(total) => setCashReceived(total.toFixed(2))}
+                  currencyCode={currencyCode}
+                  expectedAmount={total}
+                />
+              </div>
+            )}
 
             {/* Cash Display */}
             <div className="bg-gray-50 rounded-2xl p-6 mb-4 text-right border border-gray-200">
@@ -900,11 +991,13 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                   );
                   
                   if (isValid) {
-                    applyDiscount(pendingDiscountPercent);
+                    // Get manager info from validation response
+                    const managerInfo = user?.fullName || 'Manager';
+                    applyDiscount(pendingDiscountPercent, managerInfo);
                     setShowDiscountPinModal(false);
                     setShowDiscountModal(false);
                     setDiscountPin('');
-                    toast.success(`Discount of ${pendingDiscountPercent}% approved and applied!`);
+                    toast.success(`Discount of ${pendingDiscountPercent}% approved by ${managerInfo}`);
                   } else {
                     toast.error('Invalid PIN. Access denied.');
                     setDiscountPin('');
