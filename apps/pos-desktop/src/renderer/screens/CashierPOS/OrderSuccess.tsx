@@ -6,18 +6,39 @@ import {
   Receipt,
 } from 'lucide-react';
 import { useOrderStore } from '../../stores/orderStore';
+import { getHardwareManager } from '../../services/hardwareManager';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { formatCurrency } from '../../utils/currency';
+import toast from 'react-hot-toast';
 
 interface OrderSuccessProps {
   onNewOrder: () => void;
+  change?: number;
 }
 
-const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder }) => {
-  const { currentOrder, getTotal } = useOrderStore();
+const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder, change = 0 }) => {
+  const { currentOrder, getTotal, clearOrder } = useOrderStore();
+  const { settings } = useSettingsStore();
   const [showConfetti, setShowConfetti] = useState(true);
+  const [isPrinting, setIsPrinting] = useState(false);
 
-  // Generate order number (in real app, this would come from backend)
-  const orderNumber = `#${Math.floor(1000 + Math.random() * 9000)}`;
+  // Use real order ID from store (set by KitchenDispatchConfirmation or CheckoutPayment)
+  const orderNumber = currentOrder.completedOrderId
+    ? `#${currentOrder.completedOrderId.slice(-4)}`
+    : `#${Math.floor(1000 + Math.random() * 9000)}`;
   const timestamp = new Date().toLocaleString();
+
+  // Snapshot receipt data before any clearOrder happens
+  const receiptData = React.useMemo(() => ({
+    items: [...currentOrder.items],
+    orderType: currentOrder.orderType,
+    tableId: currentOrder.tableId,
+    tableNumber: currentOrder.tableNumber,
+    customerName: currentOrder.customerName,
+    total: getTotal(),
+    orderNumber,
+    timestamp,
+  }), [currentOrder.items, currentOrder.orderType, currentOrder.tableId, currentOrder.tableNumber, currentOrder.customerName, getTotal, orderNumber, timestamp]);
 
   // Hide confetti after animation
   useEffect(() => {
@@ -34,8 +55,10 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder }) => {
     color: ['#6ee591', '#50c878', '#45e3d3', '#ffe2ab'][Math.floor(Math.random() * 4)],
   }));
 
+  const currencyCode = settings.currency || 'USD';
+
   return (
-    <div className="flex h-screen pt-20 bg-gradient-to-br from-gray-50 to-white relative overflow-hidden">
+    <div className="flex h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-white relative overflow-hidden">
       {/* Confetti Animation */}
       <AnimatePresence>
         {showConfetti && (
@@ -49,7 +72,6 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder }) => {
                   duration: particle.duration,
                   delay: particle.delay,
                   ease: 'easeOut',
-                  repeat: Infinity,
                 }}
                 style={{
                   position: 'absolute',
@@ -119,35 +141,41 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder }) => {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Order #:</span>
-                  <span className="text-gray-900 font-semibold">{orderNumber}</span>
+                  <span className="text-gray-900 font-semibold">{receiptData.orderNumber}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Type:</span>
-                  <span className="text-gray-900 font-semibold">{currentOrder.orderType}</span>
+                  <span className="text-gray-900 font-semibold">
+                    {receiptData.orderType === 'DINE_IN' ? 'Dine-In' :
+                     receiptData.orderType === 'TAKEAWAY' ? 'Takeaway' :
+                     receiptData.orderType === 'DELIVERY' ? 'Delivery' :
+                     receiptData.orderType === 'PICKUP' ? 'Pickup' :
+                     receiptData.orderType}
+                  </span>
                 </div>
-                {currentOrder.tableId && (
+                {receiptData.tableNumber && (
                   <div className="flex justify-between">
                     <span className="text-gray-500">Table:</span>
-                    <span className="text-primary font-bold">#{currentOrder.tableId}</span>
+                    <span className="text-primary font-bold">#{receiptData.tableNumber}</span>
                   </div>
                 )}
-                {currentOrder.customerName && (
+                {receiptData.customerName && (
                   <div className="flex justify-between">
                     <span className="text-gray-500">Customer:</span>
-                    <span className="text-gray-900 font-semibold">{currentOrder.customerName}</span>
+                    <span className="text-gray-900 font-semibold">{receiptData.customerName}</span>
                   </div>
                 )}
               </div>
 
               {/* Items */}
               <div className="border-t border-gray-200 pt-4 space-y-2">
-                {currentOrder.items.map((item) => (
+                {receiptData.items.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
                     <span className="text-gray-700">
                       {item.quantity}x {item.name}
                     </span>
                     <span className="text-gray-900 font-semibold">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      {formatCurrency(item.price * item.quantity, currencyCode)}
                     </span>
                   </div>
                 ))}
@@ -158,23 +186,76 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder }) => {
                 <div className="flex justify-between items-center">
                   <span className="font-manrope font-bold text-gray-900">Total</span>
                   <span className="font-manrope text-2xl font-black text-primary">
-                    ${getTotal().toFixed(2)}
+                    {formatCurrency(receiptData.total, currencyCode)}
                   </span>
                 </div>
+              </div>
+
+              {/* Loyalty Points */}
+              <div className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">⭐</span>
+                    <span className="text-sm font-semibold text-amber-800">Loyalty Points Earned</span>
+                  </div>
+                  <span className="text-2xl font-black text-amber-600">
+                    +{Math.floor(receiptData.total)}
+                  </span>
+                </div>
+                <p className="text-xs text-amber-600 mt-1">
+                  1 point per $1 spent. Points can be redeemed on future orders.
+                </p>
               </div>
             </div>
 
             {/* Action Buttons */}
             <div className="mt-6 space-y-3">
               <button
-                onClick={() => window.print()}
-                className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-manrope font-bold hover:bg-gray-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                onClick={async () => {
+                  setIsPrinting(true);
+                  try {
+                    const hw = getHardwareManager();
+                    await hw.printReceipt({
+                      restaurantName: settings.restaurantName || 'POSLytic Restaurant',
+                      restaurantAddress: settings.address || '',
+                      restaurantPhone: settings.phone || '',
+                      orderNumber: receiptData.orderNumber,
+                      cashierName: receiptData.customerName || 'Cashier',
+                      items: receiptData.items.map(item => ({
+                        name: item.name,
+                        quantity: item.quantity,
+                        price: item.price,
+                        notes: item.notes,
+                      })),
+                      subtotal: receiptData.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+                      tax: 0, // Tax is already included in total
+                      taxRate: settings.taxRate || 8.5,
+                      discount: 0,
+                      total: receiptData.total,
+                      paymentMethod: 'CASH', // Default since we don't track payment method here
+                      change: change,
+                    });
+                    toast.success('Receipt printed!');
+                  } catch (error) {
+                    console.error('Print error:', error);
+                    // Fallback to browser print
+                    window.print();
+                  } finally {
+                    setIsPrinting(false);
+                  }
+                }}
+                disabled={isPrinting}
+                className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-manrope font-bold hover:bg-gray-200 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                <Printer className="w-5 h-5" />
-                Print Receipt
+                {isPrinting ? (
+                  <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Printer className="w-5 h-5" />
+                )}
+                {isPrinting ? 'Printing...' : 'Print Receipt'}
               </button>
               <button
-                onClick={onNewOrder}
+                onClick={() => { clearOrder(); onNewOrder(); }}
                 className="w-full py-4 bg-gradient-to-br from-primary to-primary-container text-white rounded-2xl font-manrope font-bold shadow-lg hover:shadow-xl transition-all active:scale-95"
               >
                 Start New Order

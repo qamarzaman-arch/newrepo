@@ -53,6 +53,7 @@ export interface AppSettings {
   // Security
   requirePinForVoid: boolean;
   requirePinForRefund: boolean;
+  managerPin: string;
   sessionTimeout: number;
   twoFactorAuth: boolean;
 
@@ -103,6 +104,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 
   requirePinForVoid: true,
   requirePinForRefund: true,
+  managerPin: '123456',
   sessionTimeout: 30,
   twoFactorAuth: false,
 

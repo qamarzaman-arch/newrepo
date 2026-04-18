@@ -201,28 +201,28 @@ const OrdersScreen: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Order Number</p>
-                  <p className="font-bold">{selectedOrderData.orderNumber}</p>
+                  <p className="font-bold">{selectedOrderData?.orderNumber || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Status</p>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(selectedOrderData.status)}`}>
-                    {selectedOrderData.status}
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(selectedOrderData?.status || '')}`}>
+                    {selectedOrderData?.status || 'N/A'}
                   </span>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Type</p>
-                  <p className="font-semibold">{selectedOrderData.orderType}</p>
+                  <p className="font-semibold">{selectedOrderData?.orderType || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Total</p>
-                  <p className="font-bold text-primary">{formatCurrency(selectedOrderData.totalAmount)}</p>
+                  <p className="font-bold text-primary">{selectedOrderData ? formatCurrency(selectedOrderData.totalAmount) : formatCurrency(0)}</p>
                 </div>
               </div>
 
               <div>
                 <h3 className="font-bold mb-2">Items</h3>
                 <div className="space-y-2">
-                  {selectedOrderData.items?.map((item: any) => (
+                  {selectedOrderData?.items?.map((item: any) => (
                     <div key={item.id} className="flex justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
                         <p className="font-semibold">{item.menuItem?.name}</p>

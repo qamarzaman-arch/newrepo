@@ -17,6 +17,23 @@ const ShiftSummary: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [isEndingShift, setIsEndingShift] = React.useState(false);
+  const [isEditingOpeningBalance, setIsEditingOpeningBalance] = React.useState(false);
+  const [openingBalanceInput, setOpeningBalanceInput] = React.useState('');
+  const [showClosingModal, setShowClosingModal] = React.useState(false);
+  const [closingBalanceInput, setClosingBalanceInput] = React.useState('');
+  const [closingNotes, setClosingNotes] = React.useState('');
+
+  // Load opening balance from localStorage or default to 0
+  const [openingBalance, setOpeningBalance] = React.useState(() => {
+    const saved = localStorage.getItem('pos_opening_balance');
+    return saved ? parseFloat(saved) : 0;
+  });
+
+  // Load shift start time from localStorage or use current time
+  const shiftStartTime = React.useMemo(() => {
+    const saved = localStorage.getItem('pos_shift_start_time');
+    return saved ? new Date(saved) : new Date();
+  }, []);
 
   // In a full production system, this would fetch specific shift ID data
   // For now, we use the real daily sales report to simulate the current cumulative shift
@@ -29,16 +46,16 @@ const ShiftSummary: React.FC = () => {
   });
 
   const shiftData = {
-    startTime: new Date(Date.now() - 8 * 60 * 60 * 1000), // Approximate 8 hour shift
+    startTime: shiftStartTime,
     endTime: new Date(),
     cashierName: user?.fullName || 'Cashier',
-    openingBalance: 200.00,
+    openingBalance,
     cashSales: dailySales?.paymentMethodBreakdown?.CASH || 0,
     cardSales: (dailySales?.paymentMethodBreakdown?.CARD || 0) + (dailySales?.paymentMethodBreakdown?.CREDIT || 0),
     totalOrders: dailySales?.totalOrders || 0,
-    voidedOrders: 0,
-    refunds: 0,
-    tips: 0, // Requires tips backend integration
+    voidedOrders: dailySales?.voidedOrders || 0,
+    refunds: dailySales?.refunds || 0,
+    tips: dailySales?.tips || 0,
   };
 
   const totalSales = shiftData.cashSales + shiftData.cardSales;
@@ -123,6 +140,18 @@ Voided Orders: ${shiftData.voidedOrders}
             <Download className="w-5 h-5" />
             Export
           </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              setClosingBalanceInput(expectedDrawer.toString());
+              setShowClosingModal(true);
+            }}
+            className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+          >
+            <Clock className="w-5 h-5" />
+            End Shift
+          </motion.button>
         </div>
       </div>
 
@@ -203,7 +232,53 @@ Voided Orders: ${shiftData.voidedOrders}
           <div className="space-y-3">
             <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
               <span className="text-gray-600">Opening Balance</span>
-              <span className="font-bold text-gray-900">{formatCurrency(shiftData.openingBalance)}</span>
+              {isEditingOpeningBalance ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={openingBalanceInput}
+                    onChange={(e) => setOpeningBalanceInput(e.target.value)}
+                    className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
+                    placeholder="0.00"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      const newBalance = parseFloat(openingBalanceInput) || 0;
+                      setOpeningBalance(newBalance);
+                      localStorage.setItem('pos_opening_balance', newBalance.toString());
+                      setIsEditingOpeningBalance(false);
+                      toast.success('Opening balance updated');
+                    }}
+                    className="px-2 py-1 bg-green-500 text-white rounded text-sm"
+                  >
+                    ✓
+                  </button>
+                  <button
+                    onClick={() => {
+                      setOpeningBalanceInput(openingBalance.toString());
+                      setIsEditingOpeningBalance(false);
+                    }}
+                    className="px-2 py-1 bg-gray-400 text-white rounded text-sm"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setOpeningBalanceInput(openingBalance.toString());
+                    setIsEditingOpeningBalance(true);
+                  }}
+                  className="font-bold text-gray-900 hover:text-primary flex items-center gap-1"
+                  title="Click to edit"
+                >
+                  {formatCurrency(shiftData.openingBalance)}
+                  <span className="text-xs text-gray-400">✎</span>
+                </button>
+              )}
             </div>
             <div className="flex justify-between items-center p-3 bg-green-50 rounded-xl">
               <span className="text-gray-600">+ Cash Sales</span>
@@ -239,7 +314,7 @@ Voided Orders: ${shiftData.voidedOrders}
             <div className="flex justify-between items-center p-3 bg-blue-50 rounded-xl">
               <span className="text-gray-600">Average Order Value</span>
               <span className="font-bold text-blue-700 text-xl">
-                {formatCurrency(totalSales / shiftData.totalOrders)}
+                {formatCurrency(shiftData.totalOrders > 0 ? totalSales / shiftData.totalOrders : 0)}
               </span>
             </div>
             <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-xl">
@@ -264,21 +339,9 @@ Voided Orders: ${shiftData.voidedOrders}
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={async () => {
-            if (isEndingShift) return;
-            setIsEndingShift(true);
-            try {
-              if (user?.id) {
-                await staffService.clockInOut(user.id, 'clock-out');
-              }
-              toast.success('Shift ended successfully!');
-              navigate('/dashboard');
-            } catch (error) {
-              console.error('Failed to end shift:', error);
-              toast.error('Failed to end shift');
-            } finally {
-              setIsEndingShift(false);
-            }
+          onClick={() => {
+            setClosingBalanceInput(expectedDrawer.toString());
+            setShowClosingModal(true);
           }}
           disabled={isEndingShift}
           className="px-12 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all flex items-center gap-3 disabled:opacity-50"
@@ -287,6 +350,114 @@ Voided Orders: ${shiftData.voidedOrders}
           {isEndingShift ? 'Ending...' : 'End Shift & Close Drawer'}
         </motion.button>
       </motion.div>
+
+      {/* Closing Balance Modal */}
+      {showClosingModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl"
+          >
+            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <DollarSign className="w-8 h-8 text-red-500" />
+              Closing Balance
+            </h3>
+
+            <div className="space-y-4 mb-6">
+              <div className="bg-gray-50 p-4 rounded-xl">
+                <p className="text-sm text-gray-600">Expected Drawer Amount:</p>
+                <p className="text-2xl font-bold text-gray-900">{formatCurrency(expectedDrawer)}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                  Actual Cash in Drawer
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={closingBalanceInput}
+                  onChange={(e) => setClosingBalanceInput(e.target.value)}
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-xl font-bold text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  placeholder="0.00"
+                  autoFocus
+                />
+              </div>
+
+              {closingBalanceInput && (
+                <div className={`p-4 rounded-xl ${
+                  Math.abs(parseFloat(closingBalanceInput) - expectedDrawer) < 0.01
+                    ? 'bg-green-50 border border-green-200'
+                    : 'bg-red-50 border border-red-200'
+                }`}>
+                  <p className="text-sm font-semibold">
+                    {Math.abs(parseFloat(closingBalanceInput) - expectedDrawer) < 0.01
+                      ? '✓ Balanced'
+                      : `⚠ Discrepancy: ${formatCurrency(parseFloat(closingBalanceInput) - expectedDrawer)}`}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                  Notes (optional)
+                </label>
+                <textarea
+                  value={closingNotes}
+                  onChange={(e) => setClosingNotes(e.target.value)}
+                  placeholder="Any discrepancies or notes..."
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-sm resize-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowClosingModal(false);
+                  setClosingNotes('');
+                }}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={async () => {
+                  if (isEndingShift) return;
+                  setIsEndingShift(true);
+                  try {
+                    // Save closing balance to localStorage for record
+                    localStorage.setItem('pos_closing_balance', closingBalanceInput);
+                    localStorage.setItem('pos_closing_notes', closingNotes);
+                    localStorage.setItem('pos_closing_time', new Date().toISOString());
+
+                    if (user?.id) {
+                      await staffService.clockInOut(user.id, 'clock-out');
+                    }
+                    toast.success('Shift ended successfully!');
+                    navigate('/dashboard');
+                  } catch (error) {
+                    console.error('Failed to end shift:', error);
+                    toast.error('Failed to end shift');
+                  } finally {
+                    setIsEndingShift(false);
+                    setShowClosingModal(false);
+                  }
+                }}
+                disabled={isEndingShift || !closingBalanceInput}
+                className="flex-1 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {isEndingShift ? 'Ending...' : 'Confirm & End Shift'}
+              </motion.button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

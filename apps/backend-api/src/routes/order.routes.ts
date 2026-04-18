@@ -80,6 +80,67 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
     next(error);
   }
 });
+// Get reservations (orders with RESERVATION type)
+router.get('/reservations', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { status } = req.query;
+    
+    const where: any = {
+      orderType: 'RESERVATION',
+    };
+    
+    if (status) where.status = status as string;
+
+    const reservations = await prisma.order.findMany({
+      where,
+      include: {
+        customer: true,
+        table: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    res.json({ success: true, data: { reservations } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create reservation (as a separate order type)
+router.post('/reservations', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { customerName, customerPhone, tableId, notes } = req.body;
+
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+    const count = await prisma.order.count({
+      where: {
+        orderType: 'RESERVATION',
+        createdAt: { gte: new Date(today.setHours(0, 0, 0, 0)) },
+      },
+    });
+    const orderNumber = `RES-${dateStr}-${String(count + 1).padStart(3, '0')}`;
+
+    const reservation = await prisma.order.create({
+      data: {
+        orderNumber,
+        orderType: 'RESERVATION',
+        status: 'PENDING',
+        customerName,
+        customerPhone,
+        tableId,
+        notes,
+        cashierId: req.user!.userId,
+        subtotal: 0,
+        totalAmount: 0,
+      },
+    });
+
+    res.status(201).json({ success: true, data: { reservation } });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Get single order
 router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -421,6 +482,42 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
         payment,
       },
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+// Update reservation
+router.put('/reservations/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { status, tableId, notes } = req.body;
+
+    const reservation = await prisma.order.update({
+      where: { id: req.params.id },
+      data: {
+        status,
+        tableId,
+        notes,
+      },
+    });
+
+    res.json({ success: true, data: { reservation } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete/cancel reservation
+router.delete('/reservations/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    await prisma.order.update({
+      where: { id: req.params.id },
+      data: {
+        status: 'CANCELLED',
+      },
+    });
+    res.json({ success: true, message: 'Reservation cancelled' });
   } catch (error) {
     next(error);
   }

@@ -6,7 +6,7 @@ import {
   DollarSign, RefreshCw, MoreVertical,
   Utensils
 } from 'lucide-react';
-import { useOrders } from '../hooks/useOrders';
+import { useOrders, useAllOrders } from '../hooks/useOrders';
 import { orderService } from '../services/orderService';
 import { tableService } from '../services/tableService';
 import { useQuery } from '@tanstack/react-query';
@@ -20,13 +20,18 @@ const AdvancedOrdersScreen: React.FC = () => {
   const [page, setPage] = useState(1);
   const { formatCurrency } = useCurrencyFormatter();
 
-  const { data: ordersData, refetch } = useOrders({
+  const { data: ordersData, refetch, isLoading } = useOrders({
     status: statusFilter || undefined,
     page,
-    limit: 20,
+    limit: 50,
   });
 
-  const orders = ordersData?.orders || [];
+  // Also fetch all orders without status filter
+  const { data: allOrdersData } = useAllOrders();
+
+  const orders = statusFilter 
+    ? (ordersData?.orders || [])
+    : (allOrdersData?.orders || ordersData?.orders || []);
   const pagination = ordersData?.pagination || {};
 
   const { data: tablesData } = useQuery({
@@ -97,9 +102,9 @@ const AdvancedOrdersScreen: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 font-manrope">Order Management</h1>
           <p className="text-gray-600 mt-1">Manage orders, tables, and reservations</p>
@@ -108,7 +113,7 @@ const AdvancedOrdersScreen: React.FC = () => {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => refetch()}
-          className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
+          className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors self-start"
         >
           <RefreshCw className="w-5 h-5" />
           Refresh
@@ -116,7 +121,7 @@ const AdvancedOrdersScreen: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -214,7 +219,7 @@ const AdvancedOrdersScreen: React.FC = () => {
 
       {/* Filters & Search - Only for Orders tab */}
       {activeTab === 'orders' && (
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -240,6 +245,16 @@ const AdvancedOrdersScreen: React.FC = () => {
             <option value="CANCELLED">Cancelled</option>
           </select>
 
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => { refetch(); toast.success('Orders refreshed!'); }}
+            className="px-4 py-3 bg-primary text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+          >
+            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </motion.button>
+
           <button className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-primary transition-colors">
             <Filter className="w-5 h-5 text-gray-600" />
           </button>
@@ -249,70 +264,72 @@ const AdvancedOrdersScreen: React.FC = () => {
       {/* ORDERS TAB */}
       {activeTab === 'orders' && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Order #</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Items</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Total</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Payment</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Time</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {orders.map((order: any) => (
-                <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 font-semibold text-gray-900">{order.orderNumber}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{order.orderType}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(order.status)}`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{order.items?.length || 0} items</td>
-                  <td className="px-6 py-4 font-bold text-primary">{formatCurrency(order.totalAmount)}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{order.paymentStatus}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {new Date(order.orderedAt).toLocaleTimeString()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      <button
-                        className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
-                        title="View Details"
-                      >
-                        <Eye className="w-4 h-4 text-blue-600" />
-                      </button>
-                      {order.status === 'PENDING' && (
-                        <>
-                          <button
-                            onClick={() => handleStatusUpdate(order.id, 'CONFIRMED')}
-                            className="p-2 hover:bg-green-100 rounded-lg transition-colors"
-                            title="Confirm"
-                          >
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                          </button>
-                          <button
-                            onClick={() => handleStatusUpdate(order.id, 'CANCELLED')}
-                            className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                            title="Cancel"
-                          >
-                            <XCircle className="w-4 h-4 text-red-600" />
-                          </button>
-                        </>
-                      )}
-                      <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                        <MoreVertical className="w-4 h-4 text-gray-600" />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px]">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Order #</th>
+                  <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Type</th>
+                  <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Status</th>
+                  <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Items</th>
+                  <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Total</th>
+                  <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Payment</th>
+                  <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Time</th>
+                  <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {orders.map((order: any) => (
+                  <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 sm:px-6 py-4 font-semibold text-gray-900 whitespace-nowrap">{order.orderNumber}</td>
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{order.orderType}</td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(order.status)}`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{order.items?.length || 0} items</td>
+                    <td className="px-4 sm:px-6 py-4 font-bold text-primary whitespace-nowrap">{formatCurrency(order.totalAmount)}</td>
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 whitespace-nowrap">{order.paymentStatus}</td>
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                      {new Date(order.orderedAt).toLocaleTimeString()}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <div className="flex gap-2">
+                        <button
+                          className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                          title="View Details"
+                        >
+                          <Eye className="w-4 h-4 text-blue-600" />
+                        </button>
+                        {order.status === 'PENDING' && (
+                          <>
+                            <button
+                              onClick={() => handleStatusUpdate(order.id, 'CONFIRMED')}
+                              className="p-2 hover:bg-green-100 rounded-lg transition-colors"
+                              title="Confirm"
+                            >
+                              <CheckCircle className="w-4 h-4 text-green-600" />
+                            </button>
+                            <button
+                              onClick={() => handleStatusUpdate(order.id, 'CANCELLED')}
+                              className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Cancel"
+                            >
+                              <XCircle className="w-4 h-4 text-red-600" />
+                            </button>
+                          </>
+                        )}
+                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                          <MoreVertical className="w-4 h-4 text-gray-600" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {orders.length === 0 && (
             <div className="text-center py-12 text-gray-500">
@@ -397,7 +414,7 @@ const AdvancedOrdersScreen: React.FC = () => {
       {/* RESERVATIONS TAB */}
       {activeTab === 'reservations' && (
         <div className="space-y-4">
-          {reservations.map((reservation, index) => (
+          {reservations.map((reservation: any, index: number) => (
             <motion.div
               key={reservation.id}
               initial={{ opacity: 0, y: 20 }}

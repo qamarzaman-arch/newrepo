@@ -1,213 +1,385 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import {
-  ArrowRight,
-  Users,
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, ArrowRight, Users, MapPin, Phone, User, Search, X, Loader2 } from 'lucide-react';
 import { useTables } from '../../hooks/useTables';
+import { customerService } from '../../services/customerService';
+import { useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 
-interface TableCustomerSelectionProps {
+interface SelectionData {
+  tableId?: string;
+  tableNumber?: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  guestCount?: number;
+}
+
+interface Props {
   orderType: string;
   selectedTableId?: string | null;
-  onSelect: (data: { tableId?: string; customerName?: string; customerPhone?: string; guestCount?: number }) => void;
+  onSelect: (data: SelectionData) => void;
   onBack: () => void;
 }
 
-const TableCustomerSelection: React.FC<TableCustomerSelectionProps> = ({
-  orderType,
-  selectedTableId,
-  onSelect,
-}) => {
+// Customer search dropdown component
+const CustomerSearchDropdown: React.FC<{
+  query: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onSelect: (customer: any) => void;
+}> = ({ query, isOpen, onClose, onSelect }) => {
+  const { data: searchResults, isLoading } = useQuery({
+    queryKey: ['customer-search', query],
+    queryFn: async () => {
+      if (!query || query.length < 3) return [];
+      const response = await customerService.searchCustomers(query);
+      return response.data.data?.customers || [];
+    },
+    enabled: isOpen && query.length >= 3,
+  });
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-64 overflow-y-auto"
+      >
+        <div className="p-3 border-b border-gray-100 flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-600">Search Results</span>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+            <X className="w-4 h-4 text-gray-400" />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="p-4 flex items-center justify-center">
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          </div>
+        ) : searchResults?.length > 0 ? (
+          <div className="p-2 space-y-1">
+            {searchResults.map((customer: any) => {
+              const displayName = customer.name ||
+                [customer.firstName, customer.lastName].filter(Boolean).join(' ') ||
+                'Unknown';
+              return (
+                <button
+                  key={customer.id}
+                  onClick={() => onSelect({ ...customer, name: displayName })}
+                  className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <p className="font-semibold text-gray-900">{displayName}</p>
+                  <p className="text-sm text-gray-500">{customer.phone}</p>
+                  {customer.loyaltyPoints > 0 && (
+                    <p className="text-xs text-amber-600 mt-0.5">⭐ {customer.loyaltyPoints} loyalty points</p>
+                  )}
+                  {customer.address && (
+                    <p className="text-xs text-gray-400 mt-1">{customer.address}</p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-4 text-center text-gray-400 text-sm">
+            No customers found
+          </div>
+        )}
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, onSelect, onBack }) => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
   const [guestCount, setGuestCount] = useState(2);
   const [localTableId, setLocalTableId] = useState<string | null>(selectedTableId || null);
+  const [localTableNumber, setLocalTableNumber] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState('');
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
 
-  const { data: tables } = useTables({ isActive: true });
+  // Real-time table polling with reduced frequency and optimistic updates
+  const { data: tables, refetch: refetchTables } = useTables({ isActive: true });
 
+  useEffect(() => {
+    // Poll tables every 10 seconds instead of 5 to reduce race conditions
+    const interval = setInterval(() => {
+      refetchTables();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [refetchTables]);
   const availableTables = tables?.filter((t: any) => t.status === 'AVAILABLE') || [];
-  const occupiedTables = tables?.filter((t: any) => t.status === 'OCCUPIED') || [];
+  const occupiedTables = tables?.filter((t: any) => t.status !== 'AVAILABLE') || [];
+
+  const handleTableSelect = (table: any) => {
+    setLocalTableId(table.id);
+    setLocalTableNumber(table.number);
+    setValidationError('');
+  };
 
   const handleProceed = () => {
     if (orderType === 'DINE_IN' && !localTableId) {
-      return; // Must select table for dine-in
+      setValidationError('Please select a table to continue');
+      return;
     }
-
+    if (orderType === 'DELIVERY' && !customerName.trim()) {
+      setValidationError('Customer name is required for delivery');
+      return;
+    }
     onSelect({
       tableId: localTableId || undefined,
+      tableNumber: localTableNumber || undefined,
       customerName: customerName || undefined,
       customerPhone: customerPhone || undefined,
+      customerAddress: customerAddress || undefined,
       guestCount,
     });
   };
 
-  // For Walk-In and Takeaway, skip this screen
-  if (orderType === 'WALK_IN' || orderType === 'TAKEAWAY') {
-    onSelect({});
-    return null;
-  }
+  const isDineIn = orderType === 'DINE_IN';
+  const isDelivery = orderType === 'DELIVERY';
 
   return (
-    <div className="flex h-screen pt-20 bg-gray-50">
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto p-8 relative">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="flex items-end justify-between mb-10">
-            <div>
-              <h1 className="font-manrope text-4xl font-extrabold tracking-tight text-gray-900 mb-2">
-                {orderType === 'DINE_IN' ? 'Select Table' : 'Customer Information'}
-              </h1>
-              <p className="text-gray-600 font-inter text-lg">
-                {orderType === 'DINE_IN'
-                  ? 'Main Dining Room & Floor Plan'
-                  : orderType === 'DELIVERY'
-                  ? 'Enter delivery customer details'
-                  : ''}
-              </p>
+    <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-8 py-5 flex items-center gap-4 shadow-sm flex-shrink-0">
+        <motion.button
+          whileHover={{ scale: 1.05, x: -3 }} whileTap={{ scale: 0.95 }}
+          onClick={onBack}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 text-gray-700" />
+          <span className="font-semibold text-gray-700 text-sm">Back</span>
+        </motion.button>
+        <div>
+          <h1 className="font-manrope text-2xl font-extrabold text-gray-900">
+            {isDineIn ? 'Select Table' : 'Customer Details'}
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {isDineIn ? 'Choose an available table from the floor plan' : isDelivery ? 'Enter delivery customer information' : 'Optional customer information'}
+          </p>
+        </div>
+        {isDineIn && (
+          <div className="ml-auto flex gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-gray-200 text-xs font-semibold text-gray-600">
+              <span className="w-2.5 h-2.5 rounded-full bg-primary" /> Available ({availableTables.length})
             </div>
-
-            {orderType === 'DINE_IN' && (
-              <div className="flex gap-4">
-                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-200">
-                  <span className="w-3 h-3 rounded-full bg-primary" />
-                  <span className="text-xs font-inter uppercase tracking-widest text-gray-600">
-                    Available
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-200">
-                  <span className="w-3 h-3 rounded-full bg-red-400" />
-                  <span className="text-xs font-inter uppercase tracking-widest text-gray-600">
-                    Occupied
-                  </span>
-                </div>
-              </div>
-            )}
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-gray-200 text-xs font-semibold text-gray-600">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-400" /> Occupied ({occupiedTables.length})
+            </div>
           </div>
+        )}
+      </div>
 
-          {/* Dine-In: Table Grid */}
-          {orderType === 'DINE_IN' && (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-8">
-              {availableTables.map((table: any, index: number) => (
-                <motion.button
-                  key={table.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setLocalTableId(table.id)}
-                  className={`group aspect-square bg-white rounded-[2rem] p-6 flex flex-col justify-between items-center transition-all hover:bg-primary/5 active:scale-95 border-2 border-gray-200 hover:border-primary shadow-md ${
-                    localTableId === table.id ? 'border-primary bg-primary/10' : ''
-                  }`}
-                >
-                  <span className="text-primary font-manrope text-xl font-bold self-start">
-                    {table.number}
-                  </span>
-                  <Users className="text-primary w-12 h-12" />
-                  <div className="bg-primary/20 text-primary px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter">
-                    Available
-                  </div>
-                </motion.button>
-              ))}
+      <div className="flex-1 overflow-y-auto p-8">
+        <div className="max-w-5xl mx-auto space-y-8">
 
-              {occupiedTables.map((table: any) => (
-                <div
-                  key={table.id}
-                  className="group aspect-square bg-gray-100 rounded-[2rem] p-6 flex flex-col justify-between items-center transition-all opacity-75 relative overflow-hidden border-2 border-gray-200"
-                >
-                  <div className="absolute inset-0 bg-red-100/30" />
-                  <span className="text-red-500 font-manrope text-xl font-bold self-start">
-                    {table.number}
-                  </span>
-                  <Users className="text-red-500 w-12 h-12" style={{ fill: 'currentColor' }} />
-                  <div className="bg-red-100 text-red-600 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter">
-                    Occupied
-                  </div>
+          {/* Table Grid for Dine-In */}
+          {isDineIn && (
+            <div>
+              {availableTables.length === 0 && occupiedTables.length === 0 && (
+                <div className="text-center py-16 text-gray-400">
+                  <Users className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                  <p className="text-lg font-medium">No tables configured</p>
+                  <p className="text-sm">Ask your manager to add tables in Settings</p>
                 </div>
-              ))}
+              )}
+              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {availableTables.map((table: any, index: number) => (
+                  <motion.button
+                    key={table.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.04 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleTableSelect(table)}
+                    className={`aspect-square bg-white rounded-2xl p-4 flex flex-col justify-between items-center border-2 transition-all shadow-md ${
+                      localTableId === table.id
+                        ? 'border-primary bg-primary/10 shadow-primary/20 shadow-lg'
+                        : 'border-gray-200 hover:border-primary'
+                    }`}
+                  >
+                    <span className={`font-manrope text-lg font-bold self-start ${localTableId === table.id ? 'text-primary' : 'text-gray-700'}`}>
+                      {table.number}
+                    </span>
+                    <Users className={`w-8 h-8 ${localTableId === table.id ? 'text-primary' : 'text-gray-400'}`} />
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                        Available
+                      </span>
+                      {table.capacity && (
+                        <span className="text-[9px] text-gray-400">{table.capacity} seats</span>
+                      )}
+                    </div>
+                  </motion.button>
+                ))}
+
+                {occupiedTables.map((table: any) => (
+                  <div
+                    key={table.id}
+                    className="aspect-square bg-gray-100 rounded-2xl p-4 flex flex-col justify-between items-center border-2 border-gray-200 opacity-60 cursor-not-allowed"
+                  >
+                    <span className="font-manrope text-lg font-bold self-start text-red-500">{table.number}</span>
+                    <Users className="w-8 h-8 text-red-400" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                      {table.status === 'RESERVED' ? 'Reserved' : table.status === 'NEEDS_CLEANING' ? 'Cleaning' : 'Occupied'}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Customer Information Form (for Delivery or optional for Dine-In) */}
-          {(orderType === 'DELIVERY' || orderType === 'DINE_IN') && (
-            <div className="bg-white rounded-[2.5rem] p-8 mt-8 shadow-lg border border-gray-100">
-              <h3 className="font-manrope text-xl font-bold mb-6 text-accent">
+          {/* Customer Info Form */}
+          {(isDineIn || isDelivery || orderType === 'TAKEAWAY') && (
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+              <h3 className="font-manrope text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <User className="w-5 h-5 text-primary" />
                 Customer Information
+                {!isDelivery && <span className="text-xs font-normal text-gray-400 ml-1">(optional)</span>}
               </h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-inter uppercase tracking-widest text-gray-500 px-1">
-                    Customer Name
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-widest text-gray-500">
+                    Customer Name {isDelivery && <span className="text-red-500">*</span>}
                   </label>
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="John Smith"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-gray-400"
-                  />
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => { setCustomerName(e.target.value); setValidationError(''); }}
+                      placeholder="John Smith"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-gray-400"
+                    />
+                  </div>
                 </div>
 
-                {orderType === 'DELIVERY' && (
-                  <div className="space-y-2">
-                    <label className="text-xs font-inter uppercase tracking-widest text-gray-500 px-1">
-                      Phone Number
-                    </label>
+                <div className="space-y-1.5 relative">
+                  <label className="text-xs font-semibold uppercase tracking-widest text-gray-500">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                       type="tel"
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      onChange={(e) => {
+                        setCustomerPhone(e.target.value);
+                        setCustomerSearchQuery(e.target.value);
+                        if (e.target.value.length >= 3) {
+                          setShowCustomerSearch(true);
+                        } else {
+                          setShowCustomerSearch(false);
+                        }
+                      }}
                       placeholder="+1 (555) 000-0000"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-gray-400"
+                      className="w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-gray-400"
                     />
+                    <button
+                      onClick={() => {
+                        setShowCustomerSearch(!showCustomerSearch);
+                        if (!showCustomerSearch && customerPhone.length >= 3) {
+                          setCustomerSearchQuery(customerPhone);
+                        }
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      <Search className="w-4 h-4 text-gray-500" />
+                    </button>
+                  </div>
+
+                  {/* Customer Search Results */}
+                  <CustomerSearchDropdown
+                    query={customerSearchQuery}
+                    isOpen={showCustomerSearch}
+                    onClose={() => setShowCustomerSearch(false)}
+                    onSelect={(customer) => {
+                      const displayName = customer.name ||
+                        [customer.firstName, customer.lastName].filter(Boolean).join(' ') || '';
+                      setCustomerName(displayName);
+                      setCustomerPhone(customer.phone || '');
+                      setCustomerAddress(customer.address || '');
+                      setShowCustomerSearch(false);
+                      toast.success(`Customer ${displayName} loaded`);
+                    }}
+                  />
+                </div>
+
+                {isDelivery && (
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-xs font-semibold uppercase tracking-widest text-gray-500">
+                      Delivery Address <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3.5 w-4 h-4 text-gray-400" />
+                      <textarea
+                        value={customerAddress}
+                        onChange={(e) => setCustomerAddress(e.target.value)}
+                        placeholder="123 Main Street, City, State, ZIP"
+                        rows={2}
+                        className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-gray-400 resize-none"
+                      />
+                    </div>
                   </div>
                 )}
 
-                {orderType === 'DINE_IN' && (
-                  <div className="space-y-2">
-                    <label className="text-xs font-inter uppercase tracking-widest text-gray-500 px-1">
-                      Number of Guests
-                    </label>
+                {isDineIn && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-widest text-gray-500">Number of Guests</label>
                     <select
                       value={guestCount}
                       onChange={(e) => setGuestCount(Number(e.target.value))}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-primary focus:border-transparent"
                     >
-                      {[1, 2, 3, 4, 5, 6, 7, 8, '8+'].map((num) => (
-                        <option key={num} value={typeof num === 'number' ? num : 8}>
-                          {num} {typeof num === 'number' ? (num === 1 ? 'Person' : 'People') : '+ People'}
-                        </option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                        <option key={n} value={n}>{n} {n === 1 ? 'Person' : 'People'}</option>
                       ))}
+                      <option value={9}>9+ People</option>
                     </select>
                   </div>
                 )}
               </div>
             </div>
           )}
-        </div>
 
-        {/* Floating Action Button: Proceed to Menu */}
-        <div className="fixed bottom-12 right-12">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleProceed}
-            disabled={orderType === 'DINE_IN' && !localTableId}
-            className="flex items-center gap-4 bg-gradient-to-br from-[#6ee591] to-[#50c878] text-[#00210c] px-10 py-6 rounded-[2rem] shadow-[0_24px_48px_rgba(0,0,0,0.4)] hover:scale-105 active:scale-95 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <div className="flex flex-col items-start">
-              <span className="text-[10px] font-bold uppercase tracking-widest opacity-70">
-                Step 2 of 3
-              </span>
-              <span className="font-manrope text-xl font-extrabold tracking-tight">
-                Proceed to Menu
-              </span>
-            </div>
-            <ArrowRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
-          </motion.button>
+          {validationError && (
+            <motion.p
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-red-600 text-sm font-medium bg-red-50 border border-red-200 rounded-xl px-4 py-3"
+            >
+              {validationError}
+            </motion.p>
+          )}
         </div>
-      </main>
+      </div>
+
+      {/* Sticky Footer CTA */}
+      <div className="bg-white border-t border-gray-200 px-8 py-5 flex items-center justify-between flex-shrink-0">
+        <div className="text-sm text-gray-500">
+          {isDineIn && localTableId && (
+            <span className="font-semibold text-primary">Table {localTableNumber} selected</span>
+          )}
+          {isDineIn && !localTableId && 'No table selected yet'}
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+          onClick={handleProceed}
+          disabled={isDineIn && !localTableId}
+          className="flex items-center gap-3 bg-gradient-to-br from-primary to-primary-container text-white px-8 py-4 rounded-2xl font-manrope font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Proceed to Menu
+          <ArrowRight className="w-6 h-6" />
+        </motion.button>
+      </div>
     </div>
   );
 };

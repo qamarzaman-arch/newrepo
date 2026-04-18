@@ -13,6 +13,11 @@ import { logger } from './utils/logger';
 
 dotenv.config();
 
+if (!process.env.JWT_SECRET) {
+  // Fail fast rather than silently using an insecure default.
+  throw new Error('JWT_SECRET is required. Set it in apps/backend-api/.env');
+}
+
 const app: Application = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
@@ -37,8 +42,8 @@ global.prisma = prisma;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true,
+  origin: process.env.CORS_ORIGIN || false,
+  credentials: Boolean(process.env.CORS_ORIGIN),
 }));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));

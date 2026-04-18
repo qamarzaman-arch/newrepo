@@ -24,8 +24,8 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
   try {
     const { status, vendorId } = req.query;
     const where: any = { isActive: true };
-    if (status) where.status = status;
-    if (vendorId) where.vendorId = vendorId;
+    if (status) where.status = status as string;
+    if (vendorId) where.vendorId = vendorId as string;
 
     const orders = await prisma.purchaseOrder.findMany({
       where,
@@ -106,7 +106,7 @@ router.post('/:id/receive', authenticate, async (req: AuthRequest, res: Response
             inventoryItemId: item.inventoryItemId,
           },
           data: { receivedQuantity: item.receivedQuantity },
-        }));
+        });
 
         const poItem = await tx.purchaseOrderItem.findFirst({
           where: {

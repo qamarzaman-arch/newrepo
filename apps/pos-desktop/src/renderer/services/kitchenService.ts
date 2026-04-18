@@ -22,6 +22,18 @@ export const kitchenService = {
   getActiveTickets: () => api.get('/kitchen/tickets/active'),
   getStats: () => api.get('/kitchen/stats'),
   getTicket: (id: string) => api.get(`/kitchen/tickets/${id}`),
+  createTicket: (data: {
+    orderId: string;
+    items: Array<{
+      menuItemId: string;
+      name: string;
+      quantity: number;
+      notes?: string;
+    }>;
+    priority?: 'NORMAL' | 'HIGH' | 'URGENT';
+    notes?: string;
+    course?: string;
+  }) => api.post('/kitchen/tickets', data),
   updateStatus: (id: string, status: KotTicket['status']) =>
     api.patch(`/kitchen/tickets/${id}/status`, { status }),
   assignTicket: (id: string, data: { station?: string; assignedTo?: string }) =>

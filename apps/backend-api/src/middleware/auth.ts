@@ -41,7 +41,7 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
     // Verify JWT
     const decoded: any = jwt.verify(
       token,
-      process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+      process.env.JWT_SECRET as string
     );
 
     req.user = {

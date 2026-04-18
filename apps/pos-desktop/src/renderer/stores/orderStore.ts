@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { useSettingsStore } from './settingsStore';
 
 export interface OrderItem {
@@ -26,39 +27,56 @@ interface OrderState {
     items: OrderItem[];
     orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'PICKUP';
     tableId?: string;
+    tableNumber?: string;
     customerId?: string;
     customerName?: string;
     customerPhone?: string;
+    customerAddress?: string;
+    guestCount?: number;
     notes?: string;
     discountPercent: number;
     discountAmount: number;
+    tipAmount: number;
+    completedOrderId?: string;
   };
   heldOrders: HeldOrder[];
   addItem: (item: Omit<OrderItem, 'id'>) => void;
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   updateNotes: (itemId: string, notes: string) => void;
+  setOrderNotes: (notes: string) => void;
   clearOrder: () => void;
   setOrderType: (type: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'PICKUP') => void;
-  setTable: (tableId: string) => void;
-  setCustomer: (customer: { id: string; name: string; phone: string }) => void;
+  setTable: (tableId: string, tableNumber?: string) => void;
+  setCustomer: (customer: { id?: string; name: string; phone?: string; address?: string }) => void;
+  setGuestCount: (count: number) => void;
   applyDiscount: (percent: number) => void;
+  setTip: (amount: number) => void;
+  setCompletedOrderId: (id: string) => void;
   holdOrder: () => void;
   resumeOrder: (heldOrderId: string) => void;
   removeHeldOrder: (heldOrderId: string) => void;
+  cleanupExpiredHeldOrders: (maxAgeHours?: number) => void;
   getSubtotal: () => number;
   getDiscount: () => number;
   getTax: () => number;
+  getServiceCharge: () => number;
+  getTip: () => number;
   getTotal: () => number;
 }
 
-export const useOrderStore = create<OrderState>((set, get) => ({
-  currentOrder: {
-    items: [],
-    orderType: 'DINE_IN',
-    discountPercent: 0,
-    discountAmount: 0,
-  },
+const EMPTY_ORDER = {
+  items: [] as OrderItem[],
+  orderType: 'DINE_IN' as const,
+  discountPercent: 0,
+  discountAmount: 0,
+  tipAmount: 0,
+};
+
+export const useOrderStore = create<OrderState>()(
+ persist(
+(set, get) => ({
+  currentOrder: { ...EMPTY_ORDER },
   heldOrders: [],
 
   addItem: (item) => {
@@ -128,15 +146,12 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     }));
   },
 
+  setOrderNotes: (notes) => {
+    set((state) => ({ currentOrder: { ...state.currentOrder, notes } }));
+  },
+
   clearOrder: () => {
-    set({
-      currentOrder: {
-        items: [],
-        orderType: 'DINE_IN',
-        discountPercent: 0,
-        discountAmount: 0,
-      },
-    });
+    set({ currentOrder: { ...EMPTY_ORDER } });
   },
 
   setOrderType: (type) => {
@@ -148,12 +163,9 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     }));
   },
 
-  setTable: (tableId) => {
+  setTable: (tableId, tableNumber) => {
     set((state) => ({
-      currentOrder: {
-        ...state.currentOrder,
-        tableId,
-      },
+      currentOrder: { ...state.currentOrder, tableId, tableNumber },
     }));
   },
 
@@ -164,8 +176,21 @@ export const useOrderStore = create<OrderState>((set, get) => ({
         customerId: customer.id,
         customerName: customer.name,
         customerPhone: customer.phone,
+        customerAddress: customer.address,
       },
     }));
+  },
+
+  setGuestCount: (count) => {
+    set((state) => ({ currentOrder: { ...state.currentOrder, guestCount: count } }));
+  },
+
+  setTip: (amount) => {
+    set((state) => ({ currentOrder: { ...state.currentOrder, tipAmount: amount } }));
+  },
+
+  setCompletedOrderId: (id) => {
+    set((state) => ({ currentOrder: { ...state.currentOrder, completedOrderId: id } }));
   },
 
   applyDiscount: (percent) => {
@@ -201,12 +226,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
 
     set((state) => ({
       heldOrders: [...state.heldOrders, heldOrder],
-      currentOrder: {
-        items: [],
-        orderType: 'DINE_IN',
-        discountPercent: 0,
-        discountAmount: 0,
-      },
+      currentOrder: { ...EMPTY_ORDER },
     }));
   },
 
@@ -218,13 +238,12 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       return {
         heldOrders: state.heldOrders.filter((o) => o.id !== heldOrderId),
         currentOrder: {
+          ...EMPTY_ORDER,
           items: heldOrder.items,
           orderType: heldOrder.orderType,
           tableId: heldOrder.tableId,
           customerName: heldOrder.customerName,
           notes: heldOrder.notes,
-          discountPercent: 0,
-          discountAmount: 0,
         },
       };
     });
@@ -236,42 +255,61 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     }));
   },
 
+  cleanupExpiredHeldOrders: (maxAgeHours: number = 24) => {
+    set((state) => {
+      const now = new Date();
+      const validOrders = state.heldOrders.filter((order) => {
+        const heldDate = new Date(order.heldAt);
+        const ageInHours = (now.getTime() - heldDate.getTime()) / (1000 * 60 * 60);
+        return ageInHours < maxAgeHours;
+      });
+      return { heldOrders: validOrders };
+    });
+  },
+
   getSubtotal: () => {
-    const state = get();
-    return state.currentOrder.items.reduce(
+    return get().currentOrder.items.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
     );
   },
+
+  getDiscount: () => get().currentOrder.discountAmount,
 
   getTax: () => {
-    const state = get();
-    const subtotal = state.currentOrder.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-    const discount = state.currentOrder.discountAmount;
+    const subtotal = get().getSubtotal();
+    const discount = get().getDiscount();
     const afterDiscount = subtotal - discount;
-    const settings = useSettingsStore.getState();
-    const taxRate = settings.settings.taxRate || 0;
-    return afterDiscount * (taxRate / 100);
+    const { settings } = useSettingsStore.getState();
+    return afterDiscount * ((settings.taxRate || 0) / 100);
   },
 
-  getDiscount: () => {
-    const state = get();
-    return state.currentOrder.discountAmount;
+  getServiceCharge: () => {
+    const subtotal = get().getSubtotal();
+    const discount = get().getDiscount();
+    const afterDiscount = subtotal - discount;
+    const { settings } = useSettingsStore.getState();
+    return afterDiscount * ((settings.serviceCharge || 0) / 100);
   },
+
+  getTip: () => get().currentOrder.tipAmount || 0,
 
   getTotal: () => {
     const subtotal = get().getSubtotal();
     const discount = get().getDiscount();
     const afterDiscount = subtotal - discount;
-    
-    // Get tax rate from settings
-    const settings = useSettingsStore.getState();
-    const taxRate = settings.settings.taxRate || 0;
-    const tax = afterDiscount * (taxRate / 100);
-    
-    return afterDiscount + tax;
+    const { settings } = useSettingsStore.getState();
+    const tax = afterDiscount * ((settings.taxRate || 0) / 100);
+    const serviceCharge = afterDiscount * ((settings.serviceCharge || 0) / 100);
+    const tip = get().getTip();
+    return afterDiscount + tax + serviceCharge + tip;
   },
-}));
+}),
+  {
+    name: 'pos-order-draft',
+    partialize: (state) => ({
+      currentOrder: state.currentOrder,
+      heldOrders: state.heldOrders,
+    }),
+  }
+));

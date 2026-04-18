@@ -34,12 +34,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   // Always redirect based on role
   const location = window.location.pathname;
-  
+
   // Redirect cashiers from old /pos route to new /cashier-pos
   if (location === '/pos' && user.role === 'CASHIER') {
     return <Navigate to="/cashier-pos" replace />;
   }
-  
+
   // Redirect admin/manager to dashboard on root
   if (location === '/' || location === '') {
     if (user.role === 'ADMIN' || user.role === 'MANAGER') {
@@ -54,12 +54,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     if (user.role === 'KITCHEN') {
       return <KitchenLayout>{children}</KitchenLayout>;
     }
-    
+
     // Cashiers get minimal, speed-optimized layout
     if (user.role === 'CASHIER') {
       return <CashierLayout>{children}</CashierLayout>;
     }
-    
+
     // Admin/Manager/Staff get full sidebar layout
     return (
       <AdminLayout>
@@ -69,6 +69,28 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   };
 
   return renderWithLayout();
+};
+
+// Default redirect based on user role
+const DefaultRedirect: React.FC = () => {
+  const { user } = useAuthStore();
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  // Admin/Manager go to dashboard
+  if (user.role === 'ADMIN' || user.role === 'MANAGER') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  // Kitchen go to kitchen screen
+  if (user.role === 'KITCHEN') {
+    return <Navigate to="/kitchen" replace />;
+  }
+  
+  // Cashiers go to POS
+  return <Navigate to="/cashier-pos" replace />;
 };
 
 // Dashboard wrapper that shows different dashboards based on user role
@@ -217,7 +239,7 @@ function AnimatedRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route path="/" element={<Navigate to="/cashier-pos" replace />} />
+        <Route path="/" element={<DefaultRedirect />} />
       </Routes>
     </AnimatePresence>
   );

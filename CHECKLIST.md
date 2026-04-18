@@ -9,10 +9,10 @@ Use this checklist to set up and run the Restaurant POS System.
   - Verify: `node --version` (should show v20.x.x or higher)
   - Verify: `npm --version` (should show v10.x.x or higher)
 
-- [ ] **PostgreSQL 15+** installed and running
-  - Download from: https://www.postgresql.org/download/
-  - Or use Docker: `docker run --name postgres -e POSTGRES_PASSWORD=password -p 5432:5432 -d postgres:15`
-  - Verify: `psql --version`
+- [ ] **MySQL 8.0+** installed and running
+  - Download from: https://dev.mysql.com/downloads/
+  - Or use Docker: `docker run --name mysql -e MYSQL_ROOT_PASSWORD=password -p 3306:3306 -d mysql:8`
+  - Verify: `mysql --version`
 
 - [ ] **Git** installed (optional, for version control)
   - Download from: https://git-scm.com/
@@ -55,17 +55,15 @@ Use this checklist to set up and run the Restaurant POS System.
 
 - [ ] Edit `.env` file with your database credentials
   ```
-  DATABASE_URL="postgresql://YOUR_USER:YOUR_PASSWORD@localhost:5432/restaurant_pos"
+  DATABASE_URL="mysql://YOUR_USER:YOUR_PASSWORD@localhost:3306/restaurant_pos"
   ```
 
-- [ ] Create PostgreSQL database
+- [ ] Create MySQL database
   ```bash
-  # Using psql
-  psql -U postgres
+  # Using mysql client
+  mysql -u root -p
   CREATE DATABASE restaurant_pos;
-  \q
-
-  # Or using pgAdmin GUI
+  exit
   ```
 
 - [ ] Generate Prisma Client
@@ -226,10 +224,10 @@ Use this checklist to set up and run the Restaurant POS System.
 ### Issue: "Cannot connect to database"
 
 **Solution:**
-1. Verify PostgreSQL is running
+1. Verify MySQL is running
 2. Check DATABASE_URL in `.env`
 3. Ensure database `restaurant_pos` exists
-4. Test connection: `psql -U YOUR_USER -d restaurant_pos`
+4. Test connection: `mysql -u YOUR_USER -p -e "USE restaurant_pos;"`
 
 ### Issue: "Port 3001 already in use"
 

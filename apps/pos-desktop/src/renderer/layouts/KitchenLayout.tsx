@@ -1,5 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
 interface KitchenLayoutProps {
@@ -7,7 +9,13 @@ interface KitchenLayoutProps {
 }
 
 const KitchenLayout: React.FC<KitchenLayoutProps> = ({ children }) => {
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="h-screen overflow-hidden bg-gray-900">
@@ -31,6 +39,13 @@ const KitchenLayout: React.FC<KitchenLayoutProps> = ({ children }) => {
           <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
             {user?.fullName?.charAt(0) || 'K'}
           </div>
+          <button
+            onClick={handleLogout}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            title="Logout"
+          >
+            <LogOut className="w-5 h-5 text-gray-400 hover:text-white" />
+          </button>
         </div>
       </header>
 

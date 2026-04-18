@@ -9,15 +9,16 @@ import './index.css';
 // Suppress non-critical console warnings in development
 if (import.meta.env.DEV) {
   const originalConsoleError = console.error;
-  console.error = (...args) => {
+  console.error = (...args: any[]) => {
     // Filter out known non-critical errors
     const message = args.join(' ');
     if (
       message.includes('Warning: ReactDOM.render is no longer supported') ||
       message.includes('Support for defaultProps will be removed') ||
-      message.includes('findDOMNode is deprecated')
+      message.includes('findDOMNode is deprecated') ||
+      message.includes('React Router')
     ) {
-      return; // Suppress these React warnings
+      return; // Suppress these React/Router warnings
     }
     originalConsoleError(...args);
   };
@@ -36,7 +37,7 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <App />
         <Toaster
           position="top-right"

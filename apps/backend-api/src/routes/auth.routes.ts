@@ -11,8 +11,10 @@ const router = Router();
 // Validation schemas
 const loginSchema = z.object({
   username: z.string().min(1),
-  password: z.string().min(1),
-  pin: z.string().optional(),
+  password: z.string().min(1).optional(),
+  pin: z.string().length(4).optional(),
+}).refine((v) => Boolean(v.password) || Boolean(v.pin), {
+  message: 'Either password or pin is required',
 });
 
 const registerSchema = z.object({
@@ -41,11 +43,20 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
 
     // Check PIN login (if provided)
     if (pin) {
-      if (!user.pin || user.pin !== pin) {
+      if (!user.pin) {
+        throw new AppError('Invalid PIN', 401);
+      }
+
+      // `user.pin` is treated as a bcrypt hash.
+      const isValidPin = await bcrypt.compare(pin, user.pin);
+      if (!isValidPin) {
         throw new AppError('Invalid PIN', 401);
       }
     } else {
       // Check password
+      if (!password) {
+        throw new AppError('Password is required', 400);
+      }
       const isValidPassword = await bcrypt.compare(password, user.passwordHash);
       if (!isValidPassword) {
         throw new AppError('Invalid credentials', 401);
@@ -59,7 +70,7 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
         username: user.username,
         role: user.role,
       },
-      process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+      process.env.JWT_SECRET as string,
       { expiresIn: (process.env.JWT_EXPIRES_IN || '24h') as any }
     );
 
@@ -122,6 +133,9 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
+    // Hash PIN if provided (store hashed value in `User.pin`)
+    const pinHash = pin ? await bcrypt.hash(pin, 12) : undefined;
+
     // Create user
     const user = await prisma.user.create({
       data: {
@@ -131,7 +145,7 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
         fullName,
         role,
         phone,
-        pin,
+        pin: pinHash,
       },
     });
 
@@ -184,7 +198,7 @@ router.get('/verify', async (req: Request, res: Response, next: NextFunction) =>
 
     const decoded: any = jwt.verify(
       token,
-      process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+      process.env.JWT_SECRET as string
     );
 
     const user = await prisma.user.findUnique({
