@@ -278,4 +278,74 @@ router.get('/expenses/summary', authenticate, async (req: AuthRequest, res: Resp
   }
 });
 
+// Alias: /daily → /sales/daily (for web-admin dashboard)
+router.get('/daily', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { date } = req.query;
+    const targetDate = date ? new Date(date as string) : new Date();
+    targetDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(targetDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    const orders = await prisma.order.findMany({
+      where: {
+        orderedAt: { gte: targetDate, lte: endDate },
+        status: { notIn: ['CANCELLED'] },
+      },
+      include: { payments: true },
+    });
+
+    const totalRevenue = orders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    const totalOrders = orders.length;
+    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+    const cashSales = orders
+      .filter(o => o.paymentMethod === 'CASH')
+      .reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    const cardSales = orders
+      .filter(o => o.paymentMethod !== 'CASH' && o.paymentMethod)
+      .reduce((sum, o) => sum + Number(o.totalAmount), 0);
+
+    res.json({
+      success: true,
+      data: {
+        date: targetDate,
+        totalRevenue,
+        totalOrders,
+        averageOrderValue,
+        paymentBreakdown: { cash: cashSales, card: cardSales },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Top selling items
+router.get('/top-items', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { limit = 5 } = req.query;
+    const topItems = await prisma.orderItem.groupBy({
+      by: ['menuItemId'],
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: 'desc' } },
+      take: parseInt(limit as string),
+    });
+
+    const itemsWithDetails = await Promise.all(
+      topItems.map(async (item) => {
+        const menuItem = await prisma.menuItem.findUnique({
+          where: { id: item.menuItemId },
+          select: { id: true, name: true, price: true },
+        });
+        return { ...menuItem, totalSold: item._sum.quantity || 0 };
+      })
+    );
+
+    res.json({ success: true, data: { items: itemsWithDetails } });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

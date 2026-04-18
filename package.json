@@ -4,13 +4,15 @@
   "description": "Modern Restaurant POS System with Offline-First Architecture",
   "private": true,
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:pos\"",
     "dev:pos": "cd apps/pos-desktop && npm run dev",
     "dev:api": "cd apps/backend-api && npm run dev",
     "dev:web": "cd apps/web-admin && npm run dev",
+    "dev:all": "concurrently \"npm run dev:api\" \"npm run dev:pos\" \"npm run dev:web\"",
     "build": "npm run build:pos && npm run build:api && npm run build:web",
     "build:pos": "cd apps/pos-desktop && npm run build",
     "build:api": "cd apps/backend-api && npm run build",

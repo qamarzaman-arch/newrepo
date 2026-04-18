@@ -1,49 +1,63 @@
-import React from 'react';
-import { Store, CreditCard, Printer, Users, Wifi } from 'lucide-react';
+import React, { useState } from 'react';
+import { Store, CreditCard, Printer } from 'lucide-react';
+import { useSettingsStore, AppSettings } from '../stores/settingsStore';
+import toast from 'react-hot-toast';
 
 const SettingsScreen: React.FC = () => {
+  const { settings, updateSettings, resetSettings } = useSettingsStore();
+  const [localSettings, setLocalSettings] = useState<AppSettings>({ ...settings });
+
+  const handleToggle = (key: string) => {
+    setLocalSettings({
+      ...localSettings,
+      [key]: !localSettings[key as keyof typeof localSettings],
+    } as AppSettings);
+  };
+
+  const handleSave = () => {
+    updateSettings(localSettings);
+    toast.success('Settings saved successfully');
+  };
+
+  const handleReset = () => {
+    if (confirm('Are you sure you want to reset all settings to defaults?')) {
+      resetSettings();
+      setLocalSettings(useSettingsStore.getState().settings);
+      toast.success('Settings reset to defaults');
+    }
+  };
+
   const settingsSections = [
     {
       title: 'General Settings',
       icon: Store,
       items: [
-        { label: 'Restaurant Name', value: 'Restaurant OS', type: 'text' },
-        { label: 'Address', value: '123 Main St', type: 'text' },
-        { label: 'Phone', value: '+1 234 567 8900', type: 'text' },
-        { label: 'Currency', value: 'USD', type: 'select' },
+        { label: 'Restaurant Name', key: 'restaurantName', value: localSettings.restaurantName, type: 'text' },
+        { label: 'Currency', key: 'currency', value: localSettings.currency, type: 'text' },
       ],
     },
     {
       title: 'Payment Settings',
       icon: CreditCard,
       items: [
-        { label: 'Accept Cash', value: true, type: 'toggle' },
-        { label: 'Accept Card', value: true, type: 'toggle' },
-        { label: 'Accept Mobile Wallet', value: true, type: 'toggle' },
+        { label: 'Accept Cash', key: 'acceptCash', value: localSettings.acceptCash, type: 'toggle' },
+        { label: 'Accept Card', key: 'acceptCard', value: localSettings.acceptCard, type: 'toggle' },
+        { label: 'Accept Mobile Wallet', key: 'acceptMobileWallet', value: localSettings.acceptMobileWallet, type: 'toggle' },
+      ],
+    },
+    {
+      title: 'Tax Settings',
+      icon: CreditCard,
+      items: [
+        { label: 'Tax Rate (%)', key: 'taxRate', value: localSettings.taxRate, type: 'number' },
       ],
     },
     {
       title: 'Kitchen Settings',
       icon: Printer,
       items: [
-        { label: 'Auto-print KOT', value: true, type: 'toggle' },
-        { label: 'Print Delay Threshold (min)', value: '15', type: 'number' },
-      ],
-    },
-    {
-      title: 'Staff Management',
-      icon: Users,
-      items: [
-        { label: 'Total Staff', value: '12', type: 'info' },
-        { label: 'Active Shifts', value: '5', type: 'info' },
-      ],
-    },
-    {
-      title: 'Device Settings',
-      icon: Wifi,
-      items: [
-        { label: 'POS Terminal ID', value: 'POS-001', type: 'text' },
-        { label: 'Backend URL', value: 'http://localhost:3001', type: 'text' },
+        { label: 'Auto-print KOT', key: 'autoPrintKOT', value: localSettings.autoPrintKOT, type: 'toggle' },
+        { label: 'Auto-print Receipt', key: 'autoPrintReceipt', value: localSettings.autoPrintReceipt, type: 'toggle' },
       ],
     },
   ];
@@ -70,6 +84,7 @@ const SettingsScreen: React.FC = () => {
                     <label className="text-sm font-medium text-gray-700">{item.label}</label>
                     {item.type === 'toggle' ? (
                       <div
+                        onClick={() => item.key && handleToggle(item.key)}
                         className={`w-12 h-6 rounded-full cursor-pointer transition-colors ${
                           item.value ? 'bg-primary' : 'bg-gray-300'
                         }`}
@@ -85,7 +100,8 @@ const SettingsScreen: React.FC = () => {
                     ) : (
                       <input
                         type={item.type}
-                        defaultValue={String(item.value)}
+                        value={String(item.value)}
+                        onChange={(e) => setLocalSettings({ ...localSettings, [item.key!]: e.target.value } as AppSettings)}
                         className="px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-primary focus:outline-none w-48"
                       />
                     )}
@@ -98,10 +114,10 @@ const SettingsScreen: React.FC = () => {
       </div>
 
       <div className="flex justify-end gap-4">
-        <button className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">
+        <button onClick={handleReset} className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">
           Reset to Defaults
         </button>
-        <button className="px-6 py-3 gradient-btn rounded-xl font-semibold">
+        <button onClick={handleSave} className="px-6 py-3 gradient-btn rounded-xl font-semibold">
           Save Changes
         </button>
       </div>

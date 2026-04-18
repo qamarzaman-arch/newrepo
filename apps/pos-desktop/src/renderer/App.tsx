@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 import LoginScreen from './screens/LoginScreen';
 import POSScreen from './screens/POSScreen';
 import CashierPOS from './screens/CashierPOS/AdvancedCashierPOS';
+import ShiftSummary from './screens/CashierPOS/ShiftSummary';
 import DashboardScreen from './screens/DashboardScreen';
 import AdminDashboard from './screens/AdminDashboard';
 import OrdersScreen from './screens/AdvancedOrdersScreen';
@@ -92,6 +93,14 @@ function AnimatedRoutes() {
           element={
             <ProtectedRoute>
               <CashierPOS />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shift-summary"
+          element={
+            <ProtectedRoute>
+              <ShiftSummary />
             </ProtectedRoute>
           }
         />

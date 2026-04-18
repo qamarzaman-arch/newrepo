@@ -48,6 +48,7 @@ interface OrderState {
   removeHeldOrder: (heldOrderId: string) => void;
   getSubtotal: () => number;
   getDiscount: () => number;
+  getTax: () => number;
   getTotal: () => number;
 }
 
@@ -241,6 +242,19 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       (sum, item) => sum + item.price * item.quantity,
       0
     );
+  },
+
+  getTax: () => {
+    const state = get();
+    const subtotal = state.currentOrder.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+    const discount = state.currentOrder.discountAmount;
+    const afterDiscount = subtotal - discount;
+    const settings = useSettingsStore.getState();
+    const taxRate = settings.settings.taxRate || 0;
+    return afterDiscount * (taxRate / 100);
   },
 
   getDiscount: () => {

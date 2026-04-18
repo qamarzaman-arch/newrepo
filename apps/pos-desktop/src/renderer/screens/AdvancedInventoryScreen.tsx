@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { inventoryService } from '../services/inventoryService';
+import toast from 'react-hot-toast';
 
 const AdvancedInventoryScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'inventory' | 'purchase-orders' | 'recipes' | 'vendors'>('inventory');
@@ -33,26 +34,10 @@ const AdvancedInventoryScreen: React.FC = () => {
   const items = inventoryData || [];
   const lowStockItems = lowStockData || [];
 
-  // Mock data for purchase orders
-  const purchaseOrders = [
-    { id: 'PO-001', vendor: 'Fresh Foods Inc.', items: 12, total: 450.00, status: 'PENDING', date: '2024-01-18', expectedDelivery: '2024-01-20' },
-    { id: 'PO-002', vendor: 'Meat Suppliers Co.', items: 8, total: 680.50, status: 'RECEIVED', date: '2024-01-17', expectedDelivery: '2024-01-19' },
-    { id: 'PO-003', vendor: 'Dairy Direct', items: 15, total: 320.75, status: 'SHIPPED', date: '2024-01-16', expectedDelivery: '2024-01-21' },
-  ];
-
-  // Mock data for recipes
-  const recipes = [
-    { id: '1', name: 'Classic Burger', category: 'Main Course', ingredients: 8, cost: 4.50, menuPrice: 12.99, margin: 65.4 },
-    { id: '2', name: 'Caesar Salad', category: 'Salads', ingredients: 6, cost: 3.20, menuPrice: 9.99, margin: 68.0 },
-    { id: '3', name: 'Margherita Pizza', category: 'Pizza', ingredients: 7, cost: 3.80, menuPrice: 11.99, margin: 68.3 },
-  ];
-
-  // Mock data for vendors
-  const vendors = [
-    { id: '1', name: 'Fresh Foods Inc.', contact: 'John Smith', phone: '+1 234-567-8900', email: 'john@freshfoods.com', category: 'Produce', rating: 4.8, activeOrders: 2 },
-    { id: '2', name: 'Meat Suppliers Co.', contact: 'Mike Johnson', phone: '+1 234-567-8901', email: 'mike@meatsuppliers.com', category: 'Meat & Poultry', rating: 4.5, activeOrders: 1 },
-    { id: '3', name: 'Dairy Direct', contact: 'Sarah Davis', phone: '+1 234-567-8902', email: 'sarah@dairydirect.com', category: 'Dairy', rating: 4.9, activeOrders: 1 },
-  ];
+  // Advanced inventory functionalities (PO, Recipes, Vendors) to be connected to backend modules
+  const purchaseOrders: any[] = [];
+  const recipes: any[] = [];
+  const vendors: any[] = [];
 
   const stats = {
     totalItems: items.length,
@@ -68,6 +53,26 @@ const AdvancedInventoryScreen: React.FC = () => {
       OUT_OF_STOCK: 'bg-red-100 text-red-800 border-red-300',
     };
     return colors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
+  };
+
+  // Handler functions
+  const handleDeleteItem = async (itemId: string, itemName: string) => {
+    if (!window.confirm(`Are you sure you want to delete "${itemName}"?`)) {
+      return;
+    }
+
+    try {
+      await inventoryService.deleteItem(itemId);
+      toast.success(`${itemName} deleted successfully`);
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to delete item:', error);
+      toast.error('Failed to delete item');
+    }
+  };
+
+  const handleEditItem = (itemId: string) => {
+    toast(`Edit functionality for item ${itemId} - Coming soon!`, { icon: 'ℹ️' });
   };
 
   const getPOStatusColor = (status: string) => {
@@ -302,10 +307,16 @@ const AdvancedInventoryScreen: React.FC = () => {
                   <td className="px-6 py-4 text-sm text-gray-600">${item.costPerUnit.toFixed(2)}</td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
-                      <button className="p-2 hover:bg-blue-100 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => handleEditItem(item.id)}
+                        className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                      >
                         <Edit className="w-4 h-4 text-blue-600" />
                       </button>
-                      <button className="p-2 hover:bg-red-100 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => handleDeleteItem(item.id, item.name)}
+                        className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                      >
                         <Trash2 className="w-4 h-4 text-red-600" />
                       </button>
                     </div>

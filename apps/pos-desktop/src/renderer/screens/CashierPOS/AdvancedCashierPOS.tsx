@@ -7,7 +7,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useOrderStore } from '../../stores/orderStore';
-import { orderService } from '../../services/orderService';
+import { reportService } from '../../services/reportService';
+import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
 // Import all POS flow screens
@@ -37,12 +38,21 @@ const AdvancedCashierPOS: React.FC = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [showQuickActions, setShowQuickActions] = useState(false);
 
-  // Mock data for today's stats
+  // Real active stats fetched from API
+  const { data: dailySales } = useQuery({
+    queryKey: ['cashier-daily-stats'],
+    queryFn: async () => {
+      const response = await reportService.getDailySales();
+      return response.data.data;
+    },
+    refetchInterval: 30000,
+  });
+
   const todayStats = {
-    ordersCompleted: 47,
-    revenue: 1847.50,
-    avgOrderValue: 39.31,
-    activeOrders: 8,
+    ordersCompleted: dailySales?.totalOrders || 0,
+    revenue: dailySales?.totalRevenue || 0,
+    avgOrderValue: dailySales?.avgOrderValue || 0,
+    activeOrders: 0, // This would require an active orders specific count endpoint
   };
 
   // Role-based access control - redirect non-cashiers
@@ -100,36 +110,8 @@ const AdvancedCashierPOS: React.FC = () => {
   };
 
   const handleCompleteOrder = async () => {
-    try {
-      const { currentOrder } = useOrderStore.getState();
-      
-      // Create order in backend
-      const orderData = {
-        orderType: currentOrder.orderType,
-        tableId: currentOrder.tableId,
-        customerId: currentOrder.customerId,
-        customerName: currentOrder.customerName,
-        customerPhone: currentOrder.customerPhone,
-        items: currentOrder.items.map((item: any) => ({
-          menuItemId: item.menuItemId,
-          quantity: item.quantity,
-          notes: item.notes,
-        })),
-        kitchenNotes: currentOrder.notes,
-      };
-
-      const response = await orderService.createOrder(orderData);
-      
-      if (response.data.success) {
-        toast.success('Order placed successfully!');
-        setCurrentStep('SUCCESS');
-      } else {
-        throw new Error('Failed to create order');
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error?.message || 'Failed to place order');
-      console.error('Order creation error:', error);
-    }
+    setCurrentStep('SUCCESS');
+    // Stats and state managed by store/queries
   };
 
   const handleNewOrder = () => {

@@ -12,6 +12,7 @@ import {
 import { useOrderStore } from '../../stores/orderStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { formatCurrency } from '../../utils/currency';
+import { orderService } from '../../services/orderService';
 import toast from 'react-hot-toast';
 
 interface CheckoutPaymentProps {
@@ -24,6 +25,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
   const [cashReceived, setCashReceived] = useState('');
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [discountPercent, setDiscountPercent] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { currentOrder, getSubtotal, getTotal, getDiscount, applyDiscount } = useOrderStore();
   const { settings } = useSettingsStore();
 
@@ -62,14 +64,47 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
     }
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (paymentMethod === 'CASH' && cashReceivedNum < total) {
       toast.error('Cash received is less than total amount');
       return;
     }
 
-    toast.success('Order placed successfully!');
-    onComplete();
+    setIsSubmitting(true);
+    try {
+      // 1. Create the order
+      const orderResponse = await orderService.createOrder({
+        orderType: currentOrder.orderType as any,
+        tableId: currentOrder.tableId,
+        customerId: currentOrder.customerId,
+        customerName: currentOrder.customerName,
+        customerPhone: currentOrder.customerPhone,
+        notes: currentOrder.notes,
+        items: currentOrder.items.map(item => ({
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          notes: item.notes,
+          modifiers: item.modifiers,
+        })),
+      });
+
+      const orderId = orderResponse.data.data.order.id;
+
+      // 2. Process the payment
+      await orderService.processPayment(orderId, {
+        method: paymentMethod,
+        amount: total,
+        notes: paymentMethod === 'CASH' ? `Cash received: ${cashReceived}` : undefined,
+      });
+
+      toast.success('Order placed and paid successfully!');
+      onComplete();
+    } catch (error: any) {
+      console.error('Failed to place order:', error);
+      toast.error(error.response?.data?.message || 'Failed to place order. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -371,11 +406,15 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handlePlaceOrder}
-            disabled={paymentMethod === 'CASH' && cashReceivedNum < total}
+            disabled={isSubmitting || (paymentMethod === 'CASH' && cashReceivedNum < total)}
             className="w-full py-6 bg-gradient-to-br from-[#6ee591] to-[#50c878] text-[#00210c] rounded-2xl font-manrope font-black text-xl tracking-wide hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl shadow-emerald-950/30 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Check className="w-6 h-6" />
-            Place Order & Print
+            {isSubmitting ? (
+              <div className="w-6 h-6 border-4 border-black/20 border-t-black rounded-full animate-spin" />
+            ) : (
+              <Check className="w-6 h-6" />
+            )}
+            {isSubmitting ? 'Processing...' : 'Place Order & Print'}
           </motion.button>
 
           {/* Back Button */}

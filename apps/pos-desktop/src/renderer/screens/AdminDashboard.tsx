@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ShoppingCart,
@@ -25,6 +26,7 @@ import { reportService } from '../services/reportService';
 import { orderService } from '../services/orderService';
 import { inventoryService } from '../services/inventoryService';
 import { tableService } from '../services/tableService';
+import toast from 'react-hot-toast';
 import {
   BarChart,
   Bar,
@@ -42,6 +44,40 @@ import {
 
 const AdminDashboard: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('7d');
+  const navigate = useNavigate();
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'POS':
+        navigate('/cashier-pos');
+        break;
+      case 'ADD_ITEM':
+        navigate('/menu');
+        break;
+      case 'STAFF':
+        navigate('/staff');
+        break;
+      case 'FINANCE':
+        navigate('/reports');
+        break;
+      case 'PRINT_Z':
+        toast.promise(
+          new Promise((resolve) => setTimeout(resolve, 1500)),
+          {
+            loading: 'Generating Z-Report...',
+            success: 'Z-Report printed successfully!',
+            error: 'Failed to print report',
+          }
+        );
+        break;
+      case 'REFUND':
+        navigate('/orders?tab=completed');
+        toast('Select an order to refund', { icon: 'ℹ️' });
+        break;
+      default:
+        toast('Opening ' + action);
+    }
+  };
 
   // Fetch analytics data
   const { data: dailySales } = useQuery({
@@ -96,8 +132,23 @@ const AdminDashboard: React.FC = () => {
   const todayRevenue = dailySales?.totalRevenue || 0;
   const todayOrders = dailySales?.totalOrders || 0;
   const avgOrderValue = dailySales?.avgOrderValue || 0;
-  const revenueGrowth = 12.5; // Mock data - would come from API
-  const orderGrowth = 8.3;
+  
+  // Calculate real growth from monthly sales data
+  let revenueGrowth = 0;
+  let orderGrowth = 0;
+  
+  if (monthlySales?.dailySales?.length >= 2) {
+    const sortedDays = [...monthlySales.dailySales].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const today = sortedDays[sortedDays.length - 1];
+    const yesterday = sortedDays[sortedDays.length - 2];
+    
+    if (yesterday.revenue > 0) {
+      revenueGrowth = Number((((today.revenue - yesterday.revenue) / yesterday.revenue) * 100).toFixed(1));
+    }
+    if (yesterday.orders > 0) {
+      orderGrowth = Number((((today.orders - yesterday.orders) / yesterday.orders) * 100).toFixed(1));
+    }
+  }
 
   // Prepare chart data
   const salesTrendData = monthlySales?.dailySales?.map((day: any) => ({
@@ -106,11 +157,12 @@ const AdminDashboard: React.FC = () => {
     orders: day.orders,
   })) || [];
 
-  const orderTypeData = [
-    { name: 'Dine-in', value: 45, color: '#00513f' },
-    { name: 'Takeaway', value: 30, color: '#006b54' },
-    { name: 'Delivery', value: 20, color: '#60a5fa' },
-    { name: 'Reservation', value: 5, color: '#3b82f6' },
+  const orderTypeData = dailySales?.paymentMethodBreakdown ? Object.entries(dailySales.paymentMethodBreakdown).map(([name, value], index) => ({
+    name,
+    value: Number(value),
+    color: ['#00513f', '#006b54', '#60a5fa', '#3b82f6'][index % 4]
+  })) : [
+    { name: 'No Data', value: 1, color: '#e5e7eb' }
   ];
 
   const peakHoursData = [
@@ -522,6 +574,7 @@ const AdminDashboard: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => handleQuickAction('POS')}
             className="p-4 bg-gradient-to-br from-primary/10 to-primary-container/10 rounded-xl border border-primary/20 hover:border-primary/40 transition-all group"
           >
             <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-primary group-hover:scale-110 transition-transform" />
@@ -531,6 +584,7 @@ const AdminDashboard: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => handleQuickAction('ADD_ITEM')}
             className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-200 hover:border-blue-400 transition-all group"
           >
             <Plus className="w-8 h-8 mx-auto mb-2 text-blue-600 group-hover:scale-110 transition-transform" />
@@ -540,6 +594,7 @@ const AdminDashboard: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => handleQuickAction('REFUND')}
             className="p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200 hover:border-orange-400 transition-all group"
           >
             <RefreshCw className="w-8 h-8 mx-auto mb-2 text-orange-600 group-hover:scale-110 transition-transform" />
@@ -549,6 +604,7 @@ const AdminDashboard: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => handleQuickAction('FINANCE')}
             className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200 hover:border-purple-400 transition-all group"
           >
             <FileText className="w-8 h-8 mx-auto mb-2 text-purple-600 group-hover:scale-110 transition-transform" />
@@ -558,6 +614,7 @@ const AdminDashboard: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => handleQuickAction('PRINT_Z')}
             className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200 hover:border-green-400 transition-all group"
           >
             <Printer className="w-8 h-8 mx-auto mb-2 text-green-600 group-hover:scale-110 transition-transform" />
@@ -567,6 +624,7 @@ const AdminDashboard: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => handleQuickAction('STAFF')}
             className="p-4 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-200 hover:border-indigo-400 transition-all group"
           >
             <Users className="w-8 h-8 mx-auto mb-2 text-indigo-600 group-hover:scale-110 transition-transform" />

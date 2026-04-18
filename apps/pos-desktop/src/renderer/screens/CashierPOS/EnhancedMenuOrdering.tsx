@@ -8,6 +8,7 @@ import {
 import { useMenuCategories, useMenuItems } from '../../hooks/useMenu';
 import { useOrderStore } from '../../stores/orderStore';
 import toast from 'react-hot-toast';
+import { formatCurrency } from '@/utils/currency';
 
 interface EnhancedMenuOrderingProps {
   orderType: string;
@@ -130,7 +131,7 @@ const EnhancedMenuOrdering: React.FC<EnhancedMenuOrderingProps> = ({
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-600">Current Total</p>
-            <p className="text-3xl font-black text-primary">${total.toFixed(2)}</p>
+            <p className="text-3xl font-black text-primary">{formatCurrency(total)}</p>
           </div>
         </div>
 
@@ -217,7 +218,11 @@ const EnhancedMenuOrdering: React.FC<EnhancedMenuOrderingProps> = ({
                   onClick={() => handleAddItem(item)}
                 >
                   {/* Item Image Placeholder */}
-                  <div className="h-32 bg-gradient-to-br from-gray-100 to-gray-200 relative">
+                  <div className="h-32 bg-gradient-to-br from-gray-100 to-gray-200 relative flex items-center justify-center">
+                    {/* Display emoji image or fallback */}
+                    <div className="text-6xl">
+                      {item.image || '🍽️'}
+                    </div>
                     {!item.isAvailable && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                         <span className="text-white font-bold text-lg">Unavailable</span>
@@ -238,7 +243,7 @@ const EnhancedMenuOrdering: React.FC<EnhancedMenuOrderingProps> = ({
                     
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-2xl font-black text-primary">${Number(item.price).toFixed(2)}</p>
+                        <p className="text-2xl font-black text-primary">{formatCurrency(Number(item.price))}</p>
                         {inCart && (
                           <p className="text-xs text-primary font-semibold">In cart: {inCart.quantity}x</p>
                         )}

@@ -124,24 +124,24 @@ async function main() {
   ]);
   console.log('✅ Created menu categories');
 
-  // Create menu items
+  // Create menu items with emoji images
   const menuItems = [
-    { categoryId: categories[0].id, name: 'Caesar Salad', price: 8.99, cost: 3.50, description: 'Fresh romaine lettuce with parmesan cheese' },
-    { categoryId: categories[0].id, name: 'Spring Rolls', price: 6.99, cost: 2.50, description: 'Crispy vegetable spring rolls' },
-    { categoryId: categories[0].id, name: 'Garlic Bread', price: 5.99, cost: 2.00, description: 'Toasted bread with garlic butter' },
-    { categoryId: categories[1].id, name: 'Grilled Steak', price: 24.99, cost: 10.00, description: 'Premium beef steak with herbs' },
-    { categoryId: categories[1].id, name: 'Chicken Curry', price: 16.99, cost: 6.50, description: 'Spicy chicken curry with rice' },
-    { categoryId: categories[1].id, name: 'Pasta Carbonara', price: 14.99, cost: 5.50, description: 'Creamy pasta with bacon and egg' },
-    { categoryId: categories[1].id, name: 'Fish & Chips', price: 15.99, cost: 6.00, description: 'Beer-battered fish with fries' },
-    { categoryId: categories[2].id, name: 'Chocolate Cake', price: 7.99, cost: 3.00, description: 'Rich chocolate layer cake' },
-    { categoryId: categories[2].id, name: 'Ice Cream', price: 5.99, cost: 2.00, description: 'Vanilla bean ice cream' },
-    { categoryId: categories[2].id, name: 'Tiramisu', price: 8.99, cost: 3.50, description: 'Classic Italian dessert' },
-    { categoryId: categories[3].id, name: 'Coffee', price: 3.99, cost: 1.00, description: 'Freshly brewed coffee' },
-    { categoryId: categories[3].id, name: 'Fresh Juice', price: 4.99, cost: 1.50, description: 'Orange or apple juice' },
-    { categoryId: categories[3].id, name: 'Smoothie', price: 6.99, cost: 2.50, description: 'Mixed fruit smoothie' },
-    { categoryId: categories[4].id, name: 'French Fries', price: 4.99, cost: 1.50, description: 'Crispy golden fries' },
-    { categoryId: categories[4].id, name: 'Onion Rings', price: 5.99, cost: 2.00, description: 'Beer-battered onion rings' },
-    { categoryId: categories[4].id, name: 'Garden Salad', price: 6.99, cost: 2.50, description: 'Mixed greens with dressing' },
+    { categoryId: categories[0].id, name: 'Caesar Salad', price: 8.99, cost: 3.50, description: 'Fresh romaine lettuce with parmesan cheese', image: '🥗' },
+    { categoryId: categories[0].id, name: 'Spring Rolls', price: 6.99, cost: 2.50, description: 'Crispy vegetable spring rolls', image: '🌯' },
+    { categoryId: categories[0].id, name: 'Garlic Bread', price: 5.99, cost: 2.00, description: 'Toasted bread with garlic butter', image: '🍞' },
+    { categoryId: categories[1].id, name: 'Grilled Steak', price: 24.99, cost: 10.00, description: 'Premium beef steak with herbs', image: '🥩' },
+    { categoryId: categories[1].id, name: 'Chicken Curry', price: 16.99, cost: 6.50, description: 'Spicy chicken curry with rice', image: '🍛' },
+    { categoryId: categories[1].id, name: 'Pasta Carbonara', price: 14.99, cost: 5.50, description: 'Creamy pasta with bacon and egg', image: '🍝' },
+    { categoryId: categories[1].id, name: 'Fish & Chips', price: 15.99, cost: 6.00, description: 'Beer-battered fish with fries', image: '🐟' },
+    { categoryId: categories[2].id, name: 'Chocolate Cake', price: 7.99, cost: 3.00, description: 'Rich chocolate layer cake', image: '🍰' },
+    { categoryId: categories[2].id, name: 'Ice Cream', price: 5.99, cost: 2.00, description: 'Vanilla bean ice cream', image: '🍦' },
+    { categoryId: categories[2].id, name: 'Tiramisu', price: 8.99, cost: 3.50, description: 'Classic Italian dessert', image: '🧁' },
+    { categoryId: categories[3].id, name: 'Coffee', price: 3.99, cost: 1.00, description: 'Freshly brewed coffee', image: '☕' },
+    { categoryId: categories[3].id, name: 'Fresh Juice', price: 4.99, cost: 1.50, description: 'Orange or apple juice', image: '🧃' },
+    { categoryId: categories[3].id, name: 'Smoothie', price: 6.99, cost: 2.50, description: 'Mixed fruit smoothie', image: '🥤' },
+    { categoryId: categories[4].id, name: 'French Fries', price: 4.99, cost: 1.50, description: 'Crispy golden fries', image: '🍟' },
+    { categoryId: categories[4].id, name: 'Onion Rings', price: 5.99, cost: 2.00, description: 'Beer-battered onion rings', image: '🧅' },
+    { categoryId: categories[4].id, name: 'Garden Salad', price: 6.99, cost: 2.50, description: 'Mixed greens with dressing', image: '🥬' },
   ];
 
   for (const item of menuItems) {
@@ -151,6 +151,8 @@ async function main() {
         sku: `ITEM-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
         prepTimeMinutes: 15,
         taxRate: 0,
+        isAvailable: true,
+        isActive: true,
       },
     });
   }
@@ -209,6 +211,63 @@ async function main() {
     });
   }
   console.log('✅ Created settings');
+
+  // Create vendors
+  const vendors = await Promise.all([
+    prisma.vendor.create({
+      data: {
+        name: 'Fresh Farm Produce',
+        contactName: 'Alice Green',
+        email: 'alice@freshfarm.com',
+        phone: '+15550101',
+        city: 'Green Valley',
+      },
+    }),
+    prisma.vendor.create({
+      data: {
+        name: 'Premium Meat Co.',
+        contactName: 'Bob Butcher',
+        email: 'bob@premiummeat.com',
+        phone: '+15550102',
+        city: 'Meatville',
+      },
+    }),
+    prisma.vendor.create({
+      data: {
+        name: 'Beverage Plus',
+        contactName: 'Charlie Drinks',
+        email: 'charlie@bevplus.com',
+        phone: '+15550103',
+        city: 'Soda Springs',
+      },
+    }),
+  ]);
+  console.log('✅ Created vendors');
+
+  // Create inventory items
+  const inventoryItems = [
+    { name: 'Romaine Lettuce', category: 'Produce', unit: 'kg', currentStock: 25, minStock: 10, costPerUnit: 2.50, supplierId: vendors[0].id },
+    { name: 'Parmesan Cheese', category: 'Dairy', unit: 'kg', currentStock: 5, minStock: 2, costPerUnit: 15.00, supplierId: vendors[0].id },
+    { name: 'Beef Strips', category: 'Meat', unit: 'kg', currentStock: 40, minStock: 15, costPerUnit: 12.00, supplierId: vendors[1].id },
+    { name: 'Chicken Breast', category: 'Meat', unit: 'kg', currentStock: 30, minStock: 12, costPerUnit: 8.00, supplierId: vendors[1].id },
+    { name: 'Coffee Beans', category: 'Dry Goods', unit: 'kg', currentStock: 15, minStock: 5, costPerUnit: 18.00, supplierId: vendors[2].id },
+    { name: 'Milk', category: 'Dairy', unit: 'L', currentStock: 2, minStock: 10, costPerUnit: 1.50, supplierId: vendors[0].id }, // LOW STOCK
+    { name: 'Flour', category: 'Dry Goods', unit: 'kg', currentStock: 0, minStock: 20, costPerUnit: 1.20, supplierId: vendors[2].id }, // OUT OF STOCK
+  ];
+
+  for (const item of inventoryItems) {
+    const { supplierId, ...otherFields } = item;
+    await prisma.inventoryItem.create({
+      data: {
+        ...otherFields,
+        maxStock: item.minStock * 5,
+        status: item.currentStock <= 0 ? 'OUT_OF_STOCK' : (item.currentStock <= item.minStock ? 'LOW_STOCK' : 'IN_STOCK'),
+        sku: `INV-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+        supplier: { connect: { id: supplierId } },
+      },
+    });
+  }
+  console.log('✅ Created inventory items');
 
   console.log('🎉 Database seeding completed!');
 }

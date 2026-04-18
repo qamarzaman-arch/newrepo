@@ -2,17 +2,16 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface AppSettings {
-  // Business
+  // General
   currency: string;
   taxRate: number;
   serviceCharge: number;
-
-  // General
   restaurantName: string;
   tagline: string;
   timezone: string;
   language: string;
   fiscalYearStart: string;
+  animationsEnabled: boolean;
 
   // Payment
   acceptCash: boolean;
@@ -48,7 +47,6 @@ export interface AppSettings {
   theme: 'light' | 'dark' | 'auto';
   compactMode: boolean;
   showImages: boolean;
-  animationsEnabled: boolean;
 }
 
 interface SettingsState {
@@ -66,30 +64,36 @@ const DEFAULT_SETTINGS: AppSettings = {
   timezone: 'Asia/Karachi',
   language: 'en',
   fiscalYearStart: 'January',
+  animationsEnabled: true,
+
   acceptCash: true,
   acceptCard: true,
   acceptMobileWallet: true,
   acceptGiftCards: true,
   splitPaymentEnabled: true,
   tipSuggestions: [10, 12, 15, 18],
+
   autoPrintKOT: true,
   autoPrintReceipt: true,
+
   cashDrawerEnabled: true,
   customerDisplayEnabled: false,
   barcodeScannerEnabled: true,
+
   emailNotifications: true,
   smsNotifications: false,
   lowStockAlerts: true,
   orderAlerts: true,
   staffAlerts: true,
+
   requirePinForVoid: true,
   requirePinForRefund: true,
   sessionTimeout: 30,
   twoFactorAuth: false,
+
   theme: 'light',
   compactMode: false,
   showImages: true,
-  animationsEnabled: true,
 };
 
 export const useSettingsStore = create<SettingsState>()(

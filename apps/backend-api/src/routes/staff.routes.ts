@@ -6,6 +6,22 @@ import { logger } from '../utils/logger';
 
 const router = Router();
 
+// Get active shifts — MUST be before /:id route to avoid param conflict
+router.get('/active-shifts', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const shifts = await prisma.shift.findMany({
+      where: { status: 'OPEN' },
+      include: {
+        user: { select: { id: true, fullName: true, role: true } },
+      },
+      orderBy: { clockedInAt: 'asc' },
+    });
+    res.json({ success: true, data: { shifts } });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get all staff
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
@@ -88,22 +104,6 @@ router.post('/:id/shift', authenticate, async (req: AuthRequest, res: Response, 
     } else {
       throw new AppError('Invalid action. Use clock-in or clock-out', 400);
     }
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get active shifts
-router.get('/active-shifts', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const shifts = await prisma.shift.findMany({
-      where: { status: 'OPEN' },
-      include: {
-        user: { select: { id: true, fullName: true, role: true } },
-      },
-      orderBy: { clockedInAt: 'asc' },
-    });
-    res.json({ success: true, data: { shifts } });
   } catch (error) {
     next(error);
   }

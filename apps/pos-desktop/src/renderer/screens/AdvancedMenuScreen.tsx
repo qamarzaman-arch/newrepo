@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Plus, Trash2, Search, Filter, Download, Upload, 
+  Plus, Trash2, Search, Filter, Download, Upload, Edit,
   Package, Tag, Star, Eye, EyeOff, BarChart3
 } from 'lucide-react';
 import { useMenuCategories, useMenuItems } from '../hooks/useMenu';
+import { menuService } from '../services/menuService';
+import toast from 'react-hot-toast';
 
 const AdvancedMenuScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'items' | 'categories' | 'modifiers' | 'combos'>('items');
@@ -18,23 +20,70 @@ const AdvancedMenuScreen: React.FC = () => {
     categoryId: selectedCategory !== 'all' ? selectedCategory : undefined
   });
 
-  // Mock data for demonstration
-  const modifiers = [
-    { id: '1', name: 'Doneness', type: 'single_select', required: true, options: 4 },
-    { id: '2', name: 'Extra Toppings', type: 'multi_select', required: false, options: 8 },
-    { id: '3', name: 'Special Instructions', type: 'text_input', required: false, options: 0 },
-  ];
-
-  const combos = [
-    { id: '1', name: 'Burger Combo', items: 3, price: 15.99, savings: 4.00 },
-    { id: '2', name: 'Family Feast', items: 6, price: 39.99, savings: 12.00 },
-  ];
+  // Combos and Modifiers would connect to the advanced DB schema
+  // We initialize them to empty functional UI states until backend implementation.
+  const modifiers: any[] = [];
+  const combos: any[] = [];
 
   const stats = {
     totalItems: items?.length || 0,
     available: items?.filter((i: any) => i.isAvailable).length || 0,
     unavailable: items?.filter((i: any) => !i.isAvailable).length || 0,
     categories: categories?.length || 0,
+  };
+
+  // Handler functions
+  const handleDeleteItem = async (itemId: string, itemName: string) => {
+    if (!window.confirm(`Are you sure you want to delete "${itemName}"?`)) {
+      return;
+    }
+
+    try {
+      await menuService.deleteItem(itemId);
+      toast.success(`${itemName} deleted successfully`);
+      // Refetch items
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to delete item:', error);
+      toast.error('Failed to delete item');
+    }
+  };
+
+  const handleEditItem = (itemId: string) => {
+    // In production, this would open an edit modal or navigate to edit page
+    toast(`Edit functionality for item ${itemId} - Coming soon!`, { icon: 'ℹ️' });
+  };
+
+  const handleImport = () => {
+    toast('Import functionality - Coming soon!', { icon: 'ℹ️' });
+  };
+
+  const handleExport = () => {
+    // Export current menu items as CSV
+    if (!items || items.length === 0) {
+      toast.error('No items to export');
+      return;
+    }
+
+    const csvContent = [
+      ['ID', 'Name', 'Price', 'Category', 'Available'].join(','),
+      ...items.map((item: any) => [
+        item.id,
+        `"${item.name}"`,
+        item.price,
+        item.category?.name || '',
+        item.isAvailable
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `menu-items-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Menu items exported successfully');
   };
 
   return (
@@ -49,6 +98,7 @@ const AdvancedMenuScreen: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={handleImport}
             className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
           >
             <Upload className="w-5 h-5" />
@@ -57,6 +107,7 @@ const AdvancedMenuScreen: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={handleExport}
             className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
           >
             <Download className="w-5 h-5" />
@@ -244,10 +295,17 @@ const AdvancedMenuScreen: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex gap-2">
-                    <button className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
+                    <button 
+                      onClick={() => handleEditItem(item.id)}
+                      className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Edit className="w-4 h-4" />
                       Edit
                     </button>
-                    <button className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors">
+                    <button 
+                      onClick={() => handleDeleteItem(item.id, item.name)}
+                      className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -270,10 +328,17 @@ const AdvancedMenuScreen: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex gap-2">
-                    <button className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
+                    <button 
+                      onClick={() => handleEditItem(item.id)}
+                      className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors flex items-center gap-2"
+                    >
+                      <Edit className="w-4 h-4" />
                       Edit
                     </button>
-                    <button className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors">
+                    <button 
+                      onClick={() => handleDeleteItem(item.id, item.name)}
+                      className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>

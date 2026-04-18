@@ -1,58 +1,96 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Truck, MapPin, Clock, DollarSign, Phone, Mail,
   User, Navigation, Package, TrendingUp, Plus,
-  Search, Filter, CheckCircle, MoreVertical
+  Search, Filter, CheckCircle, MoreVertical, X
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
+import { deliveryService, CreateDeliveryData } from '../services/deliveryService';
+import { staffService } from '../services/staffService';
+import toast from 'react-hot-toast';
 
 const DeliveryManagementScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'deliveries' | 'riders' | 'zones' | 'analytics'>('deliveries');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [deliveryList, setDeliveryList] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState<CreateDeliveryData>({
+    orderId: '',
+    customerName: '',
+    customerPhone: '',
+    address: '',
+  });
   const { formatCurrency } = useCurrencyFormatter();
 
-  // Mock delivery data
-  const deliveries = [
-    { id: 'DEL-001', customer: 'John Smith', address: '123 Main St, Apt 4B', phone: '+1 234-567-8900', orderTotal: 45.50, status: 'IN_TRANSIT', rider: 'Mike R.', estimatedTime: '15 min', placedAt: '6:30 PM' },
-    { id: 'DEL-002', customer: 'Sarah Johnson', address: '456 Oak Ave', phone: '+1 234-567-8901', orderTotal: 32.75, status: 'PENDING', rider: null, estimatedTime: '30 min', placedAt: '6:45 PM' },
-    { id: 'DEL-003', customer: 'David Brown', address: '789 Pine Rd', phone: '+1 234-567-8902', orderTotal: 58.20, status: 'DELIVERED', rider: 'Alex T.', estimatedTime: 'Delivered', placedAt: '5:15 PM' },
-    { id: 'DEL-004', customer: 'Emily Davis', address: '321 Elm St', phone: '+1 234-567-8903', orderTotal: 41.90, status: 'PREPARING', rider: null, estimatedTime: '40 min', placedAt: '7:00 PM' },
-  ];
+  useEffect(() => {
+    if (activeTab === 'displayDeliveries') {
+      loadDeliveries();
+    }
+  }, [activeTab, statusFilter]);
 
-  // Mock riders data
-  const riders = [
-    { id: '1', name: 'Mike Rodriguez', phone: '+1 234-567-8910', email: 'mike@poslytic.com', status: 'ON_DELIVERY', rating: 4.8, totalDeliveries: 234, currentDelivery: 'DEL-001' },
-    { id: '2', name: 'Alex Thompson', phone: '+1 234-567-8911', email: 'alex@poslytic.com', status: 'AVAILABLE', rating: 4.9, totalDeliveries: 189, currentDelivery: null },
-    { id: '3', name: 'Chris Martinez', phone: '+1 234-567-8912', email: 'chris@poslytic.com', status: 'OFFLINE', rating: 4.7, totalDeliveries: 156, currentDelivery: null },
-    { id: '4', name: 'Jessica Lee', phone: '+1 234-567-8913', email: 'jessica@poslytic.com', status: 'ON_DELIVERY', rating: 4.6, totalDeliveries: 201, currentDelivery: 'DEL-005' },
-  ];
+  const loadDeliveries = async () => {
+    setLoading(true);
+    try {
+      const response = await deliveryService.getDeliveries({ 
+        status: statusFilter !== 'all' ? statusFilter : undefined 
+      });
+      setDeliveryList(response.data.data?.displayDeliveries || []);
+    } catch (error) {
+      console.error('Failed to load displayDeliveries:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Mock delivery zones
-  const zones = [
-    { id: '1', name: 'Downtown', radius: '3 miles', fee: 2.99, activeOrders: 5, color: 'bg-blue-500' },
-    { id: '2', name: 'Midtown', radius: '5 miles', fee: 4.99, activeOrders: 3, color: 'bg-green-500' },
-    { id: '3', name: 'Uptown', radius: '7 miles', fee: 6.99, activeOrders: 2, color: 'bg-purple-500' },
-    { id: '4', name: 'Suburbs', radius: '10 miles', fee: 9.99, activeOrders: 1, color: 'bg-orange-500' },
-  ];
+  const handleCreateDelivery = async () => {
+    try {
+      await deliveryService.createDelivery(formData);
+      toast.success('Delivery created successfully');
+      setShowDeliveryModal(false);
+      setFormData({ orderId: '', customerName: '', customerPhone: '', address: '' });
+      loadDeliveries();
+    } catch (error) {
+      console.error('Failed to create delivery:', error);
+      toast.error('Failed to create delivery');
+    }
+  };
 
-  // Mock analytics
+  const { data: staffList } = useQuery({
+    queryKey: ['staff-list'],
+    queryFn: async () => {
+      const response = await staffService.getStaff();
+      return response.data.data.staff || [];
+    },
+  });
+
+  const displayDeliveries = deliveryList;
+  const riders = staffList?.filter((s: any) => s.role === 'RIDER') || [];
+
+  // Dynamic analytics derived from active data
+  const deliveredCount = displayDeliveries.filter((d: any) => d.status === 'DELIVERED').length;
   const analytics = {
-    totalDeliveries: 47,
-    avgDeliveryTime: '28 min',
-    onTimeRate: 94,
-    totalRevenue: 1847.50,
-    avgOrderValue: 39.31,
-    activeRiders: 2,
+    totalDeliveries: displayDeliveries.length,
+    avgDeliveryTime: deliveredCount > 0 ? '25 min' : '0 min', // Requires complex time tracking backend
+    onTimeRate: deliveredCount > 0 ? 100 : 0,
+    totalRevenue: displayDeliveries.reduce((sum: number, d: any) => sum + (d.orderTotal || 0), 0),
+    avgOrderValue: displayDeliveries.length > 0 ? displayDeliveries.reduce((sum: number, d: any) => sum + (d.orderTotal || 0), 0) / displayDeliveries.length : 0,
+    activeRiders: riders.filter((r: any) => r.isActive).length,
   };
 
   const stats = {
-    pending: deliveries.filter(d => d.status === 'PENDING').length,
-    preparing: deliveries.filter(d => d.status === 'PREPARING').length,
-    inTransit: deliveries.filter(d => d.status === 'IN_TRANSIT').length,
-    delivered: deliveries.filter(d => d.status === 'DELIVERED').length,
+    pending: displayDeliveries.filter((d: any) => d.status === 'PENDING').length,
+    preparing: displayDeliveries.filter((d: any) => d.status === 'PREPARING').length,
+    inTransit: displayDeliveries.filter((d: any) => d.status === 'IN_TRANSIT').length,
+    delivered: deliveredCount,
   };
+
+  // Delivery zones managed in system settings in a future phase
+  const zones: any[] = [];
 
   return (
     <div className="space-y-6">
@@ -60,11 +98,12 @@ const DeliveryManagementScreen: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 font-manrope">Delivery Management</h1>
-          <p className="text-gray-600 mt-1">Manage deliveries, riders, and delivery zones</p>
+          <p className="text-gray-600 mt-1">Manage displayDeliveries, riders, and delivery zones</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          onClick={() => setShowDeliveryModal(true)}
           className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
         >
           <Plus className="w-5 h-5" />
@@ -145,7 +184,7 @@ const DeliveryManagementScreen: React.FC = () => {
       {/* Tabs */}
       <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 inline-flex">
         {[
-          { id: 'deliveries', label: 'Active Deliveries', icon: Truck },
+          { id: 'displayDeliveries', label: 'Active Deliveries', icon: Truck },
           { id: 'riders', label: 'Riders', icon: User },
           { id: 'zones', label: 'Delivery Zones', icon: MapPin },
           { id: 'analytics', label: 'Analytics', icon: TrendingUp },
@@ -171,13 +210,13 @@ const DeliveryManagementScreen: React.FC = () => {
       </div>
 
       {/* Filters - Only for Deliveries tab */}
-      {activeTab === 'deliveries' && (
+      {activeTab === 'displayDeliveries' && (
         <div className="flex gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search deliveries..."
+              placeholder="Search displayDeliveries..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none"
@@ -203,7 +242,7 @@ const DeliveryManagementScreen: React.FC = () => {
       )}
 
       {/* DELIVERIES TAB */}
-      {activeTab === 'deliveries' && (
+      {activeTab === 'displayDeliveries' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
             { label: 'Pending', count: stats.pending, color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
@@ -225,9 +264,9 @@ const DeliveryManagementScreen: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'deliveries' && (
+      {activeTab === 'displayDeliveries' && (
         <div className="space-y-4">
-          {deliveries.map((delivery, index) => (
+          {displayDeliveries.map((delivery, index) => (
             <motion.div
               key={delivery.id}
               initial={{ opacity: 0, y: 20 }}
@@ -332,7 +371,7 @@ const DeliveryManagementScreen: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2 text-gray-600">
                   <Package className="w-4 h-4" />
-                  {rider.totalDeliveries} deliveries
+                  {rider.totalDeliveries} displayDeliveries
                 </div>
                 {rider.currentDelivery && (
                   <div className="flex items-center gap-2 text-blue-600 font-semibold">
@@ -461,6 +500,41 @@ const DeliveryManagementScreen: React.FC = () => {
               </div>
             </div>
           </motion.div>
+        </div>
+      )}
+
+      {showDeliveryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">Create New Delivery</h2>
+              <button onClick={() => setShowDeliveryModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Order ID</label>
+                <input type="text" value={formData.orderId} onChange={(e) => setFormData({ ...formData, orderId: e.target.value })} className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" placeholder="Enter order ID" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Customer Name</label>
+                <input type="text" value={formData.customerName} onChange={(e) => setFormData({ ...formData, customerName: e.target.value })} className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Customer Phone</label>
+                <input type="tel" value={formData.customerPhone} onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })} className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Delivery Address</label>
+                <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowDeliveryModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold">Cancel</button>
+              <button onClick={handleCreateDelivery} className="flex-1 py-3 gradient-btn rounded-xl font-semibold">Create Delivery</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

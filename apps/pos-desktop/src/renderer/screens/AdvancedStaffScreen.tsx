@@ -5,49 +5,77 @@ import {
   UserCheck, DollarSign, Briefcase, Mail, Phone,
   Edit, Eye, CheckCircle, XCircle, Star
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useQuery } from '@tanstack/react-query';
+import { staffService } from '../services/staffService';
+import { reportService } from '../services/reportService';
 
 const AdvancedStaffScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'employees' | 'schedule' | 'time-tracking' | 'performance'>('employees');
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
 
-  // Mock employee data
-  const employees = [
-    { id: '1', name: 'John Smith', role: 'Manager', department: 'Management', phone: '+1 234-567-8900', email: 'john@poslytic.com', status: 'ACTIVE', rating: 4.8, hireDate: '2022-03-15', hoursThisWeek: 40 },
-    { id: '2', name: 'Sarah Johnson', role: 'Head Chef', department: 'Kitchen', phone: '+1 234-567-8901', email: 'sarah@poslytic.com', status: 'ACTIVE', rating: 4.9, hireDate: '2022-06-01', hoursThisWeek: 45 },
-    { id: '3', name: 'Mike Davis', role: 'Cashier', department: 'Front of House', phone: '+1 234-567-8902', email: 'mike@poslytic.com', status: 'ON_LEAVE', rating: 4.5, hireDate: '2023-01-10', hoursThisWeek: 0 },
-    { id: '4', name: 'Emily Brown', role: 'Server', department: 'Front of House', phone: '+1 234-567-8903', email: 'emily@poslytic.com', status: 'ACTIVE', rating: 4.7, hireDate: '2023-04-20', hoursThisWeek: 32 },
-    { id: '5', name: 'David Wilson', role: 'Line Cook', department: 'Kitchen', phone: '+1 234-567-8904', email: 'david@poslytic.com', status: 'ACTIVE', rating: 4.6, hireDate: '2023-07-15', hoursThisWeek: 38 },
-  ];
+  // Real staff data
+  const { data: employees = [] } = useQuery({
+    queryKey: ['staff-management'],
+    queryFn: async () => {
+      const response = await staffService.getStaff();
+      return response.data.data.staff || [];
+    },
+  });
 
-  // Mock schedule data
-  const todaySchedule = [
-    { id: '1', employee: 'John Smith', role: 'Manager', shift: '6:00 AM - 2:00 PM', status: 'CHECKED_IN', breakTime: '10:00 AM - 10:30 AM' },
-    { id: '2', employee: 'Sarah Johnson', role: 'Head Chef', shift: '7:00 AM - 3:00 PM', status: 'CHECKED_IN', breakTime: '11:00 AM - 11:30 AM' },
-    { id: '3', employee: 'Emily Brown', role: 'Server', shift: '11:00 AM - 7:00 PM', status: 'SCHEDULED', breakTime: '2:00 PM - 2:30 PM' },
-    { id: '4', employee: 'David Wilson', role: 'Line Cook', shift: '12:00 PM - 8:00 PM', status: 'SCHEDULED', breakTime: '3:00 PM - 3:30 PM' },
-  ];
+  // Real active shifts / schedule
+  const { data: scheduleData = [] } = useQuery({
+    queryKey: ['staff-shifts'],
+    queryFn: async () => {
+      const response = await staffService.getActiveShifts();
+      return response.data.data.shifts || [];
+    },
+  });
 
-  // Mock time tracking
-  const timeEntries = [
-    { id: '1', employee: 'John Smith', date: '2024-01-18', clockIn: '6:00 AM', clockOut: '2:05 PM', hours: 8.08, overtime: 0.08, status: 'APPROVED' },
-    { id: '2', employee: 'Sarah Johnson', date: '2024-01-18', clockIn: '7:00 AM', clockOut: '3:10 PM', hours: 8.17, overtime: 0.17, status: 'PENDING' },
-    { id: '3', employee: 'Emily Brown', date: '2024-01-17', clockIn: '11:00 AM', clockOut: '7:00 PM', hours: 8.0, overtime: 0.0, status: 'APPROVED' },
-  ];
+  // Real performance data
+  const { data: performanceData = [] } = useQuery({
+    queryKey: ['staff-performance'],
+    queryFn: async () => {
+      const response = await reportService.getStaffPerformance(30);
+      return response.data.data || [];
+    },
+  });
 
-  // Mock performance metrics
-  const performanceData = [
-    { id: '1', employee: 'John Smith', role: 'Manager', rating: 4.8, ordersHandled: 0, avgServiceTime: '-', customerFeedback: 4.9, attendance: 98 },
-    { id: '2', employee: 'Sarah Johnson', role: 'Head Chef', rating: 4.9, ordersHandled: 450, avgServiceTime: '18 min', customerFeedback: 4.8, attendance: 100 },
-    { id: '3', employee: 'Emily Brown', role: 'Server', rating: 4.7, ordersHandled: 320, avgServiceTime: '12 min', customerFeedback: 4.7, attendance: 95 },
-    { id: '4', employee: 'David Wilson', role: 'Line Cook', rating: 4.6, ordersHandled: 380, avgServiceTime: '15 min', customerFeedback: 4.5, attendance: 97 },
-  ];
+  // Mapped display arrays using real backend responses with fallbacks for missing fields
+  const displayEmployees = employees.map((emp: any) => ({
+    id: emp.id, name: emp.username || emp.fullName, role: emp.role, department: 'General', phone: emp.phone || 'N/A', email: emp.email || 'N/A', status: emp.isActive ? 'ACTIVE' : 'INACTIVE', rating: 5, hireDate: new Date(emp.createdAt || Date.now()).toLocaleDateString(), hoursThisWeek: 0
+  }));
+
+  const todaySchedule = scheduleData.map((shift: any) => ({
+    id: shift.id, employee: shift.userId, role: 'Staff', shift: 'Active Shift', status: shift.status, breakTime: 'None'
+  }));
+
+  const timeEntries = scheduleData.map((shift: any) => ({
+    id: shift.id, employee: shift.userId, date: new Date(shift.clockedInAt).toLocaleDateString(), clockIn: new Date(shift.clockedInAt).toLocaleTimeString(), clockOut: shift.clockedOutAt ? new Date(shift.clockedOutAt).toLocaleTimeString() : 'Active', hours: 0, overtime: 0, status: shift.status
+  }));
+
+  const displayPerformance = employees.map((emp: any) => {
+    const perf = performanceData.find((p: any) => p.userId === emp.id) || {};
+    return {
+      id: emp.id, employee: emp.username, role: emp.role, rating: perf.rating || 5.0, ordersHandled: perf.ordersHandled || 0, avgServiceTime: perf.avgServiceTime || 'N/A', customerFeedback: perf.customerFeedback || 5.0, attendance: perf.attendance || 100
+    };
+  });
 
   const stats = {
     totalEmployees: employees.length,
-    onDuty: employees.filter(e => e.status === 'ACTIVE').length,
-    scheduledToday: todaySchedule.length,
-    laborCostPercentage: 28.5,
+    onDuty: scheduleData.length,
+    scheduledToday: scheduleData.length,
+    laborCostPercentage: 0, // Requires advanced payroll backend
+  };
+
+  // Handler functions
+  const handleEditEmployee = (employeeName: string) => {
+    toast(`Edit employee ${employeeName} - Coming soon!`, { icon: 'ℹ️' });
+  };
+
+  const handleViewEmployee = (employeeName: string) => {
+    toast(`View details for ${employeeName} - Coming soon!`, { icon: '👁️' });
   };
 
   return (
@@ -214,7 +242,7 @@ const AdvancedStaffScreen: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {employees.map((employee) => (
+              {displayEmployees.map((employee: any) => (
                 <tr key={employee.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -264,10 +292,16 @@ const AdvancedStaffScreen: React.FC = () => {
                   <td className="px-6 py-4 text-sm font-semibold text-gray-900">{employee.hoursThisWeek}h</td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
-                      <button className="p-2 hover:bg-blue-100 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => handleViewEmployee(employee.name)}
+                        className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                      >
                         <Eye className="w-4 h-4 text-blue-600" />
                       </button>
-                      <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => handleEditEmployee(employee.name)}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
                         <Edit className="w-4 h-4 text-gray-600" />
                       </button>
                     </div>
@@ -293,7 +327,7 @@ const AdvancedStaffScreen: React.FC = () => {
             </motion.button>
           </div>
 
-          {todaySchedule.map((entry, index) => (
+          {todaySchedule.map((entry: any, index: number) => (
             <motion.div
               key={entry.id}
               initial={{ opacity: 0, y: 20 }}
@@ -347,7 +381,7 @@ const AdvancedStaffScreen: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {timeEntries.map((entry) => (
+              {timeEntries.map((entry: any) => (
                 <tr key={entry.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 font-semibold text-gray-900">{entry.employee}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{entry.date}</td>
@@ -386,7 +420,7 @@ const AdvancedStaffScreen: React.FC = () => {
       {/* PERFORMANCE TAB */}
       {activeTab === 'performance' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {performanceData.map((perf, index) => (
+          {displayPerformance.map((perf: any, index: number) => (
             <motion.div
               key={perf.id}
               initial={{ opacity: 0, y: 20 }}

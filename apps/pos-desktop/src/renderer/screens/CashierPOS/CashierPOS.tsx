@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useOrderStore } from '../../stores/orderStore';
+import { orderService } from '../../services/orderService';
 import toast from 'react-hot-toast';
 
 // Import all POS flow screens
@@ -84,19 +85,23 @@ const CashierPOS: React.FC = () => {
   // Step 4: Complete Order
   const handleCompleteOrder = async () => {
     try {
-      // Here you would make API call to create the order
-      // const orderData = {
-      //   orderType,
-      //   tableId: tableId || undefined,
-      //   customerId: undefined, // Would need customer lookup
-      //   items: currentOrder.items.map(item => ({
-      //     menuItemId: item.menuItemId,
-      //     quantity: item.quantity,
-      //     notes: item.notes,
-      //   })),
-      // };
+      const { currentOrder } = useOrderStore.getState();
       
+      const orderData = {
+        orderType: orderType as 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'PICKUP',
+        tableId: tableId || undefined,
+        customerName: customerName || undefined,
+        items: currentOrder.items.map(item => ({
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          notes: item.notes,
+          modifiers: item.modifiers,
+        })),
+      };
+      
+      await orderService.createOrder(orderData);
       toast.success('Order placed successfully!');
+      clearOrder();
       setCurrentStep('SUCCESS');
     } catch (error) {
       toast.error('Failed to place order');
@@ -114,6 +119,10 @@ const CashierPOS: React.FC = () => {
   };
 
   // Back navigation handlers
+  const handleBackFromOrderType = () => {
+    navigate('/dashboard');
+  };
+
   const handleBackFromTableCustomer = () => {
     setCurrentStep('ORDER_TYPE');
   };
@@ -139,7 +148,7 @@ const CashierPOS: React.FC = () => {
             transition={{ duration: 0.3 }}
             className="h-full"
           >
-            <OrderTypeSelection onSelect={handleOrderTypeSelect} />
+            <OrderTypeSelection onSelect={handleOrderTypeSelect} onBack={handleBackFromOrderType} />
           </motion.div>
         );
 

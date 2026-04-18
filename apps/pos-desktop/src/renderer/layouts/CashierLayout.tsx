@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { LogOut, HelpCircle, Clock } from 'lucide-react';
+import { useLocation, Link } from 'react-router-dom';
+import { LogOut, HelpCircle, Clock, ShoppingCart, History, Settings, LayoutDashboard } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
 interface CashierLayoutProps {
@@ -9,66 +9,89 @@ interface CashierLayoutProps {
 }
 
 const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
-  const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuthStore();
+
+  // Cashier-specific menu items
+  const cashierMenuItems = [
+    { icon: LayoutDashboard, label: 'POS Terminal', path: '/cashier-pos' },
+    { icon: ShoppingCart, label: 'Orders', path: '/orders' },
+    { icon: History, label: 'Order History', path: '/orders?tab=history' },
+    { icon: Clock, label: 'Shift Summary', path: '/shift-summary' },
+    { icon: Settings, label: 'Settings', path: '/settings' },
+  ];
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* Minimal Sidebar for Cashiers */}
-      <aside className="w-20 bg-gradient-to-b from-primary to-primary-container flex flex-col items-center py-6 shadow-lg">
+      {/* Expanded Sidebar for Cashiers */}
+      <aside className="w-64 bg-gradient-to-b from-primary to-primary-container flex flex-col shadow-lg">
         {/* Logo */}
-        <div className="mb-8">
-          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-            <span className="text-white font-black text-xl">P</span>
-          </div>
+        <div className="p-6 border-b border-white/10">
+          <Link to="/cashier-pos" className="flex items-center gap-3 group">
+            <motion.div
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              transition={{ type: "spring", stiffness: 300 }}
+              className="bg-white/20 rounded-xl p-2"
+            >
+              <span className="text-white font-black text-xl">P</span>
+            </motion.div>
+            <div>
+              <motion.h1 
+                className="text-lg font-bold text-white"
+                whileHover={{ scale: 1.05 }}
+              >
+                POSLytic
+              </motion.h1>
+              <p className="text-xs text-white/70">Cashier Mode</p>
+            </div>
+          </Link>
         </div>
 
-        {/* Quick Actions */}
-        <nav className="flex-1 flex flex-col gap-4 w-full px-3">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/cashier-pos')}
-            className="w-full aspect-square rounded-xl bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition-colors"
-            title="POS Terminal"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          </motion.button>
+        {/* User Info */}
+        <div className="px-6 py-4 border-b border-white/10">
+          <p className="text-sm font-semibold text-white">Hello, {user?.fullName || 'Cashier'}!</p>
+          <p className="text-xs text-white/70 mt-1 capitalize">{user?.role?.toLowerCase()}</p>
+        </div>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/orders?tab=active')}
-            className="w-full aspect-square rounded-xl bg-white/10 text-white/80 flex items-center justify-center hover:bg-white/20 transition-colors"
-            title="Active Orders"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </motion.button>
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-2">
+          {cashierMenuItems.map((item, index) => {
+            const isActive = location.pathname === item.path.split('?')[0];
+            const Icon = item.icon;
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/customers')}
-            className="w-full aspect-square rounded-xl bg-white/10 text-white/80 flex items-center justify-center hover:bg-white/20 transition-colors"
-            title="Quick Lookup"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="w-full aspect-square rounded-xl bg-white/10 text-white/80 flex items-center justify-center hover:bg-white/20 transition-colors"
-            title="Shift Summary"
-          >
-            <Clock className="w-6 h-6" />
-          </motion.button>
+            return (
+              <motion.div
+                key={item.path}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Link
+                  to={item.path}
+                  className={`relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
+                    isActive
+                      ? 'bg-white/20 text-white font-semibold shadow-lg'
+                      : 'text-white/80 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <motion.div
+                    whileHover={{ scale: 1.2, rotate: 5 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </motion.div>
+                  <span className="flex-1">{item.label}</span>
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeIndicator"
+                      className="absolute right-0 w-1 h-6 bg-accent rounded-l-full"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </Link>
+              </motion.div>
+            );
+          })}
         </nav>
 
         {/* Bottom Actions */}

@@ -5,10 +5,11 @@ import {
   ShoppingBag,
   Truck,
   UtensilsCrossed,
+  ArrowLeft,
 } from 'lucide-react';
 
 // Order Type Selection Screen (Step 1)
-const OrderTypeSelection: React.FC<{ onSelect: (type: string) => void }> = ({ onSelect }) => {
+const OrderTypeSelection: React.FC<{ onSelect: (type: string) => void; onBack?: () => void }> = ({ onSelect, onBack }) => {
 
   const orderTypes = [
     {
@@ -50,6 +51,19 @@ const OrderTypeSelection: React.FC<{ onSelect: (type: string) => void }> = ({ on
       </div>
 
       <div className="w-full max-w-6xl space-y-12 z-10">
+        {/* Back Button */}
+        {onBack && (
+          <motion.button
+            whileHover={{ scale: 1.05, x: -5 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onBack}
+            className="absolute top-8 left-8 flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-md border border-gray-200 hover:border-primary transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-700" />
+            <span className="font-semibold text-gray-700">Back</span>
+          </motion.button>
+        )}
+
         <div className="text-center space-y-2">
           <h2 className="font-manrope text-4xl font-extrabold tracking-tight text-gray-900">
             Select Order Type

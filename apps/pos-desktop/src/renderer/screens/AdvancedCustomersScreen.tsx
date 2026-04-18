@@ -23,29 +23,10 @@ const AdvancedCustomersScreen: React.FC = () => {
   const customers = customersData?.customers || [];
   const pagination = customersData?.pagination || {};
 
-  // Mock loyalty tiers
-  const loyaltyTiers = [
-    { id: '1', name: 'Bronze', minPoints: 0, discount: 5, color: 'from-amber-600 to-amber-800', members: 145 },
-    { id: '2', name: 'Silver', minPoints: 500, discount: 10, color: 'from-gray-400 to-gray-600', members: 78 },
-    { id: '3', name: 'Gold', minPoints: 1500, discount: 15, color: 'from-yellow-400 to-yellow-600', members: 32 },
-    { id: '4', name: 'Platinum', minPoints: 3000, discount: 20, color: 'from-blue-400 to-blue-600', members: 12 },
-  ];
-
-  // Mock promotions
-  const promotions = [
-    { id: '1', name: 'Happy Hour Special', type: 'PERCENTAGE', value: 20, status: 'ACTIVE', startDate: '2024-01-15', endDate: '2024-02-15', usage: 234 },
-    { id: '2', name: 'New Customer Discount', type: 'FIXED', value: 10, status: 'ACTIVE', startDate: '2024-01-01', endDate: '2024-12-31', usage: 89 },
-    { id: '3', name: 'Weekend Family Deal', type: 'PERCENTAGE', value: 15, status: 'SCHEDULED', startDate: '2024-01-20', endDate: '2024-01-21', usage: 0 },
-    { id: '4', name: 'Birthday Special', type: 'FIXED', value: 25, status: 'ACTIVE', startDate: '2024-01-01', endDate: '2024-12-31', usage: 45 },
-  ];
-
-  // Mock customer segments
-  const segments = [
-    { id: '1', name: 'VIP Customers', count: 45, avgSpend: 125.50, frequency: 'Weekly', criteria: 'Total spent > $1000' },
-    { id: '2', name: 'Regular Diners', count: 234, avgSpend: 45.75, frequency: 'Bi-weekly', criteria: '5+ orders in 30 days' },
-    { id: '3', name: 'Occasional Visitors', count: 567, avgSpend: 28.30, frequency: 'Monthly', criteria: '1-2 orders per month' },
-    { id: '4', name: 'At Risk', count: 89, avgSpend: 35.20, frequency: 'Rarely', criteria: 'No order in 60+ days' },
-  ];
+  // Advanced Customer functionalities (Loyalty, Promotions, Segments) to be connected to CRM backend modules
+  const loyaltyTiers: any[] = [];
+  const promotions: any[] = [];
+  const segments: any[] = [];
 
   const stats = {
     totalCustomers: customers.length || 678,

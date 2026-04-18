@@ -2,29 +2,24 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
 
-const createVendorSchema = z.object({
+const vendorSchema = z.object({
   name: z.string().min(1),
   contactName: z.string().optional(),
-  email: z.string().email().optional(),
+  email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
-  website: z.string().optional(),
+  website: z.string().url().optional().or(z.literal('')),
   notes: z.string().optional(),
 });
 
-const updateVendorSchema = createVendorSchema.partial();
-
-// Get vendors
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const vendors = await prisma.vendor.findMany({
       where: { isActive: true },
-      include: { inventoryItems: { select: { id: true, name: true } } },
       orderBy: { name: 'asc' },
     });
     res.json({ success: true, data: { vendors } });
@@ -33,25 +28,32 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
   }
 });
 
-// Get single vendor
-router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const vendor = await prisma.vendor.findUnique({
-      where: { id: req.params.id },
-      include: { inventoryItems: true },
+    const data = vendorSchema.parse(req.body);
+    const vendor = await prisma.vendor.create({
+      data: {
+        name: data.name,
+        contactName: data.contactName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        city: data.city,
+        website: data.website,
+        notes: data.notes,
+      }
     });
-    if (!vendor) throw new AppError('Vendor not found', 404);
-    res.json({ success: true, data: { vendor } });
+    res.status(201).json({ success: true, data: { vendor } });
   } catch (error) {
     next(error);
   }
 });
 
-// Create vendor
-router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const data = createVendorSchema.parse(req.body);
-    const vendor = await prisma.vendor.create({
+    const data = vendorSchema.parse(req.body);
+    const vendor = await prisma.vendor.update({
+      where: { id: req.params.id },
       data: {
         name: data.name,
         contactName: data.contactName,
@@ -63,27 +65,12 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
         notes: data.notes,
       },
     });
-    res.status(201).json({ success: true, data: { vendor } });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Update vendor
-router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const data = updateVendorSchema.parse(req.body);
-    const vendor = await prisma.vendor.update({
-      where: { id: req.params.id },
-      data,
-    });
     res.json({ success: true, data: { vendor } });
   } catch (error) {
     next(error);
   }
 });
 
-// Delete vendor
 router.delete('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.vendor.update({

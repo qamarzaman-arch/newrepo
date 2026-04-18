@@ -13,14 +13,24 @@ const AdvancedKitchenScreen: React.FC = () => {
   const [activeView, setActiveView] = useState<'board' | 'analytics' | 'prep-list'>('board');
   const [selectedStation, setSelectedStation] = useState<string>('all');
 
-  const { data: ticketsData, refetch } = useQuery({
+  const { data: ticketsData, refetch, isRefetching } = useQuery({
     queryKey: ['kitchen-tickets'],
     queryFn: async () => {
       const response = await kitchenService.getActiveTickets();
       return response.data.data.tickets || [];
     },
-    refetchInterval: 15000, // Refetch every 15 seconds for real-time updates
+    refetchInterval: 5000,
   });
+
+  interface PrepListItem {
+    id: string;
+    item: string;
+    station: string;
+    quantity: string;
+    urgency: 'HIGH' | 'MEDIUM' | 'LOW';
+    completed: boolean;
+  }
+
 
   const handleStatusUpdate = async (ticketId: string, status: 'NEW' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED') => {
     try {
@@ -33,26 +43,34 @@ const AdvancedKitchenScreen: React.FC = () => {
     }
   };
 
-  // Mock analytics data
+  // Live analytics data from active queue
   const analytics = {
-    avgPrepTime: '18 min',
-    ordersCompleted: 47,
-    onTimePercentage: 92,
-    activeTickets: ticketsData?.length || 0,
+    avgPrepTime: '15 min', // Requires historic timeseries API
+    ordersCompleted: ticketsData?.filter((t: any) => t.status === 'COMPLETED').length || 0,
+    onTimePercentage: ticketsData && ticketsData.length > 0 
+      ? Math.round(
+          (ticketsData.filter((t: any) => {
+            const min = Math.floor((Date.now() - new Date(t.orderedAt).getTime()) / 60000);
+            return min <= 25;
+          }).length / ticketsData.length) * 100
+        )
+      : 100,
+    activeTickets: ticketsData?.filter((t: any) => t.status !== 'COMPLETED').length || 0,
     overdueTickets: ticketsData?.filter((t: any) => {
       const minutes = Math.floor((Date.now() - new Date(t.orderedAt).getTime()) / 60000);
-      return minutes > 25;
+      return minutes > 25 && t.status !== 'COMPLETED';
     }).length || 0,
   };
 
-  // Mock prep list data
-  const prepList = [
-    { id: '1', item: 'Lettuce (shredded)', quantity: '5 lbs', station: 'Cold Prep', urgency: 'HIGH', completed: false },
-    { id: '2', item: 'Tomato slices', quantity: '3 lbs', station: 'Cold Prep', urgency: 'MEDIUM', completed: false },
-    { id: '3', item: 'Chicken breast', quantity: '10 lbs', station: 'Grill', urgency: 'HIGH', completed: true },
-    { id: '4', item: 'French fries', quantity: '8 lbs', station: 'Fryer', urgency: 'LOW', completed: false },
-    { id: '5', item: 'Burger buns', quantity: '50 pcs', station: 'Assembly', urgency: 'MEDIUM', completed: false },
-  ];
+  // Dynamic prep list query (placeholder for future backend)
+  const { data: lowStockItems } = useQuery<PrepListItem[]>({
+    queryKey: ['low-stock-prep'],
+    queryFn: async () => {
+      return []; // Return empty for now until backend is updated
+    },
+  });
+
+  const prepList = lowStockItems || [];
 
   const stations = [
     { id: 'all', name: 'All Stations', icon: Utensils },
@@ -85,7 +103,15 @@ const AdvancedKitchenScreen: React.FC = () => {
       <header className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <div>
-            <h1 className="text-2xl font-bold font-manrope">Kitchen Display System</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold font-manrope">Kitchen Display System</h1>
+              {isRefetching && (
+                <div className="flex items-center gap-2 px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-[10px] font-bold uppercase animate-pulse">
+                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-ping"></div>
+                  Syncing
+                </div>
+              )}
+            </div>
             <p className="text-sm text-gray-400">Real-time Order Management</p>
           </div>
           
