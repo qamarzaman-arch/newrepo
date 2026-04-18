@@ -19,6 +19,7 @@ import staffRoutes from './staff.routes';
 import comboRoutes from './combo.routes';
 import recipeRoutes from './recipe.routes';
 import purchaseOrderRoutes from './purchase-order.routes';
+import paymentRoutes from './payment.routes';
 
 export function setupRoutes(app: Application) {
   const apiPrefix = '/api/v1';
@@ -44,6 +45,7 @@ export function setupRoutes(app: Application) {
   app.use(`${apiPrefix}/combos`, comboRoutes);
   app.use(`${apiPrefix}/recipes`, recipeRoutes);
   app.use(`${apiPrefix}/purchase-orders`, purchaseOrderRoutes);
+  app.use(`${apiPrefix}/payments`, paymentRoutes);
 
   // 404 handler
   app.use((_req, res) => {

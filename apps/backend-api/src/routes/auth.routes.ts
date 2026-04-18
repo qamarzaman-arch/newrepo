@@ -228,4 +228,45 @@ router.get('/verify', async (req: Request, res: Response, next: NextFunction) =>
   }
 });
 
+// Validate manager PIN for sensitive operations
+router.post('/validate-pin', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { pin, operation } = req.body;
+
+    if (!pin || typeof pin !== 'string') {
+      throw new AppError('PIN is required', 400);
+    }
+
+    // Get manager PIN from settings
+    const managerPinSetting = await prisma.setting.findUnique({
+      where: { key: 'manager_pin' },
+    });
+
+    if (!managerPinSetting) {
+      throw new AppError('Manager PIN not configured', 500);
+    }
+
+    // Compare PIN (stored as bcrypt hash)
+    const isValid = await bcrypt.compare(pin, managerPinSetting.value);
+
+    if (!isValid) {
+      logger.warn(`Failed PIN validation attempt for operation: ${operation}`);
+      // Return false instead of error to prevent information leakage
+      return res.json({
+        success: true,
+        data: { valid: false },
+      });
+    }
+
+    logger.info(`PIN validated successfully for operation: ${operation}`);
+
+    res.json({
+      success: true,
+      data: { valid: true },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
