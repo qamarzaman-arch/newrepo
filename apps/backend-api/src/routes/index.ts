@@ -16,6 +16,9 @@ import deviceRoutes from './device.routes';
 import syncRoutes from './sync.routes';
 import vendorRoutes from './vendor.routes';
 import staffRoutes from './staff.routes';
+import comboRoutes from './combo.routes';
+import recipeRoutes from './recipe.routes';
+import purchaseOrderRoutes from './purchase-order.routes';
 
 export function setupRoutes(app: Application) {
   const apiPrefix = '/api/v1';
@@ -38,6 +41,9 @@ export function setupRoutes(app: Application) {
   app.use(`${apiPrefix}/sync`, syncRoutes);
   app.use(`${apiPrefix}/vendors`, vendorRoutes);
   app.use(`${apiPrefix}/staff`, staffRoutes);
+  app.use(`${apiPrefix}/combos`, comboRoutes);
+  app.use(`${apiPrefix}/recipes`, recipeRoutes);
+  app.use(`${apiPrefix}/purchase-orders`, purchaseOrderRoutes);
 
   // 404 handler
   app.use((_req, res) => {

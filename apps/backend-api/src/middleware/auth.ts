@@ -20,7 +20,7 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
     }
 
     // Check session in database
-    const session = await prisma.session.findUnique({
+    const session = await prisma.session.findFirst({
       where: { token },
       include: { user: true },
     });
@@ -30,7 +30,7 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
     }
 
     if (session.expiresAt < new Date()) {
-      await prisma.session.delete({ where: { token } });
+      await prisma.session.deleteMany({ where: { token } });
       throw new AppError('Token expired', 401);
     }
 

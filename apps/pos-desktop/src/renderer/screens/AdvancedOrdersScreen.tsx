@@ -46,9 +46,15 @@ const AdvancedOrdersScreen: React.FC = () => {
     duration: t.status === 'OCCUPIED' ? 'Active' : '-'
   })) : [];
 
-  // Reservations are currently handled outside of the core DB schema or API
-  // Using an empty state for functional UI placeholder until full reservation backend is created.
-  const reservations: any[] = [];
+  const { data: reservationData } = useQuery({
+    queryKey: ['reservations'],
+    queryFn: async () => {
+      const response = await orderService.getReservations();
+      return response.data.data.reservations || [];
+    },
+  });
+
+  const reservations = reservationData || [];
 
   const stats = {
     totalOrders: orders.length,

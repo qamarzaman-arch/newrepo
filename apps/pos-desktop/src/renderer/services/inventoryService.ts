@@ -36,4 +36,14 @@ export const inventoryService = {
   createVendor: (data: any) => api.post('/vendors', data),
   updateVendor: (id: string, data: any) => api.put(`/vendors/${id}`, data),
   deleteVendor: (id: string) => api.delete(`/vendors/${id}`),
+  getRecipes: () => api.get('/recipes'),
+  createRecipe: (data: any) => api.post('/recipes', data),
+  updateRecipe: (id: string, data: any) => api.put(`/recipes/${id}`, data),
+  deleteRecipe: (id: string) => api.delete(`/recipes/${id}`),
+  getPurchaseOrders: (params?: { status?: string; vendorId?: string }) =>
+    api.get('/purchase-orders', { params }),
+  createPurchaseOrder: (data: any) => api.post('/purchase-orders', data),
+  updatePurchaseOrder: (id: string, data: any) => api.put(`/purchase-orders/${id}`, data),
+  receivePurchaseOrder: (id: string, data: any) => api.post(`/purchase-orders/${id}/receive`, data),
+  deletePurchaseOrder: (id: string) => api.delete(`/purchase-orders/${id}`),
 };

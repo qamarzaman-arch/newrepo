@@ -42,13 +42,35 @@ const AdvancedInventoryScreen: React.FC = () => {
     },
   });
 
+  const { data: vendorData } = useQuery({
+    queryKey: ['vendors'],
+    queryFn: async () => {
+      const response = await inventoryService.getVendors();
+      return response.data.data.vendors || [];
+    },
+  });
+
+  const { data: purchaseOrderData } = useQuery({
+    queryKey: ['purchase-orders'],
+    queryFn: async () => {
+      const response = await inventoryService.getPurchaseOrders();
+      return response.data.data.orders || [];
+    },
+  });
+
+  const { data: recipeData } = useQuery({
+    queryKey: ['recipes'],
+    queryFn: async () => {
+      const response = await inventoryService.getRecipes();
+      return response.data.data.recipes || [];
+    },
+  });
+
   const items = inventoryData || [];
   const lowStockItems = lowStockData || [];
-
-  // Advanced inventory functionalities (PO, Recipes, Vendors) to be connected to backend modules
-  const purchaseOrders: any[] = [];
-  const recipes: any[] = [];
-  const vendors: any[] = [];
+  const vendors = vendorData || [];
+  const purchaseOrders = purchaseOrderData || [];
+  const recipes = recipeData || [];
 
   const stats = {
     totalItems: items.length,

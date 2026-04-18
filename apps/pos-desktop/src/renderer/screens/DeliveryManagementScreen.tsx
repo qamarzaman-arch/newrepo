@@ -68,6 +68,14 @@ const DeliveryManagementScreen: React.FC = () => {
     },
   });
 
+  const { data: zoneData } = useQuery({
+    queryKey: ['delivery-zones'],
+    queryFn: async () => {
+      const response = await deliveryService.getZones();
+      return response.data.data.zones || [];
+    },
+  });
+
   const displayDeliveries = deliveryList;
   const riders = staffList?.filter((s: any) => s.role === 'RIDER') || [];
 
@@ -89,8 +97,7 @@ const DeliveryManagementScreen: React.FC = () => {
     delivered: deliveredCount,
   };
 
-  // Delivery zones managed in system settings in a future phase
-  const zones: any[] = [];
+  const zones = zoneData || [];
 
   return (
     <div className="space-y-6">

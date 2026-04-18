@@ -27,4 +27,15 @@ export const customerService = {
     api.get(`/customers/${id}/orders`, { params }),
   updateLoyalty: (id: string, data: { points: number; reason: string; referenceId?: string }) =>
     api.post(`/customers/${id}/loyalty`, data),
+  getLoyaltyTiers: () => api.get('/customers/loyalty/tiers'),
+  createLoyaltyTier: (data: any) => api.post('/customers/loyalty/tiers', data),
+  updateLoyaltyTier: (id: string, data: any) => api.put(`/customers/loyalty/tiers/${id}`, data),
+  deleteLoyaltyTier: (id: string) => api.delete(`/customers/loyalty/tiers/${id}`),
+  getPromotions: () => api.get('/customers/promotions'),
+  createPromotion: (data: any) => api.post('/customers/promotions', data),
+  updatePromotion: (id: string, data: any) => api.put(`/customers/promotions/${id}`, data),
+  deletePromotion: (id: string) => api.delete(`/customers/promotions/${id}`),
+  getSegments: () => api.get('/customers/segments'),
+  createSegment: (data: any) => api.post('/customers/segments', data),
+  deleteSegment: (id: string) => api.delete(`/customers/segments/${id}`),
 };

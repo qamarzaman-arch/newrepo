@@ -5,8 +5,10 @@ import {
   Crown, Mail, Phone, Calendar,
   DollarSign, ShoppingCart, Award, Target, Edit, Eye
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useCustomers } from '../hooks/useCustomers';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
+import { customerService } from '../services/customerService';
 
 const AdvancedCustomersScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'customers' | 'loyalty' | 'promotions' | 'segments'>('customers');
@@ -20,13 +22,35 @@ const AdvancedCustomersScreen: React.FC = () => {
     limit: 20,
   });
 
+  const { data: loyaltyData } = useQuery({
+    queryKey: ['loyalty-tiers'],
+    queryFn: async () => {
+      const response = await customerService.getLoyaltyTiers();
+      return response.data.data.tiers || [];
+    },
+  });
+
+  const { data: promotionsData } = useQuery({
+    queryKey: ['promotions'],
+    queryFn: async () => {
+      const response = await customerService.getPromotions();
+      return response.data.data.promotions || [];
+    },
+  });
+
+  const { data: segmentsData } = useQuery({
+    queryKey: ['customer-segments'],
+    queryFn: async () => {
+      const response = await customerService.getSegments();
+      return response.data.data.segments || [];
+    },
+  });
+
   const customers = customersData?.customers || [];
   const pagination = customersData?.pagination || {};
-
-  // Advanced Customer functionalities (Loyalty, Promotions, Segments) to be connected to CRM backend modules
-  const loyaltyTiers: any[] = [];
-  const promotions: any[] = [];
-  const segments: any[] = [];
+  const loyaltyTiers = loyaltyData || [];
+  const promotions = promotionsData || [];
+  const segments = segmentsData || [];
 
   const stats = {
     totalCustomers: customers.length || 678,

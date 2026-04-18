@@ -4,6 +4,7 @@ import {
   Plus, Trash2, Search, Filter, Download, Upload, Edit,
   Package, Tag, Star, Eye, EyeOff, BarChart3
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useMenuCategories, useMenuItems } from '../hooks/useMenu';
 import { menuService } from '../services/menuService';
 import toast from 'react-hot-toast';
@@ -29,10 +30,24 @@ const AdvancedMenuScreen: React.FC = () => {
     categoryId: selectedCategory !== 'all' ? selectedCategory : undefined
   });
 
-  // Combos and Modifiers would connect to the advanced DB schema
-  // We initialize them to empty functional UI states until backend implementation.
-  const modifiers: any[] = [];
-  const combos: any[] = [];
+  const { data: modifierData } = useQuery({
+    queryKey: ['menu-modifiers'],
+    queryFn: async () => {
+      const response = await menuService.getModifiers();
+      return response.data.data.modifiers || [];
+    },
+  });
+
+  const { data: comboData } = useQuery({
+    queryKey: ['menu-combos'],
+    queryFn: async () => {
+      const response = await menuService.getCombos();
+      return response.data.data.combos || [];
+    },
+  });
+
+  const modifiers = modifierData || [];
+  const combos = comboData || [];
 
   const stats = {
     totalItems: items?.length || 0,

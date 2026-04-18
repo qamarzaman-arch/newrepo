@@ -44,4 +44,8 @@ export const menuService = {
   createModifier: (data: any) => api.post('/menu/items/:itemId/modifiers', data),
   updateModifier: (id: string, data: any) => api.put(`/menu/modifiers/${id}`, data),
   deleteModifier: (id: string) => api.delete(`/menu/modifiers/${id}`),
+  getCombos: () => api.get('/combos'),
+  createCombo: (data: any) => api.post('/combos', data),
+  updateCombo: (id: string, data: any) => api.put(`/combos/${id}`, data),
+  deleteCombo: (id: string) => api.delete(`/combos/${id}`),
 };

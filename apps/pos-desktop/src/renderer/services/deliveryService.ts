@@ -31,4 +31,8 @@ export const deliveryService = {
   createDelivery: (data: CreateDeliveryData) => api.post('/delivery', data),
   updateStatus: (id: string, status: string) => api.patch(`/delivery/${id}/status`, { status }),
   assignRider: (id: string, riderId: string) => api.patch(`/delivery/${id}/assign-rider`, { riderId }),
+  getZones: () => api.get('/delivery/zones'),
+  createZone: (data: any) => api.post('/delivery/zones', data),
+  updateZone: (id: string, data: any) => api.put(`/delivery/zones/${id}`, data),
+  deleteZone: (id: string) => api.delete(`/delivery/zones/${id}`),
 };

@@ -54,13 +54,12 @@ model User {
 model Session {
   id        String   @id @default(uuid())
   userId    String
-  token     String   @unique
+  token     String   @db.Text
   expiresAt DateTime
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([token])
   @@index([userId])
 }
 
@@ -102,6 +101,8 @@ model MenuItem {
   inventoryItems  InventoryItem[]
   modifiers       ItemModifier[]
   tags            MenuItemTag[]
+  comboItems      ComboItem[]
+  recipes         Recipe[]
 
   @@index([categoryId])
   @@index([isActive])
@@ -345,6 +346,8 @@ model InventoryItem {
   warehouse   Warehouse?  @relation(fields: [warehouseId], references: [id])
   movements   StockMovement[]
   adjustments StockAdjustment[]
+  recipeIngredients RecipeIngredient[]
+  purchaseOrderItems PurchaseOrderItem[]
 
   @@index([sku])
   @@index([status])
@@ -639,6 +642,7 @@ model Vendor {
   updatedAt   DateTime @updatedAt
 
   inventoryItems InventoryItem[]
+  purchaseOrders PurchaseOrder[]
 
   @@index([name])
   @@index([phone])
@@ -682,7 +686,7 @@ model SyncQueue {
   operation   String
   modelName   String
   recordId    String
-  payload     String   
+  payload     String   @db.LongText
   status      String   @default("pending")
   retryCount  Int      @default(0)
   errorMessage String?
@@ -717,7 +721,7 @@ model AuditLog {
   action    String
   entity    String
   entityId  String?
-  changes   String?  
+  changes   String?   @db.LongText
   ipAddress String?
   userAgent String?
 
@@ -735,10 +739,112 @@ model ReportCache {
   id          String   @id @default(uuid())
   reportType  String
   period      String
-  data        String   
+  data        String   @db.LongText
   generatedAt DateTime @default(now())
   expiresAt   DateTime
 
   @@unique([reportType, period])
   @@index([expiresAt])
+}
+
+// Combo Meals
+model Combo {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  isAvailable Boolean  @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items ComboItem[]
+
+  @@index([isAvailable])
+}
+
+model ComboItem {
+  id        String @id @default(uuid())
+  comboId   String
+  menuItemId String
+  quantity  Int
+  price     Float
+
+  combo   Combo   @relation(fields: [comboId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@index([comboId])
+  @@index([menuItemId])
+}
+
+// Recipes
+model Recipe {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  instructions   String?  @db.LongText
+  prepTimeMinutes  Int      @default(0)
+  cookTimeMinutes Int      @default(0)
+  servings        Int      @default(1)
+  cost            Float    @default(0)
+  menuItemId      String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  menuItem        MenuItem? @relation(fields: [menuItemId], references: [id])
+  ingredients RecipeIngredient[]
+
+  @@index([menuItemId])
+}
+
+model RecipeIngredient {
+  id              String @id @default(uuid())
+  recipeId        String
+  inventoryItemId String
+  quantity       Float
+  unit           String
+
+  recipe         Recipe       @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  inventoryItem  InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([recipeId])
+  @@index([inventoryItemId])
+}
+
+// Purchase Orders
+model PurchaseOrder {
+  id              String   @id @default(uuid())
+  vendorId        String
+  status         String   @default("PENDING")
+  notes          String?
+  totalAmount    Float    @default(0)
+  expectedDelivery DateTime?
+  receivedAt    DateTime?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  vendor  Vendor @relation(fields: [vendorId], references: [id])
+  items  PurchaseOrderItem[]
+
+  @@index([vendorId])
+  @@index([status])
+}
+
+model PurchaseOrderItem {
+  id               String @id @default(uuid())
+  purchaseOrderId  String
+  inventoryItemId  String
+  quantity        Float
+  unitCost        Float
+  receivedQuantity Float  @default(0)
+
+  purchaseOrder  PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem  @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([inventoryItemId])
 }
