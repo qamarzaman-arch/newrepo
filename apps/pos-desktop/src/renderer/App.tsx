@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { getHardwareManager } from './services/hardwareManager';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import LoginScreen from './screens/LoginScreen';
@@ -228,6 +229,10 @@ function App() {
   useEffect(() => {
     // Check for existing session on mount
     initialize();
+    
+    // Initialize hardware manager
+    const hardwareManager = getHardwareManager();
+    hardwareManager.initialize().catch(console.error);
   }, [initialize]);
 
   return <AnimatedRoutes />;

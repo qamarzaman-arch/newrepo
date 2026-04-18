@@ -38,6 +38,24 @@ export const CURRENCIES: Record<string, CurrencyConfig> = {
     name: 'Pakistani Rupee',
     locale: 'ur-PK',
   },
+  INR: {
+    code: 'INR',
+    symbol: '₹',
+    name: 'Indian Rupee',
+    locale: 'en-IN',
+  },
+  BDT: {
+    code: 'BDT',
+    symbol: '৳',
+    name: 'Bangladeshi Taka',
+    locale: 'bn-BD',
+  },
+  SAR: {
+    code: 'SAR',
+    symbol: '﷼',
+    name: 'Saudi Riyal',
+    locale: 'ar-SA',
+  },
 };
 
 export const DEFAULT_CURRENCY = 'USD';

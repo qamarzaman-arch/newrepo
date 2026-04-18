@@ -13,6 +13,15 @@ const AdvancedMenuScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    price: '',
+    categoryId: '',
+    description: '',
+    isAvailable: true,
+  });
 
   const { data: categories } = useMenuCategories();
   const { data: items } = useMenuItems({ 
@@ -41,7 +50,6 @@ const AdvancedMenuScreen: React.FC = () => {
     try {
       await menuService.deleteItem(itemId);
       toast.success(`${itemName} deleted successfully`);
-      // Refetch items
       window.location.reload();
     } catch (error) {
       console.error('Failed to delete item:', error);
@@ -49,13 +57,123 @@ const AdvancedMenuScreen: React.FC = () => {
     }
   };
 
-  const handleEditItem = (itemId: string) => {
-    // In production, this would open an edit modal or navigate to edit page
-    toast(`Edit functionality for item ${itemId} - Coming soon!`, { icon: 'ℹ️' });
+  const handleAddItem = async () => {
+    if (!formData.name || !formData.price || !formData.categoryId) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      await menuService.createItem({
+        name: formData.name,
+        price: parseFloat(formData.price),
+        categoryId: formData.categoryId,
+        description: formData.description,
+        isAvailable: formData.isAvailable,
+      });
+      toast.success(`${formData.name} created successfully`);
+      setShowAddModal(false);
+      setFormData({ name: '', price: '', categoryId: '', description: '', isAvailable: true });
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to create item:', error);
+      toast.error('Failed to create item');
+    }
   };
 
-  const handleImport = () => {
-    toast('Import functionality - Coming soon!', { icon: 'ℹ️' });
+  const handleEditItemClick = (item: any) => {
+    setEditingItem(item);
+    setFormData({
+      name: item.name,
+      price: String(item.price),
+      categoryId: item.categoryId || item.category?.id || '',
+      description: item.description || '',
+      isAvailable: item.isAvailable,
+    });
+    setShowAddModal(true);
+  };
+
+  const handleUpdateItem = async () => {
+    if (!editingItem || !formData.name || !formData.price) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      await menuService.updateItem(editingItem.id, {
+        name: formData.name,
+        price: parseFloat(formData.price),
+        categoryId: formData.categoryId,
+        description: formData.description,
+        isAvailable: formData.isAvailable,
+      });
+      toast.success(`${formData.name} updated successfully`);
+      setShowAddModal(false);
+      setEditingItem(null);
+      setFormData({ name: '', price: '', categoryId: '', description: '', isAvailable: true });
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to update item:', error);
+      toast.error('Failed to update item');
+    }
+  };
+
+  const handleImport = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const text = event.target?.result as string;
+          const lines = text.split('\n').filter(line => line.trim());
+          const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+          
+          const importedItems = [];
+          for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            const item: any = {};
+            headers.forEach((header, index) => {
+              let value = values[index]?.trim().replace(/^"|"$/g, '') || '';
+              item[header] = value;
+            });
+            
+            if (item.name && item.price) {
+              importedItems.push({
+                name: item.name,
+                price: parseFloat(item.price) || 0,
+                categoryId: formData.categoryId || undefined,
+                description: item.description || '',
+                isAvailable: item.available !== 'false',
+              });
+            }
+          }
+
+          if (importedItems.length === 0) {
+            toast.error('No valid items found in CSV');
+            return;
+          }
+
+          toast.loading(`Importing ${importedItems.length} items...`, { id: 'import' });
+          
+          for (const item of importedItems) {
+            await menuService.createItem(item);
+          }
+          
+          toast.success(`Imported ${importedItems.length} items successfully!`, { id: 'import' });
+          window.location.reload();
+        } catch (error) {
+          console.error('Import error:', error);
+          toast.error('Failed to import items');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   };
 
   const handleExport = () => {
@@ -116,6 +234,7 @@ const AdvancedMenuScreen: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => { setEditingItem(null); setFormData({ name: '', price: '', categoryId: '', description: '', isAvailable: true }); setShowAddModal(true); }}
             className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
           >
             <Plus className="w-5 h-5" />
@@ -296,7 +415,7 @@ const AdvancedMenuScreen: React.FC = () => {
                   </div>
                   <div className="flex gap-2">
                     <button 
-                      onClick={() => handleEditItem(item.id)}
+                      onClick={() => handleEditItemClick(item)}
                       className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
                     >
                       <Edit className="w-4 h-4" />
@@ -458,6 +577,43 @@ const AdvancedMenuScreen: React.FC = () => {
               </div>
             </motion.div>
           ))}
+        </div>
+)}
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-2xl font-bold mb-4">{editingItem ? 'Edit Item' : 'Add New Item'}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Name *</label>
+                <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Item name" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Price *</label>
+                <input type="number" step="0.01" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0.00" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Category *</label>
+                <select value={formData.categoryId} onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                  <option value="">Select category</option>
+                  {categories?.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+                <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={3} placeholder="Item description" />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="isAvailable" checked={formData.isAvailable} onChange={(e) => setFormData({ ...formData, isAvailable: e.target.checked })} className="w-4 h-4" />
+                <label htmlFor="isAvailable" className="text-sm text-gray-700">Available for ordering</label>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => { setShowAddModal(false); setEditingItem(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={editingItem ? handleUpdateItem : handleAddItem} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{editingItem ? 'Update' : 'Add Item'}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

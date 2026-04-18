@@ -14,6 +14,17 @@ const AdvancedInventoryScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'inventory' | 'purchase-orders' | 'recipes' | 'vendors'>('inventory');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [showItemModal, setShowItemModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    sku: '',
+    category: '',
+    currentStock: '',
+    minStock: '',
+    costPerUnit: '',
+    unit: ' pcs',
+  });
 
   const { data: inventoryData } = useQuery({
     queryKey: ['inventory'],
@@ -71,8 +82,61 @@ const AdvancedInventoryScreen: React.FC = () => {
     }
   };
 
-  const handleEditItem = (itemId: string) => {
-    toast(`Edit functionality for item ${itemId} - Coming soon!`, { icon: 'ℹ️' });
+  const handleEditItem = (item: any) => {
+    setSelectedItem(item);
+    setFormData({
+      name: item.name || '',
+      sku: item.sku || '',
+      category: item.category || '',
+      currentStock: String(item.currentStock || 0),
+      minStock: String(item.minStock || 0),
+      costPerUnit: String(item.costPerUnit || 0),
+      unit: item.unit || 'pcs',
+    });
+    setShowItemModal(true);
+  };
+
+  const handleUpdateItem = async () => {
+    if (!selectedItem || !formData.name) {
+      toast.error('Please fill required fields');
+      return;
+    }
+    try {
+      await inventoryService.updateItem(selectedItem.id, {
+        name: formData.name,
+        sku: formData.sku,
+        category: formData.category,
+        currentStock: parseInt(formData.currentStock) || 0,
+        minStock: parseInt(formData.minStock) || 0,
+        costPerUnit: parseFloat(formData.costPerUnit) || 0,
+      });
+      toast.success('Item updated successfully');
+      setShowItemModal(false);
+      setSelectedItem(null);
+    } catch (error) {
+      toast.error('Failed to update item');
+    }
+  };
+
+  const handleAddItem = async () => {
+    if (!formData.name) {
+      toast.error('Please fill required fields');
+      return;
+    }
+    try {
+      await inventoryService.createItem({
+        name: formData.name,
+        sku: formData.sku,
+        category: formData.category,
+        currentStock: parseInt(formData.currentStock) || 0,
+        minStock: parseInt(formData.minStock) || 0,
+        costPerUnit: parseFloat(formData.costPerUnit) || 0,
+      });
+      toast.success('Item added successfully');
+      setShowItemModal(false);
+    } catch (error) {
+      toast.error('Failed to add item');
+    }
   };
 
   const getPOStatusColor = (status: string) => {
@@ -105,6 +169,7 @@ const AdvancedInventoryScreen: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => { setSelectedItem(null); setFormData({ name: '', sku: '', category: '', currentStock: '', minStock: '', costPerUnit: '', unit: 'pcs' }); setShowItemModal(true); }}
             className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
           >
             <Plus className="w-5 h-5" />
@@ -308,7 +373,7 @@ const AdvancedInventoryScreen: React.FC = () => {
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
                       <button 
-                        onClick={() => handleEditItem(item.id)}
+                        onClick={() => handleEditItem(item)}
                         className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
                       >
                         <Edit className="w-4 h-4 text-blue-600" />
@@ -496,6 +561,46 @@ const AdvancedInventoryScreen: React.FC = () => {
               </div>
             </motion.div>
           ))}
+        </div>
+      )}
+
+      {showItemModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-2xl font-bold mb-4">{selectedItem ? 'Edit Item' : 'Add New Item'}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Name *</label>
+                <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Item name" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">SKU</label>
+                <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="SKU-001" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Category</label>
+                <input type="text" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Produce" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Current Stock</label>
+                  <input type="number" value={formData.currentStock} onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Min Stock</label>
+                  <input type="number" value={formData.minStock} onChange={(e) => setFormData({ ...formData, minStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="10" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Cost Per Unit</label>
+                <input type="number" step="0.01" value={formData.costPerUnit} onChange={(e) => setFormData({ ...formData, costPerUnit: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0.00" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => { setShowItemModal(false); setSelectedItem(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={selectedItem ? handleUpdateItem : handleAddItem} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{selectedItem ? 'Update' : 'Add Item'}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

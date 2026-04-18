@@ -8,8 +8,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useOrderStore } from '../../stores/orderStore';
 import { reportService } from '../../services/reportService';
+import { getHardwareManager, ReceiptData } from '../../services/hardwareManager';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { useCurrencyFormatter } from '../../hooks/useCurrency';
 
 // Import all POS flow screens
 import OrderTypeSelection from './OrderTypeSelection';
@@ -30,6 +33,7 @@ const AdvancedCashierPOS: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { clearOrder } = useOrderStore();
+  const { formatCurrency } = useCurrencyFormatter();
 
   // State management for POS flow
   const [currentStep, setCurrentStep] = useState<POSStep>('ORDER_TYPE');
@@ -133,12 +137,63 @@ const AdvancedCashierPOS: React.FC = () => {
     navigate('/login');
   };
 
-  const handlePrintReceipt = () => {
-    toast.success('Printing receipt...');
+  const handlePrintReceipt = async () => {
+    const orderState = useOrderStore.getState();
+    const settingsState = useSettingsStore.getState();
+    const { settings } = settingsState;
+    const currentOrder = orderState.items;
+    
+    if (currentOrder.length === 0) {
+      toast.error('No items in order to print');
+      return;
+    }
+
+    try {
+      const hardwareManager = getHardwareManager();
+      const receiptData: ReceiptData = {
+        restaurantName: settings.restaurantName || 'Restaurant',
+        restaurantAddress: settings.address || '',
+        restaurantPhone: settings.phone || '',
+        orderNumber: `ORD-${Date.now().toString().slice(-6)}`,
+        cashierName: user?.name || 'Cashier',
+        items: currentOrder.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          notes: item.notes || undefined,
+        })),
+        subtotal: orderState.subtotal,
+        tax: orderState.tax,
+        taxRate: settings.taxRate || 10,
+        discount: orderState.discount,
+        total: orderState.total,
+        paymentMethod: 'CASH',
+        change: 0,
+      };
+
+      const success = await hardwareManager.printReceipt(receiptData);
+      if (success) {
+        toast.success('Receipt printed successfully!');
+      } else {
+        toast.error('Failed to print receipt');
+      }
+    } catch (error) {
+      toast.error('Printer not available');
+    }
   };
 
-  const handleOpenCashDrawer = () => {
-    toast.success('Opening cash drawer...');
+  const handleOpenCashDrawer = async () => {
+    try {
+      const hardwareManager = getHardwareManager();
+      const success = await hardwareManager.openCashDrawer();
+      if (success) {
+        toast.success('Cash drawer opened!');
+      } else {
+        toast.error('Cash drawer not available');
+      }
+    } catch (error) {
+      toast.error('Cash drawer not available');
+    }
   };
 
   return (
@@ -163,11 +218,11 @@ const AdvancedCashierPOS: React.FC = () => {
           </div>
           <div className="text-center">
             <p className="text-xs text-gray-500">Revenue</p>
-            <p className="text-lg font-bold text-green-600">${todayStats.revenue.toFixed(2)}</p>
+            <p className="text-lg font-bold text-green-600">{formatCurrency(todayStats.revenue)}</p>
           </div>
           <div className="text-center">
             <p className="text-xs text-gray-500">Avg Order</p>
-            <p className="text-lg font-bold text-primary">${todayStats.avgOrderValue.toFixed(2)}</p>
+            <p className="text-lg font-bold text-primary">{formatCurrency(todayStats.avgOrderValue)}</p>
           </div>
         </div>
 
@@ -242,7 +297,18 @@ const AdvancedCashierPOS: React.FC = () => {
               <span className="text-sm text-gray-700">View Orders</span>
             </button>
             <button
-              onClick={() => { /* Sync offline data */ setShowQuickActions(false); }}
+              onClick={async () => {
+                try {
+                  toast.loading('Syncing data...', { id: 'sync' });
+                  await reportService.getDailySales();
+                  await reportService.getMonthlySales('7d');
+                  toast.success('Data synced successfully!', { id: 'sync' });
+                } catch (error) {
+                  toast.error('Sync failed - working offline', { id: 'sync' });
+                  setIsOnline(false);
+                }
+                setShowQuickActions(false);
+              }}
               className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors"
             >
               <RefreshCw className="w-4 h-4 text-gray-600" />

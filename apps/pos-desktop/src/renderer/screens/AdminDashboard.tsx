@@ -23,9 +23,12 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { reportService } from '../services/reportService';
+import { getHardwareManager, ReceiptData } from '../services/hardwareManager';
 import { orderService } from '../services/orderService';
 import { inventoryService } from '../services/inventoryService';
 import { tableService } from '../services/tableService';
+import { useSettingsStore } from '../stores/settingsStore';
+import { useCurrencyFormatter } from '../hooks/useCurrency';
 import toast from 'react-hot-toast';
 import {
   BarChart,
@@ -45,8 +48,12 @@ import {
 const AdminDashboard: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('7d');
   const navigate = useNavigate();
+  const { formatCurrency } = useCurrencyFormatter();
 
-  const handleQuickAction = (action: string) => {
+  const handleQuickAction = async (action: string) => {
+    const settingsState = useSettingsStore.getState();
+    const { settings } = settingsState;
+    
     switch (action) {
       case 'POS':
         navigate('/cashier-pos');
@@ -61,14 +68,41 @@ const AdminDashboard: React.FC = () => {
         navigate('/reports');
         break;
       case 'PRINT_Z':
-        toast.promise(
-          new Promise((resolve) => setTimeout(resolve, 1500)),
-          {
-            loading: 'Generating Z-Report...',
-            success: 'Z-Report printed successfully!',
-            error: 'Failed to print report',
-          }
-        );
+        try {
+          toast.promise(
+            (async () => {
+              const hardwareManager = getHardwareManager();
+              const salesData = dailySales || {};
+              
+              const zReportData: ReceiptData = {
+                restaurantName: settings.restaurantName || 'Restaurant',
+                restaurantAddress: settings.address || '',
+                restaurantPhone: settings.phone || '',
+                orderNumber: `Z-REP-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`,
+                cashierName: 'Z-Report',
+                items: [],
+                subtotal: salesData.totalRevenue || 0,
+                tax: (salesData.totalRevenue || 0) * ((settings.taxRate || 10) / 100),
+                taxRate: settings.taxRate || 10,
+                discount: 0,
+                total: salesData.totalRevenue || 0,
+                paymentMethod: 'Z-Report Summary',
+                change: salesData.totalOrders || 0,
+              };
+
+              const success = await hardwareManager.printReceipt(zReportData);
+              if (!success) throw new Error('Print failed');
+              return success;
+            })(),
+            {
+              loading: 'Generating Z-Report...',
+              success: 'Z-Report printed successfully!',
+              error: 'Failed to print report - check printer connection',
+            }
+          );
+        } catch (error) {
+          toast.error('Printer not available');
+        }
         break;
       case 'REFUND':
         navigate('/orders?tab=completed');
@@ -183,7 +217,7 @@ const AdminDashboard: React.FC = () => {
   const statsCards = [
     {
       title: "Today's Revenue",
-      value: `$${todayRevenue.toFixed(2)}`,
+      value: formatCurrency(todayRevenue),
       change: `+${revenueGrowth}%`,
       trend: 'up',
       icon: DollarSign,
@@ -199,7 +233,7 @@ const AdminDashboard: React.FC = () => {
     },
     {
       title: 'Avg Order Value',
-      value: `$${avgOrderValue.toFixed(2)}`,
+      value: formatCurrency(avgOrderValue),
       change: '+5.2%',
       trend: 'up',
       icon: Activity,

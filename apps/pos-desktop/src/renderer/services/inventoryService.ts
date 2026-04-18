@@ -32,4 +32,8 @@ export const inventoryService = {
   getMovements: (params?: { itemId?: string; page?: number; limit?: number }) =>
     api.get('/inventory/movements', { params }),
   getValuation: () => api.get('/inventory/reports/valuation'),
+  getVendors: () => api.get('/vendors'),
+  createVendor: (data: any) => api.post('/vendors', data),
+  updateVendor: (id: string, data: any) => api.put(`/vendors/${id}`, data),
+  deleteVendor: (id: string) => api.delete(`/vendors/${id}`),
 };

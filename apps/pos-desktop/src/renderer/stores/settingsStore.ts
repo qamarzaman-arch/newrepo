@@ -1,12 +1,25 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export const CURRENCY_OPTIONS = [
+  { value: 'USD', label: 'USD - US Dollar ($)' },
+  { value: 'EUR', label: 'EUR - Euro (€)' },
+  { value: 'GBP', label: 'GBP - British Pound (£)' },
+  { value: 'AED', label: 'AED - UAE Dirham (د.إ)' },
+  { value: 'PKR', label: 'PKR - Pakistani Rupee (₨)' },
+  { value: 'INR', label: 'INR - Indian Rupee (₹)' },
+  { value: 'BDT', label: 'BDT - Bangladeshi Taka (৳)' },
+  { value: 'SAR', label: 'SAR - Saudi Riyal (﷼)' },
+];
+
 export interface AppSettings {
   // General
   currency: string;
   taxRate: number;
   serviceCharge: number;
   restaurantName: string;
+  address: string;
+  phone: string;
   tagline: string;
   timezone: string;
   language: string;
@@ -60,6 +73,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   taxRate: 8.5,
   serviceCharge: 0,
   restaurantName: 'POSLytic Restaurant',
+  address: '123 Main Street',
+  phone: '+1 234 567 8900',
   tagline: 'Smart restaurant operations made simple',
   timezone: 'Asia/Karachi',
   language: 'en',

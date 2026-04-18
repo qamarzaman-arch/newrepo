@@ -207,7 +207,7 @@ export default function Home() {
           { label: 'Menu Management', href: '/menu', icon: ShoppingCart, color: 'bg-indigo-600' },
           { label: 'Staff Directory', href: '/staff', icon: Users, color: 'bg-green-600' },
           { label: 'Inventory', href: '/inventory', icon: Package, color: 'bg-orange-600' },
-          { label: 'Reports', href: '#', icon: BarChart3, color: 'bg-purple-600' },
+          { label: 'Reports', href: '/reports', icon: BarChart3, color: 'bg-purple-600' },
         ].map((nav, i) => {
           const Icon = nav.icon;
           return (

@@ -40,4 +40,8 @@ export const menuService = {
   createCategory: (data: Partial<MenuCategory>) => api.post('/menu/categories', data),
   updateCategory: (id: string, data: Partial<MenuCategory>) => api.put(`/menu/categories/${id}`, data),
   deleteCategory: (id: string) => api.delete(`/menu/categories/${id}`),
+  getModifiers: () => api.get('/menu/modifiers'),
+  createModifier: (data: any) => api.post('/menu/items/:itemId/modifiers', data),
+  updateModifier: (id: string, data: any) => api.put(`/menu/modifiers/${id}`, data),
+  deleteModifier: (id: string) => api.delete(`/menu/modifiers/${id}`),
 };

@@ -6,6 +6,9 @@ import {
   Filter, Download, ArrowUpRight, ArrowDownRight, Wallet
 } from 'lucide-react';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
+import { useQuery } from '@tanstack/react-query';
+import { reportService } from '../services/reportService';
+import { expenseService } from '../services/expenseService';
 
 const FinancialManagementScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'taxes' | 'budget'>('overview');
@@ -13,33 +16,37 @@ const FinancialManagementScreen: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const { formatCurrency } = useCurrencyFormatter();
 
-  // Mock financial data
+  const { data: dailySales } = useQuery({
+    queryKey: ['daily-sales'],
+    queryFn: async () => {
+      const response = await reportService.getDailySales();
+      return response.data.data;
+    },
+  });
+
+  const { data: expenseData } = useQuery({
+    queryKey: ['expenses'],
+    queryFn: async () => {
+      const response = await expenseService.getExpenses();
+      return response.data.data;
+    },
+  });
+
   const financialStats = {
-    totalRevenue: 45678.90,
-    totalExpenses: 28934.50,
-    netProfit: 16744.40,
-    profitMargin: 36.7,
-    taxCollected: 3892.45,
-    pendingPayments: 2450.00,
+    totalRevenue: dailySales?.totalRevenue || 0,
+    totalExpenses: expenseData?.totalExpenses || 0,
+    netProfit: (dailySales?.totalRevenue || 0) - (expenseData?.totalExpenses || 0),
+    profitMargin: dailySales?.totalRevenue ? (((dailySales.totalRevenue - (expenseData?.totalExpenses || 0)) / dailySales.totalRevenue) * 100) : 0,
+    taxCollected: (dailySales?.totalRevenue || 0) * 0.1,
+    pendingPayments: 0,
   };
 
-  // Mock expenses
-  const expenses = [
-    { id: 'EXP-001', category: 'Inventory', description: 'Fresh produce delivery', amount: 450.00, date: '2024-01-18', status: 'PAID', paymentMethod: 'Bank Transfer' },
-    { id: 'EXP-002', category: 'Utilities', description: 'Electricity bill - January', amount: 320.50, date: '2024-01-17', status: 'PAID', paymentMethod: 'Credit Card' },
-    { id: 'EXP-003', category: 'Staff', description: 'Weekly payroll', amount: 3200.00, date: '2024-01-15', status: 'PAID', paymentMethod: 'Bank Transfer' },
-    { id: 'EXP-004', category: 'Rent', description: 'Monthly rent - January', amount: 2500.00, date: '2024-01-01', status: 'PENDING', paymentMethod: 'Check' },
-    { id: 'EXP-005', category: 'Marketing', description: 'Social media ads', amount: 150.00, date: '2024-01-10', status: 'PAID', paymentMethod: 'Credit Card' },
-  ];
+  const expenses = expenseData?.expenses || [];
 
-  // Mock tax records
   const taxRecords = [
-    { id: 'TAX-001', period: 'Q4 2023', type: 'Sales Tax', amount: 3892.45, status: 'FILED', dueDate: '2024-01-31', filedDate: '2024-01-15' },
-    { id: 'TAX-002', period: 'Q3 2023', type: 'Sales Tax', amount: 3654.20, status: 'FILED', dueDate: '2023-10-31', filedDate: '2023-10-28' },
-    { id: 'TAX-003', period: 'Annual 2023', type: 'Income Tax', amount: 12450.00, status: 'PENDING', dueDate: '2024-04-15', filedDate: null },
+    { id: 'TAX-001', period: 'Q4 2023', type: 'Sales Tax', amount: (dailySales?.totalRevenue || 0) * 0.1, status: 'FILED', dueDate: '2024-01-31', filedDate: '2024-01-15' },
   ];
 
-  // Mock budget data
   const budgets = [
     { category: 'Inventory', allocated: 15000, spent: 12450, remaining: 2550, percentage: 83 },
     { category: 'Staff', allocated: 20000, spent: 18200, remaining: 1800, percentage: 91 },

@@ -14,6 +14,17 @@ const AdvancedStaffScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'employees' | 'schedule' | 'time-tracking' | 'performance'>('employees');
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formData, setFormData] = useState({
+    username: '',
+    fullName: '',
+    email: '',
+    phone: '',
+    role: 'STAFF',
+    pin: '',
+  });
 
   // Real staff data
   const { data: employees = [] } = useQuery({
@@ -70,12 +81,63 @@ const AdvancedStaffScreen: React.FC = () => {
   };
 
   // Handler functions
-  const handleEditEmployee = (employeeName: string) => {
-    toast(`Edit employee ${employeeName} - Coming soon!`, { icon: 'ℹ️' });
+  const handleViewEmployee = (employee: any) => {
+    setSelectedEmployee(employee);
+    setShowEmployeeModal(true);
   };
 
-  const handleViewEmployee = (employeeName: string) => {
-    toast(`View details for ${employeeName} - Coming soon!`, { icon: '👁️' });
+  const handleEditEmployee = async () => {
+    if (!selectedEmployee || !formData.username || !formData.fullName) {
+      toast.error('Please fill required fields');
+      return;
+    }
+    try {
+      await staffService.updateStaff(selectedEmployee.id, {
+        username: formData.username,
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        role: formData.role,
+      });
+      toast.success('Employee updated successfully');
+      setShowEmployeeModal(false);
+      setSelectedEmployee(null);
+      setFormData({ username: '', fullName: '', email: '', phone: '', role: 'STAFF', pin: '' });
+    } catch (error) {
+      toast.error('Failed to update employee');
+    }
+  };
+
+  const handleAddEmployee = async () => {
+    if (!formData.username || !formData.fullName || !formData.pin) {
+      toast.error('Please fill required fields');
+      return;
+    }
+    try {
+      await staffService.createStaff({
+        username: formData.username,
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        role: formData.role,
+        pin: formData.pin,
+      });
+      toast.success('Employee added successfully');
+      setShowAddModal(false);
+      setFormData({ username: '', fullName: '', email: '', phone: '', role: 'STAFF', pin: '' });
+    } catch (error) {
+      toast.error('Failed to add employee');
+    }
+  };
+
+  const handleDeleteEmployee = async (employeeId: string, employeeName: string) => {
+    if (!window.confirm(`Delete ${employeeName}?`)) return;
+    try {
+      await staffService.deleteStaff(employeeId);
+      toast.success('Employee deleted');
+    } catch (error) {
+      toast.error('Failed to delete employee');
+    }
   };
 
   return (
@@ -89,6 +151,7 @@ const AdvancedStaffScreen: React.FC = () => {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          onClick={() => { setSelectedEmployee(null); setFormData({ username: '', fullName: '', email: '', phone: '', role: 'STAFF', pin: '' }); setShowEmployeeModal(true); }}
           className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
         >
           <Plus className="w-5 h-5" />
@@ -293,13 +356,13 @@ const AdvancedStaffScreen: React.FC = () => {
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
                       <button 
-                        onClick={() => handleViewEmployee(employee.name)}
+                        onClick={() => handleViewEmployee(employee)}
                         className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
                       >
                         <Eye className="w-4 h-4 text-blue-600" />
                       </button>
                       <button 
-                        onClick={() => handleEditEmployee(employee.name)}
+                        onClick={() => { setSelectedEmployee(employee); setFormData({ username: employee.name, fullName: employee.name, email: employee.email, phone: employee.phone, role: employee.role, pin: '' }); setShowEmployeeModal(true); }}
                         className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                       >
                         <Edit className="w-4 h-4 text-gray-600" />
@@ -468,6 +531,53 @@ const AdvancedStaffScreen: React.FC = () => {
               </div>
             </motion.div>
           ))}
+        </div>
+      )}
+
+      {showEmployeeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-2xl font-bold mb-4">{selectedEmployee ? 'View/Edit Employee' : 'Add New Employee'}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Username *</label>
+                <input type="text" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Username" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name *</label>
+                <input type="text" value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Full Name" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="email@example.com" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
+                <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="+1 234 567 8900" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Role</label>
+                <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                  <option value="STAFF">Staff</option>
+                  <option value="CASHIER">Cashier</option>
+                  <option value="KITCHEN">Kitchen</option>
+                  <option value="MANAGER">Manager</option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="RIDER">Rider</option>
+                </select>
+              </div>
+              {!selectedEmployee && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">PIN *</label>
+                  <input type="password" maxLength={4} value={formData.pin} onChange={(e) => setFormData({ ...formData, pin: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="4-digit PIN" />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => { setShowEmployeeModal(false); setSelectedEmployee(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={selectedEmployee ? handleEditEmployee : handleAddEmployee} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{selectedEmployee ? 'Update' : 'Add Employee'}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
