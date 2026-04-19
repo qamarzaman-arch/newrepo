@@ -15,6 +15,9 @@ export interface CreateOrderData {
   customerPhone?: string;
   items: OrderItem[];
   discountCode?: string;
+  discountPercent?: number;
+  discountAmount?: number;
+  tipAmount?: number;
   notes?: string;
   kitchenNotes?: string;
 }
@@ -34,4 +37,15 @@ export const orderService = {
   createReservation: (data: any) => api.post('/orders/reservations', data),
   updateReservation: (id: string, data: any) => api.put(`/orders/reservations/${id}`, data),
   cancelReservation: (id: string) => api.delete(`/orders/reservations/${id}`),
+  refundOrder: (id: string, data: {
+    type: 'FULL' | 'PARTIAL';
+    reason: string;
+    amount: number;
+    items?: string[];
+    managerPin: string;
+    approvedBy: string;
+    processedBy?: string;
+    refundMethod?: string;
+    originalPaymentMethod?: string;
+  }) => api.post(`/orders/${id}/refund`, data),
 };

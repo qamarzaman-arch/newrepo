@@ -1,18 +1,33 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { kitchenService } from '../services/kitchenService';
-import { Clock } from 'lucide-react';
+import { Clock, Wifi, WifiOff, Bell } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useKitchenWebSocket } from '../hooks/useWebSocket';
 
 const KitchenScreen: React.FC = () => {
+  const queryClient = useQueryClient();
+  
   const { data: ticketsData, refetch } = useQuery({
     queryKey: ['kitchen-tickets'],
     queryFn: async () => {
       const response = await kitchenService.getActiveTickets();
       return response.data.data.tickets;
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000, // Fallback: Refetch every 30 seconds
   });
+
+  // Real-time updates via WebSocket
+  const handleNewTicket = useCallback((ticket: any) => {
+    toast.success(`New order: ${ticket.ticketNumber}`, { icon: <Bell className="w-4 h-4" /> });
+    queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
+  }, [queryClient]);
+
+  const handleTicketUpdate = useCallback((_ticket: any) => {
+    queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
+  }, [queryClient]);
+
+  const { isConnected } = useKitchenWebSocket(handleNewTicket, handleTicketUpdate);
 
   const handleStatusUpdate = async (ticketId: string, status: 'NEW' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED') => {
     try {
@@ -38,7 +53,13 @@ const KitchenScreen: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Kitchen Display</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-900">Kitchen Display</h1>
+        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+          {isConnected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+          {isConnected ? 'Real-time' : 'Polling'}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {columns.map((column) => {

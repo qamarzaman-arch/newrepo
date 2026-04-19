@@ -25,6 +25,8 @@ class OfflineQueueManager {
   private readonly STORAGE_KEY = 'pos_offline_queue';
   private readonly MAX_RETRIES = 3;
   private syncInterval: NodeJS.Timeout | null = null;
+  private onlineHandler: (() => void) | null = null;
+  private offlineHandler: (() => void) | null = null;
 
   constructor() {
     this.loadQueue();
@@ -33,18 +35,22 @@ class OfflineQueueManager {
   }
 
   private setupEventListeners() {
-    window.addEventListener('online', () => {
+    // Store handler references so they can be properly removed
+    this.onlineHandler = () => {
       this.isOnline = true;
       console.log('Connection restored. Starting sync...');
       toast.success('Connection restored. Syncing orders...');
       this.syncQueue();
-    });
+    };
 
-    window.addEventListener('offline', () => {
+    this.offlineHandler = () => {
       this.isOnline = false;
       console.log('Connection lost. Orders will be queued.');
       toast.error('Connection lost. Orders will be saved and synced when online.');
-    });
+    };
+
+    window.addEventListener('online', this.onlineHandler);
+    window.addEventListener('offline', this.offlineHandler);
   }
 
   private startAutoSync() {
@@ -91,7 +97,7 @@ class OfflineQueueManager {
     this.saveQueue();
 
     console.log(`Order ${queuedOrder.id} added to offline queue with payment info`);
-    toast.info(`Order queued offline. Will sync when connection is restored.`);
+    toast.success(`Order queued offline. Will sync when connection is restored.`);
 
     // Try to sync immediately if online
     if (this.isOnline) {
@@ -235,9 +241,17 @@ class OfflineQueueManager {
   public destroy() {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
+      this.syncInterval = null;
     }
-    window.removeEventListener('online', () => {});
-    window.removeEventListener('offline', () => {});
+    // Properly remove the stored event handlers
+    if (this.onlineHandler) {
+      window.removeEventListener('online', this.onlineHandler);
+    }
+    if (this.offlineHandler) {
+      window.removeEventListener('offline', this.offlineHandler);
+    }
+    this.onlineHandler = null;
+    this.offlineHandler = null;
   }
 }
 

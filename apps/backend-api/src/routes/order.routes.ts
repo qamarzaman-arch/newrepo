@@ -1,9 +1,10 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { logger } from '../utils/logger';
+import { logger, sanitize } from '../utils/logger';
 import { getWebSocketManager } from '../utils/websocket';
 
 const router = Router();
@@ -22,6 +23,9 @@ const createOrderSchema = z.object({
     modifiers: z.string().optional(),
   })).min(1),
   discountCode: z.string().optional(),
+  discountPercent: z.number().min(0).max(100).optional(),
+  discountAmount: z.number().min(0).optional(),
+  tipAmount: z.number().min(0).optional(),
   notes: z.string().optional(),
   kitchenNotes: z.string().optional(),
 });
@@ -29,12 +33,32 @@ const createOrderSchema = z.object({
 // Get all orders with filters
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { status, orderType, startDate, endDate, page = 1, limit = 50 } = req.query;
+    const { status, orderType, paymentMethod, startDate, endDate, page = 1, limit = 50 } = req.query;
 
     const where: any = {};
 
-    if (status) where.status = status;
+    // Support comma-separated status (e.g., status=PENDING,PREPARING,READY)
+    if (status) {
+      const statusList = (status as string).split(',').filter(Boolean);
+      if (statusList.length === 1) {
+        where.status = statusList[0];
+      } else if (statusList.length > 1) {
+        where.status = { in: statusList };
+      }
+    }
+
     if (orderType) where.orderType = orderType;
+
+    // Support payment method filtering via payments relation
+    let paymentFilter: any = {};
+    if (paymentMethod && paymentMethod !== 'all') {
+      paymentFilter = {
+        some: {
+          method: paymentMethod as string,
+        },
+      };
+    }
+
     if (startDate || endDate) {
       where.orderedAt = {};
       if (startDate) where.orderedAt.gte = new Date(startDate as string);
@@ -43,7 +67,10 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
 
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
-        where,
+        where: {
+          ...where,
+          ...(paymentMethod && paymentMethod !== 'all' ? { payments: paymentFilter } : {}),
+        },
         include: {
           items: {
             include: {
@@ -56,12 +83,18 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
             select: { id: true, fullName: true },
           },
           delivery: true,
+          payments: true,
         },
         orderBy: { orderedAt: 'desc' },
         skip: (Number(page) - 1) * Number(limit),
         take: Number(limit),
       }),
-      prisma.order.count({ where }),
+      prisma.order.count({
+        where: {
+          ...where,
+          ...(paymentMethod && paymentMethod !== 'all' ? { payments: paymentFilter } : {}),
+        },
+      }),
     ]);
 
     res.json({
@@ -220,11 +253,12 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
       });
     }
 
-    // Apply discount if code provided
-    let discountAmount = 0;
-    let discountPercent = 0;
+    // Apply discount - prefer frontend values over code lookup
+    let discountAmount = data.discountAmount || 0;
+    let discountPercent = data.discountPercent || 0;
 
-    if (data.discountCode) {
+    // If discount code provided, look it up (frontend values take precedence if both provided)
+    if (data.discountCode && !discountAmount && !discountPercent) {
       const discount = await prisma.discount.findUnique({
         where: { code: data.discountCode },
       });
@@ -266,7 +300,10 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
       }
     }
 
-    const totalAmount = subtotal - discountAmount + taxAmount + surchargeAmount;
+    // Get tip from frontend (cashier-entered tip)
+    const tipAmount = data.tipAmount || 0;
+
+    const totalAmount = subtotal - discountAmount + taxAmount + surchargeAmount + tipAmount;
 
     // Create order with transaction
     const order = await prisma.$transaction(async (tx) => {
@@ -284,6 +321,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
           discountPercent,
           taxAmount,
           surchargeAmount,
+          tipAmount: tipAmount || undefined,
           totalAmount,
           cashierId: req.user!.userId,
           notes: data.notes,
@@ -291,7 +329,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
           items: {
             create: orderItems,
           },
-        },
+        } as any,
         include: {
           items: {
             include: {
@@ -312,17 +350,89 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
         });
       }
 
-      // Create KOT tickets for kitchen
+      // Create KOT tickets for kitchen with unique timestamp-based IDs
+      let kotCounter = 1;
       for (const item of newOrder.items) {
+        const timestamp = Date.now();
+        const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
         await tx.kotTicket.create({
           data: {
-            ticketNumber: `KOT-${dateStr}-${String(await tx.kotTicket.count() + 1).padStart(3, '0')}`,
+            ticketNumber: `KOT-${dateStr}-${String(kotCounter).padStart(3, '0')}-${timestamp}-${randomSuffix}`,
             orderId: newOrder.id,
             orderItemId: item.id,
             course: 'main',
             status: 'NEW',
           },
         });
+        kotCounter++;
+      }
+
+      // Auto-deduct inventory for items with menuItem recipes
+      for (const item of newOrder.items) {
+        if (item.menuItemId) {
+          // Get recipe ingredients for this menu item
+          const recipes = await (tx as any).recipe.findMany({
+            where: { menuItemId: item.menuItemId },
+            include: { inventoryItem: true },
+          });
+
+          for (const recipe of recipes) {
+            if (recipe.inventoryItemId) {
+              const requiredQty = recipe.quantity * item.quantity;
+              const inventoryItem = recipe.inventoryItem;
+
+              // Check if sufficient stock
+              if (inventoryItem.currentStock < requiredQty) {
+                // Log low stock but don't fail order - kitchen will handle it
+                logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available: ${inventoryItem.currentStock}`);
+              }
+
+              // Deduct from inventory
+              const newStock = Math.max(0, inventoryItem.currentStock - requiredQty);
+              const status = newStock <= inventoryItem.minStockLevel ? 'LOW_STOCK' :
+                            newStock === 0 ? 'OUT_OF_STOCK' : 'ACTIVE';
+
+              await (tx as any).inventoryItem.update({
+                where: { id: inventoryItem.id },
+                data: {
+                  currentStock: newStock,
+                  status,
+                },
+              });
+
+              // Record stock movement (if table exists)
+              try {
+                await (tx as any).stockMovement.create({
+                  data: {
+                    inventoryItemId: inventoryItem.id,
+                    type: 'SALE',
+                    quantity: requiredQty,
+                    reference: `Order ${orderNumber}`,
+                    notes: `Auto-deducted for order`,
+                  },
+                });
+              } catch (e) {
+                // Table may not exist, skip
+              }
+
+              // Create low stock alert if needed (if table exists)
+              if (status === 'LOW_STOCK') {
+                try {
+                  await (tx as any).stockAlert.create({
+                    data: {
+                      inventoryItemId: inventoryItem.id,
+                      alertType: 'LOW_STOCK',
+                      message: `${inventoryItem.name} is below minimum level. Current: ${newStock}, Min: ${inventoryItem.minStockLevel}`,
+                      status: 'ACTIVE',
+                    },
+                  });
+                } catch (e) {
+                  // Table may not exist, skip
+                }
+              }
+            }
+          }
+        }
       }
 
       return newOrder;
@@ -332,7 +442,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
     const ws = getWebSocketManager();
     ws.emitOrderCreated(order);
 
-    logger.info(`Order created: ${orderNumber} by ${req.user!.username}`);
+    logger.info(`Order created: ${sanitize(orderNumber)} by ${sanitize(req.user!.username)}`);
 
     res.status(201).json({
       success: true,
@@ -447,13 +557,23 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
       },
     });
 
+    let finalOrder = updatedOrder;
+    
     // If fully paid and not completed, mark as completed
     if (paidAmount >= Number(order.totalAmount) && order.status !== 'COMPLETED') {
-      await prisma.order.update({
+      finalOrder = await prisma.order.update({
         where: { id: order.id },
         data: {
           status: 'COMPLETED',
           completedAt: new Date(),
+        },
+        include: {
+          payments: true,
+          items: {
+            include: {
+              menuItem: true,
+            },
+          },
         },
       });
 
@@ -467,13 +587,17 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
           },
         });
       }
+      
+      // Emit WebSocket event for status change to COMPLETED
+      const ws = getWebSocketManager();
+      ws.emitOrderStatusChanged(finalOrder.id, 'COMPLETED');
     }
 
-    // Emit real-time event via WebSocket
+    // Emit real-time event via WebSocket for payment update
     const ws = getWebSocketManager();
-    ws.emitOrderStatusChanged(updatedOrder.id, updatedOrder.status);
+    ws.emitOrderStatusChanged(finalOrder.id, finalOrder.status);
 
-    logger.info(`Payment processed for order ${order.orderNumber}: ${amount}`);
+    logger.info(`Payment processed for order ${sanitize(order.orderNumber)}: ${amount}`);
 
     res.json({
       success: true,
@@ -518,6 +642,204 @@ router.delete('/reservations/:id', authenticate, async (req: AuthRequest, res: R
       },
     });
     res.json({ success: true, message: 'Reservation cancelled' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Process refund for order
+router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { type, reason, amount, items, managerPin, approvedBy, refundMethod, originalPaymentMethod } = req.body;
+
+    const order = await prisma.order.findUnique({
+      where: { id: req.params.id },
+      include: { payments: true },
+    });
+
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+
+    // Verify order was paid
+    if (order.paymentStatus !== 'PAID') {
+      throw new AppError('Cannot refund unpaid order', 400);
+    }
+
+    // Validate manager PIN
+    const managerPinSetting = await prisma.setting.findUnique({
+      where: { key: 'manager_pin' },
+    });
+
+    if (!managerPinSetting) {
+      throw new AppError('Manager PIN not configured', 500);
+    }
+
+    const isValidPin = await bcrypt.compare(managerPin, managerPinSetting.value);
+    if (!isValidPin) {
+      logger.warn(`Failed refund PIN validation for order ${order.id}`);
+      throw new AppError('Invalid manager PIN', 401);
+    }
+
+    // Create refund record (using Payment model with negative amount for tracking)
+    await prisma.payment.create({
+      data: {
+        orderId: order.id,
+        method: refundMethod || originalPaymentMethod || 'CASH',
+        amount: -amount, // Negative amount for refund
+        status: 'REFUNDED',
+        notes: `Refund: ${reason} (Type: ${type}, Approved by: ${approvedBy})`,
+      },
+    });
+
+    // Update order with refund info
+    const updatedOrder = await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        status: type === 'FULL' ? 'REFUNDED' : 'PARTIALLY_REFUNDED',
+      } as any,
+      include: {
+        items: { include: { menuItem: true } },
+        table: true,
+        customer: true,
+        payments: true,
+      },
+    });
+
+    // Create negative payment record for refund
+    await prisma.payment.create({
+      data: {
+        orderId: order.id,
+        method: refundMethod || originalPaymentMethod || 'CASH',
+        amount: -amount,
+        status: 'REFUNDED',
+        notes: `Refund: ${reason} (Approved by: ${approvedBy})`,
+      },
+    });
+
+    // Update daily stats for reporting
+    logger.info(`Refund processed for order ${order.id}: ${amount} (${type})`);
+
+    res.json({
+      success: true,
+      data: { order: updatedOrder, refundAmount: amount, refundType: type },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update existing order (for modifying active orders)
+router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { notes, items, kitchenNotes, notifyKitchen } = req.body;
+
+    const order = await prisma.order.findUnique({
+      where: { id: req.params.id },
+      include: { items: { include: { menuItem: true } } },
+    });
+
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+
+    // Only allow updates to orders that aren't completed/cancelled
+    if (order.status === 'COMPLETED' || order.status === 'CANCELLED' || order.status === 'REFUNDED') {
+      throw new AppError('Cannot modify completed or cancelled orders', 400);
+    }
+
+    let updatedOrder;
+
+    await prisma.$transaction(async (tx) => {
+      // Update basic fields
+      const updateData: any = {
+        notes,
+        kitchenNotes,
+      };
+
+      // If items changed, recalculate totals
+      if (items && items.length > 0) {
+        let subtotal = 0;
+        const orderItems = [];
+
+        // Delete existing items
+        await tx.orderItem.deleteMany({
+          where: { orderId: order.id },
+        });
+
+        // Create new items
+        for (const item of items) {
+          const menuItem = await tx.menuItem.findUnique({
+            where: { id: item.menuItemId || item.menuItem?.id },
+          });
+
+          if (!menuItem) continue;
+
+          const totalPrice = Number(menuItem.price) * item.quantity;
+          subtotal += totalPrice;
+
+          orderItems.push({
+            orderId: order.id,
+            menuItemId: menuItem.id,
+            quantity: item.quantity,
+            unitPrice: menuItem.price,
+            totalPrice,
+            notes: item.notes,
+            modifiers: item.modifiers,
+          });
+        }
+
+        // Create all new items
+        await tx.orderItem.createMany({
+          data: orderItems,
+        });
+
+        // Update order totals
+        updateData.subtotal = subtotal;
+        updateData.totalAmount = subtotal - (order.discountAmount || 0) + (order.taxAmount || 0) + (order.surchargeAmount || 0);
+      }
+
+      updatedOrder = await tx.order.update({
+        where: { id: order.id },
+        data: updateData,
+        include: {
+          items: { include: { menuItem: true } },
+          table: true,
+          customer: true,
+        },
+      });
+
+      // Create new KOT tickets if kitchen notification requested
+      if (notifyKitchen && items) {
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+
+        for (const item of items) {
+          const kotCount = await tx.kotTicket.count({
+            where: { createdAt: { gte: new Date(today.setHours(0, 0, 0, 0)) } },
+          });
+
+          await tx.kotTicket.create({
+            data: {
+              ticketNumber: `KOT-${dateStr}-${String(kotCount + 1).padStart(3, '0')}-MOD`,
+              orderId: order.id,
+              course: 'main',
+              status: 'NEW',
+              notes: `Order modified - added ${item.quantity}x ${item.name || 'item'}`,
+            },
+          });
+        }
+      }
+    });
+
+    // Emit real-time event
+    const ws = getWebSocketManager();
+    ws.emitOrderUpdated(updatedOrder!.id, updatedOrder!);
+
+    res.json({
+      success: true,
+      data: { order: updatedOrder },
+    });
   } catch (error) {
     next(error);
   }

@@ -17,8 +17,7 @@ const DeliveryManagementScreen: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [deliveryList, setDeliveryList] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateDeliveryData>({
     orderId: '',
     customerName: '',
@@ -27,11 +26,17 @@ const DeliveryManagementScreen: React.FC = () => {
   });
   const { formatCurrency } = useCurrencyFormatter();
 
+  // Load deliveries when tab changes to deliveries or on mount
   useEffect(() => {
-    if (activeTab === 'displayDeliveries') {
+    if (activeTab === 'deliveries') {
       loadDeliveries();
     }
   }, [activeTab, statusFilter]);
+  
+  // Load deliveries on initial mount
+  useEffect(() => {
+    loadDeliveries();
+  }, []);
 
   const loadDeliveries = async () => {
     setLoading(true);
@@ -81,10 +86,65 @@ const DeliveryManagementScreen: React.FC = () => {
 
   // Dynamic analytics derived from active data
   const deliveredCount = displayDeliveries.filter((d: any) => d.status === 'DELIVERED').length;
+  
+  // Calculate average delivery time from actual delivered orders
+  const calculateAvgDeliveryTime = () => {
+    if (deliveredCount === 0) return '0 min';
+    
+    const deliveredWithTimes = displayDeliveries.filter((d: any) => 
+      d.status === 'DELIVERED' && d.startedAt && d.deliveredAt
+    );
+    
+    if (deliveredWithTimes.length === 0) {
+      // Fallback: estimate based on createdAt and deliveredAt
+      const withDeliveredAt = displayDeliveries.filter((d: any) => 
+        d.status === 'DELIVERED' && d.deliveredAt
+      );
+      if (withDeliveredAt.length === 0) return '0 min';
+      
+      const totalMinutes = withDeliveredAt.reduce((sum: number, d: any) => {
+        const start = new Date(d.createdAt || d.orderedAt).getTime();
+        const end = new Date(d.deliveredAt).getTime();
+        return sum + Math.floor((end - start) / 60000);
+      }, 0);
+      
+      const avg = Math.round(totalMinutes / withDeliveredAt.length);
+      return avg > 60 ? `${Math.floor(avg / 60)}h ${avg % 60}m` : `${avg} min`;
+    }
+    
+    const totalMinutes = deliveredWithTimes.reduce((sum: number, d: any) => {
+      const start = new Date(d.startedAt).getTime();
+      const end = new Date(d.deliveredAt).getTime();
+      return sum + Math.floor((end - start) / 60000);
+    }, 0);
+    
+    const avg = Math.round(totalMinutes / deliveredWithTimes.length);
+    return avg > 60 ? `${Math.floor(avg / 60)}h ${avg % 60}m` : `${avg} min`;
+  };
+  
+  // Calculate on-time rate based on estimated delivery times
+  const calculateOnTimeRate = () => {
+    if (deliveredCount === 0) return 0;
+    
+    const deliveredWithTimes = displayDeliveries.filter((d: any) => 
+      d.status === 'DELIVERED' && d.estimatedTime && d.deliveredAt
+    );
+    
+    if (deliveredWithTimes.length === 0) return 100; // Assume on-time if no data
+    
+    const onTimeCount = deliveredWithTimes.filter((d: any) => {
+      const estimated = new Date(d.estimatedTime).getTime();
+      const actual = new Date(d.deliveredAt).getTime();
+      return actual <= estimated;
+    }).length;
+    
+    return Math.round((onTimeCount / deliveredWithTimes.length) * 100);
+  };
+  
   const analytics = {
     totalDeliveries: displayDeliveries.length,
-    avgDeliveryTime: deliveredCount > 0 ? '25 min' : '0 min', // Requires complex time tracking backend
-    onTimeRate: deliveredCount > 0 ? 100 : 0,
+    avgDeliveryTime: calculateAvgDeliveryTime(),
+    onTimeRate: calculateOnTimeRate(),
     totalRevenue: displayDeliveries.reduce((sum: number, d: any) => sum + (d.orderTotal || 0), 0),
     avgOrderValue: displayDeliveries.length > 0 ? displayDeliveries.reduce((sum: number, d: any) => sum + (d.orderTotal || 0), 0) / displayDeliveries.length : 0,
     activeRiders: riders.filter((r: any) => r.isActive).length,
@@ -191,7 +251,7 @@ const DeliveryManagementScreen: React.FC = () => {
       {/* Tabs */}
       <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 inline-flex">
         {[
-          { id: 'displayDeliveries', label: 'Active Deliveries', icon: Truck },
+          { id: 'deliveries', label: 'Active Deliveries', icon: Truck },
           { id: 'riders', label: 'Riders', icon: User },
           { id: 'zones', label: 'Delivery Zones', icon: MapPin },
           { id: 'analytics', label: 'Analytics', icon: TrendingUp },
@@ -217,7 +277,7 @@ const DeliveryManagementScreen: React.FC = () => {
       </div>
 
       {/* Filters - Only for Deliveries tab */}
-      {activeTab === 'displayDeliveries' && (
+      {activeTab === 'deliveries' && (
         <div className="flex gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -249,7 +309,7 @@ const DeliveryManagementScreen: React.FC = () => {
       )}
 
       {/* DELIVERIES TAB */}
-      {activeTab === 'displayDeliveries' && (
+      {activeTab === 'deliveries' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
             { label: 'Pending', count: stats.pending, color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
@@ -271,9 +331,9 @@ const DeliveryManagementScreen: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'displayDeliveries' && (
+      {activeTab === 'deliveries' && (
         <div className="space-y-4">
-          {displayDeliveries.map((delivery, index) => (
+          {displayDeliveries.map((delivery: any, index: number) => (
             <motion.div
               key={delivery.id}
               initial={{ opacity: 0, y: 20 }}
@@ -337,7 +397,7 @@ const DeliveryManagementScreen: React.FC = () => {
       {/* RIDERS TAB */}
       {activeTab === 'riders' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {riders.map((rider, index) => (
+          {riders.map((rider: any, index: number) => (
             <motion.div
               key={rider.id}
               initial={{ opacity: 0, y: 20 }}
@@ -404,7 +464,7 @@ const DeliveryManagementScreen: React.FC = () => {
       {/* ZONES TAB */}
       {activeTab === 'zones' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {zones.map((zone, index) => (
+          {zones.map((zone: any, index: number) => (
             <motion.div
               key={zone.id}
               initial={{ opacity: 0, y: 20 }}

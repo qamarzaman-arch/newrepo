@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { logger } from '../utils/logger';
+import { logger, sanitize } from '../utils/logger';
 
 const router = Router();
 
@@ -141,7 +141,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
       include: { order: true, rider: true },
     });
 
-    logger.info(`Delivery created: ${deliveryNumber} by ${req.user!.username}`);
+    logger.info(`Delivery created: ${sanitize(deliveryNumber)} by ${sanitize(req.user!.username)}`);
     res.status(201).json({ success: true, data: { delivery } });
   } catch (error) {
     next(error);

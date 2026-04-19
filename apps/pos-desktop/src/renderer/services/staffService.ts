@@ -23,8 +23,17 @@ export interface Shift {
 export const staffService = {
   getStaff: () => api.get('/staff'),
   getStaffMember: (id: string) => api.get(`/staff/${id}`),
+  createStaff: (data: Partial<Staff>) => api.post('/staff', data),
+  updateStaff: (id: string, data: Partial<Staff>) => api.put(`/staff/${id}`, data),
+  deleteStaff: (id: string) => api.delete(`/staff/${id}`),
   getActiveShifts: () => api.get('/staff/active-shifts'),
   clockInOut: (userId: string, action: 'clock-in' | 'clock-out') =>
     api.post(`/staff/${userId}/shift`, { action }),
+  clockIn: (userId: string, pin: string) =>
+    api.post(`/staff/${userId}/clock-in`, { pin }),
+  clockOut: (userId: string, pin: string) =>
+    api.post(`/staff/${userId}/clock-out`, { pin }),
   getShifts: (userId: string) => api.get(`/staff/${userId}/shifts`),
+  getPerformance: (userId?: string, params?: { startDate?: string; endDate?: string }) =>
+    api.get(userId ? `/staff/${userId}/performance` : '/staff/performance', { params }),
 };

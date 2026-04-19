@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { logger } from '../utils/logger';
+import { logger, sanitize } from '../utils/logger';
 
 const router = Router();
 
@@ -244,7 +244,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
       },
     });
 
-    logger.info(`Customer created: ${customer.firstName} ${customer.lastName} by ${req.user!.username}`);
+    logger.info(`Customer created: ${sanitize(customer.firstName)} ${sanitize(customer.lastName)} by ${sanitize(req.user!.username)}`);
 
     res.status(201).json({
       success: true,
@@ -350,7 +350,7 @@ router.post('/:id/loyalty', authenticate, async (req: AuthRequest, res: Response
       return { transaction: loyaltyTx, customer: updatedCustomer };
     });
 
-    logger.info(`Loyalty points updated for customer ${req.params.id}: ${data.points} points by ${req.user!.username}`);
+    logger.info(`Loyalty points updated for customer ${sanitize(req.params.id)}: ${data.points} points by ${sanitize(req.user!.username)}`);
 
     res.json({
       success: true,

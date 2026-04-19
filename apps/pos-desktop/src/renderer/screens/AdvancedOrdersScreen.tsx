@@ -18,6 +18,10 @@ const AdvancedOrdersScreen: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const { formatCurrency } = useCurrencyFormatter();
 
   const { data: ordersData, refetch, isLoading } = useOrders({
@@ -47,8 +51,12 @@ const AdvancedOrdersScreen: React.FC = () => {
     number: `T${t.number}`,
     capacity: t.capacity || 4,
     status: t.status || 'AVAILABLE',
-    guests: t.status === 'OCCUPIED' ? Math.floor(Math.random() * (t.capacity || 4)) + 1 : 0,
-    duration: t.status === 'OCCUPIED' ? 'Active' : '-'
+    guests: t.status === 'OCCUPIED' ? (t.currentOrder?.guestCount || t.currentOrder?.items?.length || 2) : 0,
+    duration: t.status === 'OCCUPIED' ? 
+      (t.currentOrder?.orderedAt ? 
+        `${Math.floor((Date.now() - new Date(t.currentOrder.orderedAt).getTime()) / 60000)}m` : 
+        'Active') : 
+      '-'
   })) : [];
 
   const { data: reservationData } = useQuery({
@@ -295,8 +303,12 @@ const AdvancedOrdersScreen: React.FC = () => {
                       {new Date(order.orderedAt).toLocaleTimeString()}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 relative">
                         <button
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setShowOrderModal(true);
+                          }}
                           className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
                           title="View Details"
                         >
@@ -320,9 +332,71 @@ const AdvancedOrdersScreen: React.FC = () => {
                             </button>
                           </>
                         )}
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                          <MoreVertical className="w-4 h-4 text-gray-600" />
-                        </button>
+                        {(order.status === 'COMPLETED' || order.status === 'PAID') && (
+                          <button
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              setShowRefundModal(true);
+                            }}
+                            className="p-2 hover:bg-orange-100 rounded-lg transition-colors"
+                            title="Process Refund"
+                          >
+                            <RefreshCw className="w-4 h-4 text-orange-600" />
+                          </button>
+                        )}
+                        <div className="relative">
+                          <button 
+                            onClick={() => setDropdownOpen(dropdownOpen === order.id ? null : order.id)}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          >
+                            <MoreVertical className="w-4 h-4 text-gray-600" />
+                          </button>
+                          {dropdownOpen === order.id && (
+                            <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                              <button
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setShowOrderModal(true);
+                                  setDropdownOpen(null);
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <Eye className="w-4 h-4" /> View Details
+                              </button>
+                              <button
+                                onClick={() => {
+                                  handleStatusUpdate(order.id, order.status === 'PENDING' ? 'CONFIRMED' : 'COMPLETED');
+                                  setDropdownOpen(null);
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <CheckCircle className="w-4 h-4" /> {order.status === 'PENDING' ? 'Confirm' : 'Complete'}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(order.orderNumber);
+                                  toast.success('Order number copied!');
+                                  setDropdownOpen(null);
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <RefreshCw className="w-4 h-4" /> Copy Order #
+                              </button>
+                              {(order.status === 'COMPLETED' || order.status === 'PAID') && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedOrder(order);
+                                    setShowRefundModal(true);
+                                    setDropdownOpen(null);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 text-orange-600 flex items-center gap-2"
+                                >
+                                  <XCircle className="w-4 h-4" /> Process Refund
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -367,7 +441,25 @@ const AdvancedOrdersScreen: React.FC = () => {
 
       {/* TABLES TAB */}
       {activeTab === 'tables' && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+        <div className="space-y-4">
+          {/* Table Actions */}
+          <div className="flex gap-3 mb-4">
+            <button
+              onClick={() => toast('Select tables to merge', { icon: 'ℹ️' })}
+              className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-semibold flex items-center gap-2 hover:bg-blue-100 transition-colors"
+            >
+              <Users className="w-5 h-5" />
+              Merge Tables
+            </button>
+            <button
+              onClick={() => toast('Select a table to split', { icon: 'ℹ️' })}
+              className="px-4 py-2 bg-orange-50 text-orange-700 rounded-xl font-semibold flex items-center gap-2 hover:bg-orange-100 transition-colors"
+            >
+              <Users className="w-5 h-5" />
+              Split Table
+            </button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
           {tables.map((table: any, index: number) => (
             <motion.div
               key={table.id}
@@ -465,6 +557,123 @@ const AdvancedOrdersScreen: React.FC = () => {
               </div>
             </motion.div>
           ))}
+        </div>
+      )}
+
+      {/* Order Details Modal */}
+      {showOrderModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold">Order {selectedOrder.orderNumber}</h3>
+              <button
+                onClick={() => setShowOrderModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <p className="text-sm text-gray-600">Status</p>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(selectedOrder.status)}`}>
+                  {selectedOrder.status}
+                </span>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <p className="text-sm text-gray-600 mb-2">Items</p>
+                <div className="space-y-2">
+                  {selectedOrder.items?.map((item: any) => (
+                    <div key={item.id} className="flex justify-between text-sm">
+                      <span>{item.quantity}x {item.menuItem?.name || item.name}</span>
+                      <span className="font-semibold">{formatCurrency(item.totalPrice || item.unitPrice * item.quantity)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(selectedOrder.subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Tax</span>
+                  <span>{formatCurrency(selectedOrder.taxAmount)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                  <span>Total</span>
+                  <span className="text-primary">{formatCurrency(selectedOrder.totalAmount)}</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Refund Modal */}
+      {showRefundModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl p-6 max-w-md w-full"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold">Process Refund</h3>
+              <button
+                onClick={() => setShowRefundModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 bg-orange-50 rounded-xl mb-4">
+              <p className="text-sm text-gray-600">Order</p>
+              <p className="font-semibold">{selectedOrder.orderNumber}</p>
+              <p className="text-sm text-gray-600 mt-1">Total Amount</p>
+              <p className="font-bold text-primary">{formatCurrency(selectedOrder.totalAmount)}</p>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to process a refund for this order? This action requires manager PIN.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowRefundModal(false)}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const managerPin = window.prompt('Enter Manager PIN to confirm refund:');
+                    if (!managerPin) return;
+                    
+                    await orderService.refundOrder(selectedOrder.id, {
+                      type: 'FULL',
+                      reason: 'Customer request',
+                      amount: selectedOrder.totalAmount,
+                      managerPin,
+                      approvedBy: 'Manager',
+                    });
+                    
+                    toast.success('Refund processed successfully!');
+                    setShowRefundModal(false);
+                    refetch();
+                  } catch (error) {
+                    toast.error('Failed to process refund');
+                  }
+                }}
+                className="flex-1 py-3 bg-orange-600 text-white rounded-xl font-semibold hover:bg-orange-700 transition-colors"
+              >
+                Confirm Refund
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </div>

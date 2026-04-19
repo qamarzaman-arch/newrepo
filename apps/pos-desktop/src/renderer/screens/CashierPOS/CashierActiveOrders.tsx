@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Edit, Eye, X, Plus, Trash2, Send, CheckCircle, AlertCircle, Minus, Search } from 'lucide-react';
+import { Clock, Edit, Eye, X, Plus, Trash2, Send, CheckCircle, AlertCircle, Minus, Search, DollarSign, XCircle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderService } from '../../services/orderService';
 import { useMenuItems } from '../../hooks/useMenu';
@@ -62,6 +62,19 @@ const CashierActiveOrders: React.FC = () => {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update status');
+    },
+  });
+
+  const cancelOrderMutation = useMutation({
+    mutationFn: async ({ orderId, reason }: { orderId: string; reason: string }) => {
+      return await orderService.updateStatus(orderId, 'CANCELLED', reason);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cashier-active-orders'] });
+      toast.success('Order cancelled');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to cancel order');
     },
   });
 
@@ -232,7 +245,7 @@ const CashierActiveOrders: React.FC = () => {
             >
               <Edit className="w-4 h-4 text-blue-600" />
             </motion.button>
-            {order.status === 'PREPARING' && (
+            {(order.status === 'PENDING' || order.status === 'PREPARING') && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -241,6 +254,35 @@ const CashierActiveOrders: React.FC = () => {
                 title="Mark as Ready"
               >
                 <CheckCircle className="w-4 h-4 text-green-600" />
+              </motion.button>
+            )}
+            {order.status === 'READY' && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  // Navigate to checkout with this order pre-loaded
+                  window.dispatchEvent(new CustomEvent('pos:collect-payment', { detail: { orderId: order.id } }));
+                }}
+                className="p-2 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
+                title="Collect Payment"
+              >
+                <DollarSign className="w-4 h-4 text-primary" />
+              </motion.button>
+            )}
+            {(order.status === 'PENDING' || order.status === 'PREPARING') && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  if (window.confirm(`Cancel order #${order.id.slice(-6)}?`)) {
+                    cancelOrderMutation.mutate({ orderId: order.id, reason: 'Cancelled by cashier' });
+                  }
+                }}
+                className="p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                title="Cancel Order"
+              >
+                <XCircle className="w-4 h-4 text-red-600" />
               </motion.button>
             )}
           </div>

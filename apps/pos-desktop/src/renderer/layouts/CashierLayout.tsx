@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { LogOut, HelpCircle, Clock, ShoppingCart, History, LayoutDashboard, X, Keyboard, Phone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
@@ -10,7 +10,13 @@ interface CashierLayoutProps {
 
 const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
   const [showHelp, setShowHelp] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -121,7 +127,7 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={logout}
+            onClick={handleLogout}
             className="w-full aspect-square rounded-xl bg-red-500/20 text-red-200 flex items-center justify-center hover:bg-red-500/30 transition-colors"
             title="Logout"
           >

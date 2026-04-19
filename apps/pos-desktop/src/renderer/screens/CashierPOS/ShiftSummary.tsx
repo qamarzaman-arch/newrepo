@@ -4,11 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Clock, DollarSign, ShoppingCart, TrendingUp, 
   ArrowLeft, Printer, Download, CheckCircle,
-  CreditCard
+  CreditCard, Shield, AlertTriangle
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { staffService } from '@/services/staffService';
 import { reportService } from '@/services/reportService';
+import { validationService } from '@/services/validationService';
+import { cashDrawerService, CashDrawer } from '@/services/cashDrawerService';
+import { logAction } from '@/services/auditLogService';
 import { useQuery } from '@tanstack/react-query';
 import { formatCurrency } from '@/utils/currency';
 import toast from 'react-hot-toast';
@@ -22,6 +25,11 @@ const ShiftSummary: React.FC = () => {
   const [showClosingModal, setShowClosingModal] = React.useState(false);
   const [closingBalanceInput, setClosingBalanceInput] = React.useState('');
   const [closingNotes, setClosingNotes] = React.useState('');
+  const [managerPin, setManagerPin] = React.useState('');
+  const [pinError, setPinError] = React.useState('');
+  const [showPinInput, setShowPinInput] = React.useState(false);
+  const [cashDrawer, setCashDrawer] = React.useState<CashDrawer | null>(null);
+  const [, setIsLoadingDrawer] = React.useState(false);
 
   // Load opening balance from localStorage or default to 0
   const [openingBalance, setOpeningBalance] = React.useState(() => {
@@ -35,27 +43,72 @@ const ShiftSummary: React.FC = () => {
     return saved ? new Date(saved) : new Date();
   }, []);
 
-  // In a full production system, this would fetch specific shift ID data
-  // For now, we use the real daily sales report to simulate the current cumulative shift
-  const { data: dailySales } = useQuery({
-    queryKey: ['shift-summary'],
+  // Fetch per-cashier shift summary instead of restaurant-wide daily sales
+  const { data: shiftSummary } = useQuery({
+    queryKey: ['shift-summary', user?.id],
     queryFn: async () => {
-      const response = await reportService.getDailySales();
+      const response = await reportService.getShiftSummary();
       return response.data.data;
     },
   });
 
+  // Load or create cash drawer on mount
+  React.useEffect(() => {
+    const initCashDrawer = async () => {
+      setIsLoadingDrawer(true);
+      try {
+        // Check for existing open drawer
+        const response = await cashDrawerService.getCurrent();
+        const existingDrawer = response.data.data?.drawer;
+
+        if (existingDrawer) {
+          setCashDrawer(existingDrawer);
+          // Sync opening balance with server
+          setOpeningBalance(existingDrawer.openingBalance);
+          localStorage.setItem('pos_opening_balance', existingDrawer.openingBalance.toString());
+          localStorage.setItem('pos_cash_drawer_id', existingDrawer.id);
+        } else {
+          // No open drawer - check if we should create one from localStorage
+          const savedBalance = localStorage.getItem('pos_opening_balance');
+          if (savedBalance && user?.id) {
+            try {
+              const openResponse = await cashDrawerService.open({
+                openingBalance: parseFloat(savedBalance),
+              });
+              setCashDrawer(openResponse.data.data.drawer);
+              localStorage.setItem('pos_cash_drawer_id', openResponse.data.data.drawer.id);
+              
+              // Log cash drawer open
+              await logAction('CASH_DRAWER_OPEN', 'CashDrawer', openResponse.data.data.drawer.id, {
+                openingBalance: parseFloat(savedBalance),
+                sessionNumber: openResponse.data.data.drawer.sessionNumber,
+              });
+            } catch (error) {
+              console.error('Failed to open cash drawer:', error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load cash drawer:', error);
+      } finally {
+        setIsLoadingDrawer(false);
+      }
+    };
+
+    initCashDrawer();
+  }, [user?.id]);
+
   const shiftData = {
     startTime: shiftStartTime,
     endTime: new Date(),
-    cashierName: user?.fullName || 'Cashier',
+    cashierName: shiftSummary?.cashierName || user?.fullName || 'Cashier',
     openingBalance,
-    cashSales: dailySales?.paymentMethodBreakdown?.CASH || 0,
-    cardSales: (dailySales?.paymentMethodBreakdown?.CARD || 0) + (dailySales?.paymentMethodBreakdown?.CREDIT || 0),
-    totalOrders: dailySales?.totalOrders || 0,
-    voidedOrders: dailySales?.voidedOrders || 0,
-    refunds: dailySales?.refunds || 0,
-    tips: dailySales?.tips || 0,
+    cashSales: shiftSummary?.paymentMethodBreakdown?.CASH || 0,
+    cardSales: (shiftSummary?.paymentMethodBreakdown?.CARD || 0) + (shiftSummary?.paymentMethodBreakdown?.CREDIT || 0),
+    totalOrders: shiftSummary?.totalOrders || 0,
+    voidedOrders: shiftSummary?.voidedOrders || 0,
+    refunds: shiftSummary?.refunds || 0,
+    tips: shiftSummary?.tips || 0,
   };
 
   const totalSales = shiftData.cashSales + shiftData.cardSales;
@@ -215,6 +268,39 @@ Voided Orders: ${shiftData.voidedOrders}
           <p className="text-xs text-green-600 mt-2">Including tips: {formatCurrency(actualDrawer)}</p>
         </motion.div>
       </div>
+
+      {/* Cash Drawer Session Info */}
+      {cashDrawer && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-200 mb-6"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-blue-900">
+                  Cash Drawer Session: {cashDrawer.sessionNumber}
+                </p>
+                <p className="text-xs text-blue-700">
+                  Opened: {new Date(cashDrawer.openedAt).toLocaleTimeString()} by {cashDrawer.openedBy?.fullName || 'Unknown'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                {cashDrawer.status === 'open' ? 'Active' : 'Closed'}
+              </span>
+              <span className="text-sm text-blue-700">
+                Txn: {cashDrawer.transactionCount}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Detailed Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -412,6 +498,42 @@ Voided Orders: ${shiftData.voidedOrders}
                   rows={2}
                 />
               </div>
+
+              {/* Manager PIN Section */}
+              {!showPinInput ? (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                  <p className="text-sm text-amber-800 flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5" />
+                    Manager approval required to end shift
+                  </p>
+                </div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="p-4 bg-amber-50 border border-amber-200 rounded-xl"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shield className="w-5 h-5 text-amber-600" />
+                    <p className="text-sm font-semibold text-amber-900">Enter Manager PIN</p>
+                  </div>
+                  <input
+                    type="password"
+                    maxLength={6}
+                    value={managerPin}
+                    onChange={(e) => {
+                      setManagerPin(e.target.value.replace(/\D/g, ''));
+                      setPinError('');
+                    }}
+                    placeholder="Enter PIN"
+                    className="w-full px-4 py-3 border-2 border-amber-300 rounded-xl text-center text-2xl font-bold tracking-widest focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    autoFocus
+                  />
+                  {pinError && (
+                    <p className="text-red-600 text-sm mt-2 text-center">{pinError}</p>
+                  )}
+                </motion.div>
+              )}
             </div>
 
             <div className="flex gap-3">
@@ -419,6 +541,9 @@ Voided Orders: ${shiftData.voidedOrders}
                 onClick={() => {
                   setShowClosingModal(false);
                   setClosingNotes('');
+                  setManagerPin('');
+                  setPinError('');
+                  setShowPinInput(false);
                 }}
                 className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
               >
@@ -429,15 +554,68 @@ Voided Orders: ${shiftData.voidedOrders}
                 whileTap={{ scale: 0.98 }}
                 onClick={async () => {
                   if (isEndingShift) return;
+
+                  // First step: show PIN input
+                  if (!showPinInput) {
+                    setShowPinInput(true);
+                    return;
+                  }
+
+                  // Validate PIN
+                  if (!managerPin || managerPin.length < 4) {
+                    setPinError('Please enter a valid manager PIN');
+                    return;
+                  }
+
                   setIsEndingShift(true);
                   try {
+                    // Validate manager PIN
+                    const isValid = await validationService.validateManagerPin(
+                      managerPin,
+                      'end-shift'
+                    );
+
+                    if (!isValid) {
+                      setPinError('Invalid manager PIN');
+                      setManagerPin('');
+                      setIsEndingShift(false);
+                      return;
+                    }
+
                     // Save closing balance to localStorage for record
                     localStorage.setItem('pos_closing_balance', closingBalanceInput);
                     localStorage.setItem('pos_closing_notes', closingNotes);
                     localStorage.setItem('pos_closing_time', new Date().toISOString());
 
+                    // Close cash drawer if exists
+                    const drawerId = cashDrawer?.id || localStorage.getItem('pos_cash_drawer_id');
+                    if (drawerId) {
+                      await cashDrawerService.close(drawerId, {
+                        closingBalance: parseFloat(closingBalanceInput),
+                        closingNotes: closingNotes || undefined,
+                        expectedBalance: expectedDrawer,
+                      });
+                      
+                      // Log cash drawer close
+                      await logAction('CASH_DRAWER_CLOSE', 'CashDrawer', drawerId, {
+                        closingBalance: parseFloat(closingBalanceInput),
+                        expectedBalance: expectedDrawer,
+                        discrepancy: parseFloat(closingBalanceInput) - expectedDrawer,
+                        notes: closingNotes,
+                      });
+                      
+                      // Clear cash drawer from localStorage
+                      localStorage.removeItem('pos_cash_drawer_id');
+                      localStorage.removeItem('pos_opening_balance');
+                    }
+
                     if (user?.id) {
                       await staffService.clockInOut(user.id, 'clock-out');
+                      // Log shift end
+                      await logAction('SHIFT_END', 'StaffShift', user.id, {
+                        closingBalance: parseFloat(closingBalanceInput),
+                        expectedDrawer,
+                      });
                     }
                     toast.success('Shift ended successfully!');
                     navigate('/dashboard');
@@ -447,12 +625,29 @@ Voided Orders: ${shiftData.voidedOrders}
                   } finally {
                     setIsEndingShift(false);
                     setShowClosingModal(false);
+                    setManagerPin('');
+                    setShowPinInput(false);
                   }
                 }}
                 disabled={isEndingShift || !closingBalanceInput}
-                className="flex-1 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="flex-1 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {isEndingShift ? 'Ending...' : 'Confirm & End Shift'}
+                {isEndingShift ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Processing...
+                  </>
+                ) : showPinInput ? (
+                  <>
+                    <Shield className="w-5 h-5" />
+                    Confirm & End Shift
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-5 h-5" />
+                    Request Approval
+                  </>
+                )}
               </motion.button>
             </div>
           </motion.div>

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useOrderStore } from '../../stores/orderStore';
 import { reportService } from '../../services/reportService';
+import { orderService } from '../../services/orderService';
 import { getHardwareManager } from '../../services/hardwareManager';
 import { useQuery } from '@tanstack/react-query';
 import { useCurrencyFormatter } from '../../hooks/useCurrency';
@@ -50,7 +51,7 @@ const AdvancedCashierPOS: React.FC = () => {
     ordersCompleted: dailySales?.totalOrders || 0,
     revenue: dailySales?.totalRevenue || 0,
     avgOrderValue: (dailySales?.totalOrders || 0) > 0
-      ? (dailySales?.totalRevenue || 0) / dailySales.totalOrders
+      ? (dailySales?.totalRevenue || 0) / dailySales?.totalOrders
       : 0,
   };
 
@@ -82,12 +83,63 @@ const AdvancedCashierPOS: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
 
+    // Handle collect payment event from Active Orders
+    const handleCollectPayment = async (e: any) => {
+      const { orderId } = e.detail;
+      if (!orderId) return;
+      
+      try {
+        // Load order details
+        const response = await orderService.getOrder(orderId);
+        const order = response.data.data.order;
+        
+        if (!order) {
+          toast.error('Order not found');
+          return;
+        }
+
+        // Pre-populate order store with the order data
+        clearOrder();
+        setOrderType(order.orderType);
+        if (order.tableId) {
+          setTable(order.tableId, order.table?.tableNumber);
+        }
+        if (order.customerId || order.customerName) {
+          setCustomer({
+            id: order.customerId,
+            name: order.customerName || 'Walk-in',
+            phone: order.customerPhone,
+          });
+        }
+        // Load items into order store
+        order.items?.forEach((item: any) => {
+          useOrderStore.getState().addItem({
+            menuItemId: item.menuItemId || item.menuItem?.id,
+            name: item.menuItem?.name || item.name,
+            price: Number(item.unitPrice),
+            quantity: item.quantity,
+            notes: item.notes,
+            modifiers: item.modifiers,
+          });
+        });
+        
+        // Navigate to checkout
+        setCurrentStep('CHECKOUT');
+        toast.success('Order loaded for payment collection');
+      } catch (error) {
+        console.error('Failed to load order:', error);
+        toast.error('Failed to load order for payment');
+      }
+    };
+    window.addEventListener('pos:collect-payment', handleCollectPayment);
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('pos:collect-payment', handleCollectPayment);
     };
-  }, [user, navigate, handleNewOrder]);
+  }, [user, navigate, handleNewOrder, clearOrder, setOrderType, setTable, setCustomer]);
 
   const handleOrderTypeSelect = (type: string) => {
     setLocalOrderType(type);

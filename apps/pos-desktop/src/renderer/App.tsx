@@ -26,28 +26,59 @@ import AdminLayout from './layouts/AdminLayout';
 import CashierLayout from './layouts/CashierLayout';
 import KitchenLayout from './layouts/KitchenLayout';
 import { useAuthStore } from './stores/authStore';
+import toast from 'react-hot-toast';
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// Role-based route access control
+const ALLOWED_ROUTES: Record<string, string[]> = {
+  '/orders': ['ADMIN', 'MANAGER', 'STAFF'],
+  '/kitchen': ['ADMIN', 'MANAGER', 'KITCHEN'],
+  '/tables': ['ADMIN', 'MANAGER', 'STAFF'],
+  '/menu': ['ADMIN', 'MANAGER'],
+  '/customers': ['ADMIN', 'MANAGER', 'STAFF'],
+  '/inventory': ['ADMIN', 'MANAGER'],
+  '/reports': ['ADMIN', 'MANAGER'],
+  '/settings': ['ADMIN', 'MANAGER'],
+  '/staff': ['ADMIN', 'MANAGER'],
+  '/vendors': ['ADMIN', 'MANAGER'],
+  '/delivery': ['ADMIN', 'MANAGER', 'STAFF'],
+  '/financial': ['ADMIN', 'MANAGER'],
+  '/dashboard': ['ADMIN', 'MANAGER', 'STAFF'],
+};
+
+const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRoles?: string[] }> = ({ 
+  children, 
+  requiredRoles 
+}) => {
   const { user } = useAuthStore();
+  const location = useLocation();
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // Always redirect based on role
-  const location = window.location.pathname;
+  const currentPath = location.pathname;
 
   // Redirect cashiers from old /pos route to new /cashier-pos
-  if (location === '/pos' && user.role === 'CASHIER') {
+  if (currentPath === '/pos' && user.role === 'CASHIER') {
     return <Navigate to="/cashier-pos" replace />;
   }
 
   // Redirect admin/manager to dashboard on root
-  if (location === '/' || location === '') {
+  if (currentPath === '/' || currentPath === '') {
     if (user.role === 'ADMIN' || user.role === 'MANAGER') {
       return <Navigate to="/dashboard" replace />;
     }
     return <Navigate to="/cashier-pos" replace />;
+  }
+
+  // Check role-based access if requiredRoles provided or path has restrictions
+  const allowedRoles = requiredRoles || ALLOWED_ROUTES[currentPath];
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    toast.error('Access denied: Insufficient permissions');
+    // Redirect to appropriate dashboard based on role
+    if (user.role === 'KITCHEN') return <Navigate to="/kitchen" replace />;
+    if (user.role === 'CASHIER') return <Navigate to="/cashier-pos" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   // Role-based layout rendering

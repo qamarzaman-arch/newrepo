@@ -9,9 +9,19 @@ import { useQuery } from '@tanstack/react-query';
 import { kitchenService, KotTicket } from '../services/kitchenService';
 import toast from 'react-hot-toast';
 
+interface PrepListItem {
+  id: string;
+  item: string;
+  station: string;
+  quantity: string;
+  urgency: 'HIGH' | 'MEDIUM' | 'LOW';
+  completed: boolean;
+}
+
 const AdvancedKitchenScreen: React.FC = () => {
   const [activeView, setActiveView] = useState<'board' | 'analytics' | 'prep-list'>('board');
   const [selectedStation, setSelectedStation] = useState<string>('all');
+  const [prepList, setPrepList] = useState<PrepListItem[]>([]);
 
   const { data: ticketsData, refetch, isRefetching } = useQuery({
     queryKey: ['kitchen-tickets'],
@@ -22,15 +32,106 @@ const AdvancedKitchenScreen: React.FC = () => {
     refetchInterval: 5000,
   });
 
-  interface PrepListItem {
-    id: string;
-    item: string;
-    station: string;
-    quantity: string;
-    urgency: 'HIGH' | 'MEDIUM' | 'LOW';
-    completed: boolean;
-  }
+  // Fetch real peak hours data from report service
+  const { data: peakHoursData } = useQuery({
+    queryKey: ['kitchen-peak-hours'],
+    queryFn: async () => {
+      // Generate from completed tickets actual data
+      const hours = new Array(24).fill(0).map((_, i) => ({
+        hour: `${i}:00 - ${i + 1}:00`,
+        orders: 0,
+        hourNum: i,
+      }));
+      
+      ticketsData?.forEach((ticket: any) => {
+        const hour = new Date(ticket.orderedAt).getHours();
+        if (hour >= 0 && hour < 24) {
+          hours[hour].orders++;
+        }
+      });
+      
+      // Return only hours with activity, sorted by order count
+      return hours
+        .filter(h => h.orders > 0)
+        .sort((a, b) => b.orders - a.orders)
+        .slice(0, 5)
+        .map(h => ({
+          hour: h.hour,
+          orders: h.orders,
+          color: h.orders > 30 ? 'bg-red-600' : h.orders > 20 ? 'bg-red-500' : 'bg-orange-500',
+        }));
+    },
+    enabled: !!ticketsData,
+  });
 
+  // Fetch prep list from inventory service
+  const { data: lowStockItems, refetch: refetchPrep } = useQuery<PrepListItem[]>({
+    queryKey: ['kitchen-prep-list'],
+    queryFn: async () => {
+      try {
+        // Import inventory service dynamically to avoid circular deps
+        const { inventoryService } = await import('../services/inventoryService');
+        const response = await inventoryService.getLowStockItems();
+        const items = response.data.data?.items || [];
+        return items.map((item: any, index: number) => ({
+          id: item.id || `prep-${index}`,
+          item: item.name || 'Unknown Item',
+          station: item.category || 'General',
+          quantity: `${item.currentStock || 0}/${item.minStock || 10} ${item.unit || 'units'}`,
+          urgency: (item.currentStock || 0) < (item.minStock || 10) / 2 ? 'HIGH' : 
+                  (item.currentStock || 0) < (item.minStock || 10) ? 'MEDIUM' : 'LOW',
+          completed: false,
+        }));
+      } catch {
+        // Fallback: generate from menu items that appear frequently in tickets
+        const itemCounts: Record<string, { count: number; station: string }> = {};
+        ticketsData?.forEach((ticket: any) => {
+          ticket.order?.items?.forEach((item: any) => {
+            const name = item.menuItem?.name;
+            if (name) {
+              if (!itemCounts[name]) {
+                itemCounts[name] = { count: 0, station: item.menuItem?.category?.name || 'Kitchen' };
+              }
+              itemCounts[name].count += item.quantity || 1;
+            }
+          });
+        });
+        
+        return Object.entries(itemCounts)
+          .filter(([_, data]) => data.count > 2)
+          .map(([name, data], index) => ({
+            id: `prep-${index}`,
+            item: name,
+            station: data.station,
+            quantity: `${data.count} needed`,
+            urgency: data.count > 10 ? 'HIGH' : data.count > 5 ? 'MEDIUM' : 'LOW',
+            completed: false,
+          }));
+      }
+    },
+    enabled: !!ticketsData,
+  });
+
+  // Sync prep list with fetched data but preserve completed status
+  React.useEffect(() => {
+    if (lowStockItems) {
+      setPrepList(prev => {
+        const completedMap = new Map(prev.filter(p => p.completed).map(p => [p.item, true]));
+        return lowStockItems.map(item => ({
+          ...item,
+          completed: completedMap.has(item.item) || item.completed,
+        }));
+      });
+    }
+  }, [lowStockItems]);
+
+  const handlePrepToggle = (itemId: string) => {
+    setPrepList(prev => prev.map(item => 
+      item.id === itemId ? { ...item, completed: !item.completed } : item
+    ));
+    const item = prepList.find(p => p.id === itemId);
+    toast.success(item?.completed ? 'Marked as incomplete' : 'Marked as complete');
+  };
 
   const handleStatusUpdate = async (ticketId: string, status: 'NEW' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED') => {
     try {
@@ -43,9 +144,39 @@ const AdvancedKitchenScreen: React.FC = () => {
     }
   };
 
+  // Filter tickets by station
+  const filteredTickets = React.useMemo(() => {
+    if (!ticketsData || selectedStation === 'all') return ticketsData;
+    return ticketsData.filter((ticket: any) => {
+      const items = ticket.order?.items || [];
+      return items.some((item: any) => {
+        const category = item.menuItem?.category?.name?.toLowerCase() || '';
+        return category.includes(selectedStation.toLowerCase()) ||
+               (selectedStation === 'grill' && category.includes('grilled')) ||
+               (selectedStation === 'fryer' && category.includes('fried')) ||
+               (selectedStation === 'cold-prep' && category.includes('salad')) ||
+               (selectedStation === 'assembly' && category.includes('sandwich'));
+      });
+    });
+  }, [ticketsData, selectedStation]);
+
+  // Calculate average prep time from completed tickets
+  const avgPrepTime = React.useMemo(() => {
+    const completed = ticketsData?.filter((t: any) => t.status === 'COMPLETED' && t.updatedAt && t.orderedAt);
+    if (!completed || completed.length === 0) return '15 min'; // Default
+    
+    const totalMinutes = completed.reduce((sum: number, t: any) => {
+      const start = new Date(t.orderedAt).getTime();
+      const end = new Date(t.updatedAt).getTime();
+      return sum + (end - start) / 60000;
+    }, 0);
+    
+    return `${Math.round(totalMinutes / completed.length)} min`;
+  }, [ticketsData]);
+
   // Live analytics data from active queue
   const analytics = {
-    avgPrepTime: '15 min', // Requires historic timeseries API
+    avgPrepTime,
     ordersCompleted: ticketsData?.filter((t: any) => t.status === 'COMPLETED').length || 0,
     onTimePercentage: ticketsData && ticketsData.length > 0 
       ? Math.round(
@@ -56,21 +187,11 @@ const AdvancedKitchenScreen: React.FC = () => {
         )
       : 100,
     activeTickets: ticketsData?.filter((t: any) => t.status !== 'COMPLETED').length || 0,
-    overdueTickets: ticketsData?.filter((t: any) => {
+    overdueTickets: filteredTickets?.filter((t: any) => {
       const minutes = Math.floor((Date.now() - new Date(t.orderedAt).getTime()) / 60000);
       return minutes > 25 && t.status !== 'COMPLETED';
     }).length || 0,
   };
-
-  // Dynamic prep list query (placeholder for future backend)
-  const { data: lowStockItems } = useQuery<PrepListItem[]>({
-    queryKey: ['low-stock-prep'],
-    queryFn: async () => {
-      return []; // Return empty for now until backend is updated
-    },
-  });
-
-  const prepList = lowStockItems || [];
 
   const stations = [
     { id: 'all', name: 'All Stations', icon: Utensils },
@@ -184,7 +305,7 @@ const AdvancedKitchenScreen: React.FC = () => {
         {activeView === 'board' && (
           <div className="grid grid-cols-3 gap-6 h-full">
             {columns.map((column) => {
-              const columnTickets = ticketsData?.filter((t: any) => t.status === column.id) || [];
+              const columnTickets = filteredTickets?.filter((t: any) => t.status === column.id) || [];
 
               return (
                 <motion.div
@@ -250,28 +371,66 @@ const AdvancedKitchenScreen: React.FC = () => {
                             ))}
                           </div>
 
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
                             {ticket.status === 'NEW' && (
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => handleStatusUpdate(ticket.id, 'IN_PROGRESS')}
-                                className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center justify-center gap-2"
-                              >
-                                <PlayCircle className="w-4 h-4" />
-                                Start
-                              </motion.button>
+                              <>
+                                <motion.button
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => handleStatusUpdate(ticket.id, 'IN_PROGRESS')}
+                                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center justify-center gap-2"
+                                >
+                                  <PlayCircle className="w-4 h-4" />
+                                  Start
+                                </motion.button>
+                                <motion.button
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => handleStatusUpdate(ticket.id, 'DELAYED')}
+                                  className="py-2 px-3 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 flex items-center justify-center"
+                                  title="Mark as Delayed"
+                                >
+                                  <AlertCircle className="w-4 h-4" />
+                                </motion.button>
+                              </>
                             )}
                             {ticket.status === 'IN_PROGRESS' && (
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => handleStatusUpdate(ticket.id, 'COMPLETED')}
-                                className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 flex items-center justify-center gap-2"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                                Complete
-                              </motion.button>
+                              <>
+                                <motion.button
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => handleStatusUpdate(ticket.id, 'COMPLETED')}
+                                  className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 flex items-center justify-center gap-2"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                  Complete
+                                </motion.button>
+                                <motion.button
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => handleStatusUpdate(ticket.id, 'DELAYED')}
+                                  className="py-2 px-3 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 flex items-center justify-center"
+                                  title="Mark as Delayed"
+                                >
+                                  <AlertCircle className="w-4 h-4" />
+                                </motion.button>
+                              </>
+                            )}
+                            {ticket.status === 'DELAYED' && (
+                              <>
+                                <motion.button
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => handleStatusUpdate(ticket.id, 'IN_PROGRESS')}
+                                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center justify-center gap-2"
+                                >
+                                  <PlayCircle className="w-4 h-4" />
+                                  Resume
+                                </motion.button>
+                                <div className="py-2 px-3 bg-red-900/50 text-red-400 rounded-lg text-sm font-semibold flex items-center justify-center">
+                                  <AlertCircle className="w-4 h-4" />
+                                </div>
+                              </>
                             )}
                             {ticket.status === 'COMPLETED' && (
                               <div className="flex-1 py-2 bg-gray-700 text-gray-400 rounded-lg text-sm font-semibold text-center flex items-center justify-center gap-2">
@@ -342,26 +501,27 @@ const AdvancedKitchenScreen: React.FC = () => {
                 Peak Hours Analysis
               </h3>
               <div className="space-y-3">
-                {[
-                  { hour: '11:00 AM - 12:00 PM', orders: 28, color: 'bg-red-500' },
-                  { hour: '12:00 PM - 1:00 PM', orders: 45, color: 'bg-red-600' },
-                  { hour: '1:00 PM - 2:00 PM', orders: 35, color: 'bg-orange-500' },
-                  { hour: '6:00 PM - 7:00 PM', orders: 42, color: 'bg-red-600' },
-                  { hour: '7:00 PM - 8:00 PM', orders: 38, color: 'bg-orange-500' },
-                ].map((slot, index) => (
-                  <div key={index} className="flex items-center gap-4">
-                    <span className="text-sm text-gray-400 w-32">{slot.hour}</span>
-                    <div className="flex-1 bg-gray-700 rounded-full h-6 overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(slot.orders / 50) * 100}%` }}
-                        transition={{ delay: index * 0.1, duration: 0.5 }}
-                        className={`${slot.color} h-full rounded-full`}
-                      />
+                {(peakHoursData?.length ? peakHoursData : [
+                  { hour: '11:00 AM - 12:00 PM', orders: 0, color: 'bg-gray-600' },
+                  { hour: '12:00 PM - 1:00 PM', orders: 0, color: 'bg-gray-600' },
+                  { hour: '1:00 PM - 2:00 PM', orders: 0, color: 'bg-gray-600' },
+                ]).map((slot, index) => {
+                  const maxOrders = Math.max(...(peakHoursData?.map((s: any) => s.orders) || [1]));
+                  return (
+                    <div key={index} className="flex items-center gap-4">
+                      <span className="text-sm text-gray-400 w-32">{slot.hour}</span>
+                      <div className="flex-1 bg-gray-700 rounded-full h-6 overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: maxOrders > 0 ? `${(slot.orders / maxOrders) * 100}%` : '0%' }}
+                          transition={{ delay: index * 0.1, duration: 0.5 }}
+                          className={`${slot.color} h-full rounded-full`}
+                        />
+                      </div>
+                      <span className="text-sm font-bold text-white w-12 text-right">{slot.orders}</span>
                     </div>
-                    <span className="text-sm font-bold text-white w-12 text-right">{slot.orders}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </motion.div>
           </div>
@@ -381,6 +541,13 @@ const AdvancedKitchenScreen: React.FC = () => {
             </div>
 
             <div className="space-y-3">
+              {prepList.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <ListFilter className="w-12 h-12 mx-auto mb-3 text-gray-600" />
+                  <p className="text-sm">No prep items needed</p>
+                  <p className="text-xs text-gray-600 mt-1">All items are well stocked</p>
+                </div>
+              )}
               {prepList.map((item, index) => (
                 <motion.div
                   key={item.id}
@@ -395,14 +562,11 @@ const AdvancedKitchenScreen: React.FC = () => {
                 >
                   <div className="flex items-center gap-4">
                     <button
-                      onClick={() => {
-                        // Toggle completed status
-                        toast.success(item.completed ? 'Marked as incomplete' : 'Marked as complete');
-                      }}
-                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                      onClick={() => handlePrepToggle(item.id)}
+                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
                         item.completed 
                           ? 'bg-green-600 border-green-600' 
-                          : 'border-gray-500 hover:border-primary'
+                          : 'border-gray-500 hover:border-primary hover:bg-primary/20'
                       }`}
                     >
                       {item.completed && <CheckCircle className="w-4 h-4 text-white" />}

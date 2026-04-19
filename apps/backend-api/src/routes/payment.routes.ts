@@ -1,8 +1,9 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../server';
+import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { logger } from '../utils/logger';
+import { logger, sanitize } from '../utils/logger';
 
 const router = Router();
 
@@ -23,14 +24,25 @@ const validateCardSchema = z.object({
  * - PayPal
  * - Authorize.net
  */
-router.post('/validate-card', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/validate-card', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { amount, cardDetails } = validateCardSchema.parse(req.body);
 
-    // Log payment attempt
-    logger.info(`Card payment validation requested: ${amount}`, {
+    // Log payment attempt with user context
+    logger.info(`Card payment validation requested by ${sanitize(req.user?.username || 'unknown')}: ${amount}`, {
       lastFour: cardDetails?.lastFour,
+      userId: req.user?.userId,
     });
+
+    // Validate card last four is provided for audit
+    if (!cardDetails?.lastFour) {
+      throw new AppError('Card last four digits required for validation', 400);
+    }
+
+    // Validate last four digits format
+    if (!/^\d{4}$/.test(cardDetails.lastFour)) {
+      throw new AppError('Invalid card last four digits format', 400);
+    }
 
     // TODO: Integrate with actual payment gateway
     // Example integration points:
@@ -38,31 +50,28 @@ router.post('/validate-card', async (req: Request, res: Response, next: NextFunc
     // 2. Square: squareClient.paymentsApi.createPayment()
     // 3. PayPal: paypal.payment.create()
 
-    // For now, simulate successful validation
-    // In production, this would call the payment gateway API
+    // Improved simulation with deterministic transaction ID
     const simulatePaymentGateway = async () => {
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Simulate 95% success rate (for testing)
-      const isSuccess = Math.random() > 0.05;
-
-      if (!isSuccess) {
-        throw new Error('Payment gateway declined the transaction');
-      }
+      // Generate deterministic transaction ID based on timestamp and user
+      const timestamp = Date.now();
+      const transactionId = `TXN-${timestamp}-${req.user?.userId?.slice(-4).toUpperCase()}`;
 
       return {
-        transactionId: `TXN-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`,
+        transactionId,
         status: 'approved',
         amount,
         timestamp: new Date().toISOString(),
+        cardLastFour: cardDetails?.lastFour,
       };
     };
 
     const paymentResult = await simulatePaymentGateway();
 
     // Log successful validation
-    logger.info(`Card payment validated successfully: ${paymentResult.transactionId}`);
+    logger.info(`Card payment validated successfully: ${sanitize(paymentResult.transactionId)}`);
 
     // Note: PaymentValidation table is optional for audit trail
     // If you want to track validations, add the table to your Prisma schema
@@ -110,7 +119,7 @@ router.post('/validate-card', async (req: Request, res: Response, next: NextFunc
  * For audit and reconciliation purposes
  * Note: Requires PaymentValidation table in Prisma schema
  */
-router.get('/validations', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/validations', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     // This endpoint requires the PaymentValidation table
     // If not using audit trail, you can remove this endpoint

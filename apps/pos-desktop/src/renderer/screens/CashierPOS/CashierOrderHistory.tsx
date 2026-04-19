@@ -31,7 +31,7 @@ const CashierOrderHistory: React.FC = () => {
       const params: any = {
         page: currentPage,
         limit: ordersPerPage,
-        status: 'COMPLETED',
+        status: 'COMPLETED,REFUNDED,PARTIALLY_REFUNDED,CANCELLED',
       };
 
       if (dateFilter === 'today') {
@@ -56,7 +56,7 @@ const CashierOrderHistory: React.FC = () => {
   });
 
   const orders = ordersData?.orders || [];
-  const totalPages = Math.ceil((ordersData?.total || 0) / ordersPerPage);
+  const totalPages = Math.ceil((ordersData?.pagination?.total || 0) / ordersPerPage);
 
   const filteredOrders = orders.filter((order: any) => {
     if (!searchQuery) return true;
@@ -119,6 +119,34 @@ const CashierOrderHistory: React.FC = () => {
       SPLIT: 'Split',
     };
     return labels[method] || method;
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      COMPLETED: 'bg-green-100 text-green-700',
+      REFUNDED: 'bg-red-100 text-red-700',
+      PARTIALLY_REFUNDED: 'bg-orange-100 text-orange-700',
+      CANCELLED: 'bg-gray-100 text-gray-700',
+    };
+    return colors[status] || 'bg-gray-100 text-gray-700';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      COMPLETED: 'Completed',
+      REFUNDED: 'Fully Refunded',
+      PARTIALLY_REFUNDED: 'Partially Refunded',
+      CANCELLED: 'Cancelled',
+    };
+    return labels[status] || status;
+  };
+
+  // Refund time limit check (24 hours)
+  const canRefundOrder = (order: any) => {
+    const orderDate = new Date(order.createdAt);
+    const now = new Date();
+    const hoursDiff = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
+    return hoursDiff <= 24;
   };
 
   return (
@@ -250,6 +278,9 @@ const CashierOrderHistory: React.FC = () => {
                       }`}>
                         {getOrderTypeLabel(order.orderType)}
                       </span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
+                        {getStatusLabel(order.status)}
+                      </span>
                       {order.tableNumber && (
                         <span className="text-sm text-gray-500">Table {order.tableNumber}</span>
                       )}
@@ -297,11 +328,16 @@ const CashierOrderHistory: React.FC = () => {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => {
+                        if (!canRefundOrder(order)) {
+                          toast.error('Refund not allowed: Order is older than 24 hours');
+                          return;
+                        }
                         setRefundOrder(order);
                         setShowRefundModal(true);
                       }}
-                      className="p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
-                      title="Process Refund"
+                      disabled={order.status === 'REFUNDED' || order.status === 'CANCELLED'}
+                      className="p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      title={order.status === 'REFUNDED' ? 'Already Refunded' : order.status === 'CANCELLED' ? 'Order Cancelled' : 'Process Refund'}
                     >
                       <RotateCcw className="w-5 h-5 text-red-600" />
                     </motion.button>
@@ -317,7 +353,7 @@ const CashierOrderHistory: React.FC = () => {
       {totalPages > 1 && (
         <div className="bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between">
           <p className="text-sm text-gray-600">
-            Page {currentPage} of {totalPages} • {ordersData?.total || 0} total orders
+            Page {currentPage} of {totalPages} • {ordersData?.pagination?.total || 0} total orders
           </p>
           <div className="flex gap-2">
             <button

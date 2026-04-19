@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { logger } from '../utils/logger';
+import { logger, sanitize } from '../utils/logger';
 
 const router = Router();
 
@@ -105,7 +105,7 @@ router.post('/categories', authenticate, async (req: AuthRequest, res: Response,
       },
     });
 
-    logger.info(`Category created: ${category.name} by ${req.user!.username}`);
+    logger.info(`Category created: ${sanitize(category.name)} by ${sanitize(req.user!.username)}`);
 
     res.status(201).json({
       success: true,
@@ -278,7 +278,7 @@ router.post('/items', authenticate, async (req: AuthRequest, res: Response, next
       return newItem;
     });
 
-    logger.info(`Menu item created: ${item.name} by ${req.user!.username}`);
+    logger.info(`Menu item created: ${sanitize(item.name)} by ${sanitize(req.user!.username)}`);
 
     res.status(201).json({
       success: true,

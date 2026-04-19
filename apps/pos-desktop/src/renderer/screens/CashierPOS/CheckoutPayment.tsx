@@ -19,6 +19,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
 import { formatCurrency } from '../../utils/currency';
 import { orderService } from '../../services/orderService';
+import api from '../../services/api';
 import { getHardwareManager } from '../../services/hardwareManager';
 import { validationService } from '../../services/validationService';
 import { getOfflineQueueManager } from '../../services/offlineQueueManager';
@@ -163,6 +164,9 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
         customerName: currentOrder.customerName,
         customerPhone: currentOrder.customerPhone,
         notes: currentOrder.notes,
+        discountPercent: currentOrder.discountPercent || undefined,
+        discountAmount: discount > 0 ? discount : undefined,
+        tipAmount: tip > 0 ? tip : undefined,
         items: currentOrder.items.map(item => ({
           menuItemId: item.menuItemId,
           quantity: item.quantity,
@@ -985,19 +989,25 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                   }
                   
                   // Validate PIN via backend API for security
-                  const isValid = await validationService.validateManagerPin(
-                    discountPin,
-                    `discount-${pendingDiscountPercent}%`
-                  );
+                  let managerName = 'Manager';
+                  let isValid = false;
+                  try {
+                    const pinResponse = await api.post('/auth/validate-pin', {
+                      pin: discountPin,
+                      operation: `discount-${pendingDiscountPercent}%`,
+                    });
+                    isValid = pinResponse.data.data.valid === true;
+                    if (isValid) managerName = pinResponse.data.data.managerName || 'Manager';
+                  } catch {
+                    isValid = false;
+                  }
                   
                   if (isValid) {
-                    // Get manager info from validation response
-                    const managerInfo = user?.fullName || 'Manager';
-                    applyDiscount(pendingDiscountPercent, managerInfo);
+                    applyDiscount(pendingDiscountPercent, managerName);
                     setShowDiscountPinModal(false);
                     setShowDiscountModal(false);
                     setDiscountPin('');
-                    toast.success(`Discount of ${pendingDiscountPercent}% approved by ${managerInfo}`);
+                    toast.success(`Discount of ${pendingDiscountPercent}% approved by ${managerName}`);
                   } else {
                     toast.error('Invalid PIN. Access denied.');
                     setDiscountPin('');

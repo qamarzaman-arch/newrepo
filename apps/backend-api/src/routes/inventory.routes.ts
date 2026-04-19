@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { logger } from '../utils/logger';
+import { logger, sanitize } from '../utils/logger';
 
 const router = Router();
 
@@ -282,7 +282,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
       },
     });
 
-    logger.info(`Inventory item created: ${item.name} by ${req.user!.username}`);
+    logger.info(`Inventory item created: ${sanitize(item.name)} by ${sanitize(req.user!.username)}`);
 
     res.status(201).json({
       success: true,
@@ -384,7 +384,7 @@ router.post('/:id/movement', authenticate, async (req: AuthRequest, res: Respons
       return newMovement;
     });
 
-    logger.info(`Stock movement recorded for ${item.name}: ${data.type} ${data.quantity} by ${req.user!.username}`);
+    logger.info(`Stock movement recorded for ${sanitize(item.name)}: ${data.type} ${data.quantity} by ${sanitize(req.user!.username)}`);
 
     res.status(201).json({
       success: true,
@@ -457,7 +457,7 @@ router.post('/:id/adjustment', authenticate, async (req: AuthRequest, res: Respo
       return newAdjustment;
     });
 
-    logger.info(`Stock adjustment for ${item.name}: ${data.adjustmentType} ${data.quantity} by ${req.user!.username}`);
+    logger.info(`Stock adjustment for ${sanitize(item.name)}: ${data.adjustmentType} ${data.quantity} by ${sanitize(req.user!.username)}`);
 
     res.status(201).json({
       success: true,

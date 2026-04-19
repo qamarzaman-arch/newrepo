@@ -3,8 +3,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../server';
+import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { logger } from '../utils/logger';
+import { logger, sanitize } from '../utils/logger';
 
 const router = Router();
 
@@ -89,7 +90,7 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
       data: { lastLoginAt: new Date() },
     });
 
-    logger.info(`User logged in: ${username}`);
+    logger.info(`User logged in: ${sanitize(username)}`);
 
     res.json({
       success: true,
@@ -149,7 +150,7 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
       },
     });
 
-    logger.info(`New user registered: ${username}`);
+    logger.info(`New user registered: ${sanitize(username)}`);
 
     res.status(201).json({
       success: true,
@@ -229,7 +230,7 @@ router.get('/verify', async (req: Request, res: Response, next: NextFunction) =>
 });
 
 // Validate manager PIN for sensitive operations
-router.post('/validate-pin', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { pin, operation } = req.body;
 
@@ -260,9 +261,36 @@ router.post('/validate-pin', async (req: Request, res: Response, next: NextFunct
 
     logger.info(`PIN validated successfully for operation: ${operation}`);
 
+    // Get manager name - either from authenticated user (if they're a manager) or find first manager
+    let managerName = req.user?.username || 'Manager';
+    
+    // If the current user is not a manager, try to find a manager user for audit purposes
+    if (req.user?.role !== 'MANAGER' && req.user?.role !== 'ADMIN') {
+      const managerUser = await prisma.user.findFirst({
+        where: { 
+          role: { in: ['MANAGER', 'ADMIN'] },
+          isActive: true,
+        },
+        select: { fullName: true, username: true },
+        orderBy: { lastLoginAt: 'desc' },
+      });
+      if (managerUser) {
+        managerName = managerUser.fullName || managerUser.username || 'Manager';
+      }
+    } else {
+      // Current user is a manager/admin, get their full name
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.user!.userId },
+        select: { fullName: true, username: true },
+      });
+      if (currentUser) {
+        managerName = currentUser.fullName || currentUser.username || 'Manager';
+      }
+    }
+
     res.json({
       success: true,
-      data: { valid: true },
+      data: { valid: true, managerName },
     });
   } catch (error) {
     next(error);

@@ -2,6 +2,8 @@ import api from './api';
 
 export const reportService = {
   getDailySales: (date?: string) => api.get('/reports/sales/daily', { params: { date } }),
+  getShiftSummary: (params?: { cashierId?: string; startDate?: string; endDate?: string }) =>
+    api.get('/reports/shift-summary', { params }),
   getMonthlySales: (range?: string) => api.get('/reports/sales/monthly', { params: { range } }),
   getTopSelling: (limit?: number, days?: number) =>
     api.get('/reports/products/top-selling', { params: { limit, days } }),

@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { logger } from '../utils/logger';
+import { logger, sanitize } from '../utils/logger';
 
 const router = Router();
 
@@ -87,7 +87,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
       },
     });
 
-    logger.info(`User created: ${user.username} by ${req.user!.username}`);
+    logger.info(`User created: ${sanitize(user.username)} by ${sanitize(req.user!.username)}`);
     res.status(201).json({ success: true, data: { user } });
   } catch (error) {
     next(error);
@@ -129,7 +129,7 @@ router.patch('/:id/reset-password', authenticate, async (req: AuthRequest, res: 
       data: { passwordHash },
     });
 
-    logger.info(`Password reset for user ${req.params.id} by ${req.user!.username}`);
+    logger.info(`Password reset for user ${sanitize(req.params.id)} by ${sanitize(req.user!.username)}`);
     res.json({ success: true, message: 'Password reset successfully' });
   } catch (error) {
     next(error);

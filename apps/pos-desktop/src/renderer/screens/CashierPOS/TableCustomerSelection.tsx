@@ -133,6 +133,16 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
     }, 10000);
     return () => clearInterval(interval);
   }, [refetchTables]);
+
+  // Cleanup: Release table lock when component unmounts or user navigates away
+  useEffect(() => {
+    return () => {
+      if (localTableId && user?.id) {
+        const tableLockService = getTableLockService();
+        tableLockService.unlockTable(localTableId, user.id);
+      }
+    };
+  }, [localTableId, user?.id]);
   const availableTables = tables?.filter((t: any) => t.status === 'AVAILABLE') || [];
   const occupiedTables = tables?.filter((t: any) => t.status !== 'AVAILABLE') || [];
 

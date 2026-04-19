@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Store, CreditCard, Printer } from 'lucide-react';
+import { Store, CreditCard, Printer, Shield, Bell, Monitor, Palette } from 'lucide-react';
 import { useSettingsStore, AppSettings } from '../stores/settingsStore';
 import toast from 'react-hot-toast';
 
@@ -33,7 +33,12 @@ const SettingsScreen: React.FC = () => {
       icon: Store,
       items: [
         { label: 'Restaurant Name', key: 'restaurantName', value: localSettings.restaurantName, type: 'text' },
+        { label: 'Address', key: 'address', value: localSettings.address, type: 'text' },
+        { label: 'Phone', key: 'phone', value: localSettings.phone, type: 'text' },
+        { label: 'Tagline', key: 'tagline', value: localSettings.tagline, type: 'text' },
         { label: 'Currency', key: 'currency', value: localSettings.currency, type: 'text' },
+        { label: 'Timezone', key: 'timezone', value: localSettings.timezone, type: 'text' },
+        { label: 'Language', key: 'language', value: localSettings.language, type: 'text' },
       ],
     },
     {
@@ -43,12 +48,9 @@ const SettingsScreen: React.FC = () => {
         { label: 'Accept Cash', key: 'acceptCash', value: localSettings.acceptCash, type: 'toggle' },
         { label: 'Accept Card', key: 'acceptCard', value: localSettings.acceptCard, type: 'toggle' },
         { label: 'Accept Mobile Wallet', key: 'acceptMobileWallet', value: localSettings.acceptMobileWallet, type: 'toggle' },
-      ],
-    },
-    {
-      title: 'Tax Settings',
-      icon: CreditCard,
-      items: [
+        { label: 'Accept Gift Cards', key: 'acceptGiftCards', value: localSettings.acceptGiftCards, type: 'toggle' },
+        { label: 'Split Payment Enabled', key: 'splitPaymentEnabled', value: localSettings.splitPaymentEnabled, type: 'toggle' },
+        { label: 'Service Charge (%)', key: 'serviceCharge', value: localSettings.serviceCharge, type: 'number' },
         { label: 'Tax Rate (%)', key: 'taxRate', value: localSettings.taxRate, type: 'number' },
       ],
     },
@@ -58,6 +60,47 @@ const SettingsScreen: React.FC = () => {
       items: [
         { label: 'Auto-print KOT', key: 'autoPrintKOT', value: localSettings.autoPrintKOT, type: 'toggle' },
         { label: 'Auto-print Receipt', key: 'autoPrintReceipt', value: localSettings.autoPrintReceipt, type: 'toggle' },
+      ],
+    },
+    {
+      title: 'Hardware Settings',
+      icon: Monitor,
+      items: [
+        { label: 'Cash Drawer Enabled', key: 'cashDrawerEnabled', value: localSettings.cashDrawerEnabled, type: 'toggle' },
+        { label: 'Customer Display Enabled', key: 'customerDisplayEnabled', value: localSettings.customerDisplayEnabled, type: 'toggle' },
+        { label: 'Barcode Scanner Enabled', key: 'barcodeScannerEnabled', value: localSettings.barcodeScannerEnabled, type: 'toggle' },
+      ],
+    },
+    {
+      title: 'Notification Settings',
+      icon: Bell,
+      items: [
+        { label: 'Email Notifications', key: 'emailNotifications', value: localSettings.emailNotifications, type: 'toggle' },
+        { label: 'SMS Notifications', key: 'smsNotifications', value: localSettings.smsNotifications, type: 'toggle' },
+        { label: 'Low Stock Alerts', key: 'lowStockAlerts', value: localSettings.lowStockAlerts, type: 'toggle' },
+        { label: 'Order Alerts', key: 'orderAlerts', value: localSettings.orderAlerts, type: 'toggle' },
+        { label: 'Staff Alerts', key: 'staffAlerts', value: localSettings.staffAlerts, type: 'toggle' },
+      ],
+    },
+    {
+      title: 'Security Settings',
+      icon: Shield,
+      items: [
+        { label: 'Require PIN for Void', key: 'requirePinForVoid', value: localSettings.requirePinForVoid, type: 'toggle' },
+        { label: 'Require PIN for Refund', key: 'requirePinForRefund', value: localSettings.requirePinForRefund, type: 'toggle' },
+        { label: 'Manager PIN', key: 'managerPin', value: localSettings.managerPin, type: 'text' },
+        { label: 'Session Timeout (min)', key: 'sessionTimeout', value: localSettings.sessionTimeout, type: 'number' },
+        { label: 'Two Factor Auth', key: 'twoFactorAuth', value: localSettings.twoFactorAuth, type: 'toggle' },
+      ],
+    },
+    {
+      title: 'Appearance Settings',
+      icon: Palette,
+      items: [
+        { label: 'Theme (light/dark/auto)', key: 'theme', value: localSettings.theme, type: 'text' },
+        { label: 'Compact Mode', key: 'compactMode', value: localSettings.compactMode, type: 'toggle' },
+        { label: 'Show Images', key: 'showImages', value: localSettings.showImages, type: 'toggle' },
+        { label: 'Animations Enabled', key: 'animationsEnabled', value: localSettings.animationsEnabled, type: 'toggle' },
       ],
     },
   ];

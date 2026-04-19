@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { logger } from '../utils/logger';
+import { logger, sanitize } from '../utils/logger';
 
 const router = Router();
 
@@ -108,7 +108,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
       include: { createdBy: { select: { id: true, fullName: true } } },
     });
 
-    logger.info(`Expense created: ${expenseNumber} by ${req.user!.username}`);
+    logger.info(`Expense created: ${sanitize(expenseNumber)} by ${sanitize(req.user!.username)}`);
     res.status(201).json({ success: true, data: { expense } });
   } catch (error) {
     next(error);

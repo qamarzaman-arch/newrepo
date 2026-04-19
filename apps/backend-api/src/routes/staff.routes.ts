@@ -2,7 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { logger } from '../utils/logger';
+import { logger, sanitize } from '../utils/logger';
 
 const router = Router();
 
@@ -84,7 +84,7 @@ router.post('/:id/shift', authenticate, async (req: AuthRequest, res: Response, 
         data: { userId: req.params.id, shiftNumber, status: 'OPEN' },
       });
 
-      logger.info(`Staff ${req.params.id} clocked in by ${req.user!.username}`);
+      logger.info(`Staff ${sanitize(req.params.id)} clocked in by ${sanitize(req.user!.username)}`);
       res.status(201).json({ success: true, data: { shift } });
     } else if (action === 'clock-out') {
       const openShift = await prisma.shift.findFirst({
@@ -99,7 +99,7 @@ router.post('/:id/shift', authenticate, async (req: AuthRequest, res: Response, 
         data: { clockedOutAt: new Date(), status: 'CLOSED' },
       });
 
-      logger.info(`Staff ${req.params.id} clocked out by ${req.user!.username}`);
+      logger.info(`Staff ${sanitize(req.params.id)} clocked out by ${sanitize(req.user!.username)}`);
       res.json({ success: true, data: { shift } });
     } else {
       throw new AppError('Invalid action. Use clock-in or clock-out', 400);

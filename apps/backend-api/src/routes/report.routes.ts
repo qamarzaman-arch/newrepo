@@ -348,4 +348,81 @@ router.get('/top-items', authenticate, async (req: AuthRequest, res: Response, n
   }
 });
 
+// Per-cashier shift summary
+router.get('/shift-summary', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { cashierId, startDate, endDate } = req.query;
+    
+    // Default to current user if no cashierId specified (for cashiers viewing their own shift)
+    const targetCashierId = (cashierId as string) || req.user!.userId;
+    
+    // Default date range: today
+    const targetStartDate = startDate ? new Date(startDate as string) : new Date();
+    targetStartDate.setHours(0, 0, 0, 0);
+    const targetEndDate = endDate ? new Date(endDate as string) : new Date();
+    targetEndDate.setHours(23, 59, 59, 999);
+
+    const orders = await prisma.order.findMany({
+      where: {
+        cashierId: targetCashierId,
+        orderedAt: { gte: targetStartDate, lte: targetEndDate },
+        status: { notIn: ['CANCELLED'] },
+      },
+      include: { payments: true },
+    });
+
+    // Calculate per-cashier stats from actual payment amounts (not order totals)
+    // This correctly handles split payments without double-counting
+    const cashSales = orders.reduce((sum, o) => {
+      const cashPayments = o.payments?.filter(p => p.method === 'CASH' && p.amount > 0) || [];
+      return sum + cashPayments.reduce((pSum, p) => pSum + Number(p.amount), 0);
+    }, 0);
+    
+    const cardSales = orders.reduce((sum, o) => {
+      const cardPayments = o.payments?.filter(p => p.method === 'CARD' && p.amount > 0) || [];
+      return sum + cardPayments.reduce((pSum, p) => pSum + Number(p.amount), 0);
+    }, 0);
+
+    // Calculate refunds from negative payment amounts
+    const refunds = orders.reduce((sum, o) => {
+      const refundPayments = o.payments?.filter(p => p.amount < 0) || [];
+      return sum + refundPayments.reduce((pSum, p) => pSum + Math.abs(Number(p.amount)), 0);
+    }, 0);
+    
+    // Tips are not tracked separately in current schema - would need tipAmount field on Order
+    // For now, return 0 (this would need schema update to track properly)
+    const tips = 0;
+    
+    const voidedOrders = orders.filter(o => o.status === 'VOIDED').length;
+    
+    // Get user info for cashier name
+    const user = await prisma.user.findUnique({
+      where: { id: targetCashierId },
+      select: { fullName: true },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        cashierId: targetCashierId,
+        cashierName: user?.fullName || req.user!.username,
+        period: { start: targetStartDate, end: targetEndDate },
+        totalOrders: orders.length,
+        totalSales: orders.reduce((sum, o) => sum + Number(o.totalAmount), 0),
+        paymentMethodBreakdown: {
+          CASH: cashSales,
+          CARD: cardSales,
+          CREDIT: 0, // Not tracked separately in this model
+        },
+        refunds,
+        tips,
+        voidedOrders,
+        orders,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

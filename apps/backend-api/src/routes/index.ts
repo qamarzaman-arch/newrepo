@@ -20,6 +20,14 @@ import comboRoutes from './combo.routes';
 import recipeRoutes from './recipe.routes';
 import purchaseOrderRoutes from './purchase-order.routes';
 import paymentRoutes from './payment.routes';
+import cashDrawerRoutes from './cash-drawer.routes';
+import auditLogRoutes from './audit-log.routes';
+import orderModificationRoutes from './order-modification.routes';
+import deliveryZoneRoutes from './delivery-zone.routes';
+import paymentGatewayRoutes from './payment-gateway.routes';
+import staffScheduleRoutes from './staff-schedule.routes';
+import riderRoutes from './rider.routes';
+import commissionRoutes from './commission.routes';
 
 export function setupRoutes(app: Application) {
   const apiPrefix = '/api/v1';
@@ -46,6 +54,14 @@ export function setupRoutes(app: Application) {
   app.use(`${apiPrefix}/recipes`, recipeRoutes);
   app.use(`${apiPrefix}/purchase-orders`, purchaseOrderRoutes);
   app.use(`${apiPrefix}/payments`, paymentRoutes);
+  app.use(`${apiPrefix}/cash-drawer`, cashDrawerRoutes);
+  app.use(`${apiPrefix}/audit-logs`, auditLogRoutes);
+  app.use(`${apiPrefix}/order-modifications`, orderModificationRoutes);
+  app.use(`${apiPrefix}/delivery-zones`, deliveryZoneRoutes);
+  app.use(`${apiPrefix}/payment-gateway`, paymentGatewayRoutes);
+  app.use(`${apiPrefix}/staff-schedules`, staffScheduleRoutes);
+  app.use(`${apiPrefix}/riders`, riderRoutes);
+  app.use(`${apiPrefix}/commissions`, commissionRoutes);
 
   // 404 handler
   app.use((_req, res) => {

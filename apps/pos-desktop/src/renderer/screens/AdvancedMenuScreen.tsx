@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Plus, Trash2, Search, Filter, Download, Upload, Edit,
-  Package, Tag, Star, Eye, EyeOff, BarChart3
+  Package, Tag, Star, Eye, EyeOff, BarChart3, Image, X
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useMenuCategories, useMenuItems } from '../hooks/useMenu';
@@ -22,7 +22,12 @@ const AdvancedMenuScreen: React.FC = () => {
     categoryId: '',
     description: '',
     isAvailable: true,
+    image: '',
+    allergens: '',
+    prepTime: '',
   });
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: categories } = useMenuCategories();
   const { data: items } = useMenuItems({ 
@@ -85,10 +90,11 @@ const AdvancedMenuScreen: React.FC = () => {
         categoryId: formData.categoryId,
         description: formData.description,
         isAvailable: formData.isAvailable,
+        image: formData.image,
       });
       toast.success(`${formData.name} created successfully`);
       setShowAddModal(false);
-      setFormData({ name: '', price: '', categoryId: '', description: '', isAvailable: true });
+      setFormData({ name: '', price: '', categoryId: '', description: '', isAvailable: true, image: '', allergens: '', prepTime: '' });
       window.location.reload();
     } catch (error) {
       console.error('Failed to create item:', error);
@@ -104,8 +110,45 @@ const AdvancedMenuScreen: React.FC = () => {
       categoryId: item.categoryId || item.category?.id || '',
       description: item.description || '',
       isAvailable: item.isAvailable,
+      image: item.image || '',
+      allergens: item.allergens || '',
+      prepTime: String(item.prepTimeMinutes || ''),
     });
+    setPreviewImage(item.image || null);
     setShowAddModal(true);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image size should be less than 2MB');
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setPreviewImage(base64);
+      setFormData({ ...formData, image: base64 });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = () => {
+    setPreviewImage(null);
+    setFormData({ ...formData, image: '' });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleUpdateItem = async () => {
@@ -125,7 +168,7 @@ const AdvancedMenuScreen: React.FC = () => {
       toast.success(`${formData.name} updated successfully`);
       setShowAddModal(false);
       setEditingItem(null);
-      setFormData({ name: '', price: '', categoryId: '', description: '', isAvailable: true });
+      setFormData({ name: '', price: '', categoryId: '', description: '', isAvailable: true, image: '', allergens: '', prepTime: '' });
       window.location.reload();
     } catch (error) {
       console.error('Failed to update item:', error);
@@ -249,7 +292,7 @@ const AdvancedMenuScreen: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => { setEditingItem(null); setFormData({ name: '', price: '', categoryId: '', description: '', isAvailable: true }); setShowAddModal(true); }}
+            onClick={() => { setEditingItem(null); setFormData({ name: '', price: '', categoryId: '', description: '', isAvailable: true, image: '', allergens: '', prepTime: '' }); setPreviewImage(null); setShowAddModal(true); }}
             className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
           >
             <Plus className="w-5 h-5" />
@@ -463,7 +506,7 @@ const AdvancedMenuScreen: React.FC = () => {
                   </div>
                   <div className="flex gap-2">
                     <button 
-                      onClick={() => handleEditItem(item.id)}
+                      onClick={() => handleEditItemClick(item)}
                       className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors flex items-center gap-2"
                     >
                       <Edit className="w-4 h-4" />
@@ -524,7 +567,7 @@ const AdvancedMenuScreen: React.FC = () => {
 
       {activeTab === 'modifiers' && (
         <div className="space-y-4">
-          {modifiers.map((modifier, index) => (
+          {modifiers.map((modifier: any, index: number) => (
             <motion.div
               key={modifier.id}
               initial={{ opacity: 0, y: 20 }}
@@ -564,7 +607,7 @@ const AdvancedMenuScreen: React.FC = () => {
 
       {activeTab === 'combos' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {combos.map((combo, index) => (
+          {combos.map((combo: any, index: number) => (
             <motion.div
               key={combo.id}
               initial={{ opacity: 0, y: 20 }}
@@ -622,6 +665,37 @@ const AdvancedMenuScreen: React.FC = () => {
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="isAvailable" checked={formData.isAvailable} onChange={(e) => setFormData({ ...formData, isAvailable: e.target.checked })} className="w-4 h-4" />
                 <label htmlFor="isAvailable" className="text-sm text-gray-700">Available for ordering</label>
+              </div>
+              
+              {/* Image Upload */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Item Image</label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                {previewImage ? (
+                  <div className="relative w-32 h-32 rounded-xl overflow-hidden border-2 border-gray-200">
+                    <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      onClick={clearImage}
+                      className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-32 h-32 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 text-gray-500 hover:border-primary hover:text-primary transition-colors"
+                  >
+                    <Image className="w-8 h-8" />
+                    <span className="text-xs">Upload Image</span>
+                  </button>
+                )}
               </div>
             </div>
             <div className="flex gap-3 mt-6">

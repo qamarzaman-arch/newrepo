@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import toast from 'react-hot-toast';
 
 interface KitchenLayoutProps {
   children: React.ReactNode;
@@ -11,6 +12,14 @@ interface KitchenLayoutProps {
 const KitchenLayout: React.FC<KitchenLayoutProps> = ({ children }) => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+
+  // Route guard: only KITCHEN or ADMIN/MANAGER roles can access
+  React.useEffect(() => {
+    if (!user || (user.role !== 'KITCHEN' && user.role !== 'ADMIN' && user.role !== 'MANAGER')) {
+      toast.error('Access denied: Kitchen role required');
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleLogout = () => {
     logout();

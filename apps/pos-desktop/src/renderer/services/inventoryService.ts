@@ -46,4 +46,7 @@ export const inventoryService = {
   updatePurchaseOrder: (id: string, data: any) => api.put(`/purchase-orders/${id}`, data),
   receivePurchaseOrder: (id: string, data: any) => api.post(`/purchase-orders/${id}/receive`, data),
   deletePurchaseOrder: (id: string) => api.delete(`/purchase-orders/${id}`),
+  adjustStock: (id: string, quantity: number, reason: string) =>
+    api.post(`/inventory/${id}/adjustment`, { adjustmentType: quantity > 0 ? 'ADD' : 'REMOVE', quantity: Math.abs(quantity), reason }),
+  getStats: () => api.get('/inventory/stats'),
 };

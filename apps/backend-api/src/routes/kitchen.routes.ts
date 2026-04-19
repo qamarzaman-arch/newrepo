@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { logger } from '../utils/logger';
+import { logger, sanitize } from '../utils/logger';
 import { getWebSocketManager } from '../utils/websocket';
 
 const router = Router();
@@ -260,7 +260,7 @@ router.patch('/tickets/:id/status', authenticate, async (req: AuthRequest, res: 
       ws.emitTicketUpdated(updatedTicket.id, updatedTicket);
     }
 
-    logger.info(`KOT ticket ${ticket.ticketNumber} status updated to ${data.status} by ${req.user!.username}`);
+    logger.info(`KOT ticket ${sanitize(ticket.ticketNumber)} status updated to ${data.status} by ${sanitize(req.user!.username)}`);
 
     res.json({
       success: true,
@@ -349,7 +349,7 @@ router.post('/tickets/:id/delay', authenticate, async (req: AuthRequest, res: Re
     const ws = getWebSocketManager();
     ws.emitTicketUpdated(ticket.id, ticket);
 
-    logger.info(`KOT ticket ${ticket.ticketNumber} marked as delayed: ${data.reason} by ${req.user!.username}`);
+    logger.info(`KOT ticket ${sanitize(ticket.ticketNumber)} marked as delayed: ${sanitize(data.reason)} by ${sanitize(req.user!.username)}`);
 
     res.json({
       success: true,

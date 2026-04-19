@@ -1,5 +1,12 @@
 import winston from 'winston';
 
+// Sanitize user input to prevent log injection attacks
+export const sanitize = (input: string): string => {
+  if (!input) return '';
+  // Remove newlines, carriage returns, and null bytes
+  return input.replace(/[\r\n\x00]/g, '').trim();
+};
+
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   winston.format.errors({ stack: true }),
