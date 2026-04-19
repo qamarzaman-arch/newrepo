@@ -11,7 +11,7 @@ const router = Router();
 
 // Validation schemas
 const createOrderSchema = z.object({
-  orderType: z.enum(['DINE_IN', 'TAKEAWAY', 'DELIVERY', 'PICKUP']),
+  orderType: z.enum(['DINE_IN', 'WALK_IN', 'TAKEAWAY', 'DELIVERY', 'PICKUP']),
   tableId: z.string().optional(),
   customerId: z.string().optional(),
   customerName: z.string().optional(),

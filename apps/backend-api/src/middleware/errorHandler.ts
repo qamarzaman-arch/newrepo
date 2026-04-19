@@ -49,7 +49,7 @@ export function errorHandler(
   // Validation errors (Zod)
   if (err.issues) {
     statusCode = 400;
-    message = 'Validation failed';
+    message = 'Validation failed: ' + err.issues.map((i: any) => `${i.path.join('.')}: ${i.message}`).join(', ');
   }
 
   logger.error(`Error [${statusCode}]: ${message}`, {
@@ -62,6 +62,7 @@ export function errorHandler(
     success: false,
     error: {
       message,
+      ...(err.issues && { issues: err.issues }),
       ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
     },
   });
