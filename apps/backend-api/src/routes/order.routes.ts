@@ -389,8 +389,8 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
 
               // Deduct from inventory
               const newStock = Math.max(0, inventoryItem.currentStock - requiredQty);
-              const status = newStock <= inventoryItem.minStockLevel ? 'LOW_STOCK' :
-                            newStock === 0 ? 'OUT_OF_STOCK' : 'ACTIVE';
+              const status = newStock === 0 ? 'OUT_OF_STOCK' :
+                            newStock <= inventoryItem.minStock ? 'LOW_STOCK' : 'IN_STOCK';
 
               await (tx as any).inventoryItem.update({
                 where: { id: inventoryItem.id },
@@ -422,7 +422,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
                     data: {
                       inventoryItemId: inventoryItem.id,
                       alertType: 'LOW_STOCK',
-                      message: `${inventoryItem.name} is below minimum level. Current: ${newStock}, Min: ${inventoryItem.minStockLevel}`,
+                      message: `${inventoryItem.name} is below minimum level. Current: ${newStock}, Min: ${inventoryItem.minStock}`,
                       status: 'ACTIVE',
                     },
                   });

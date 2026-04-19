@@ -50,6 +50,7 @@ interface OrderState {
     discountApprovedBy?: string;
     tipAmount: number;
     completedOrderId?: string;
+    orderId?: string;
     isProcessing?: boolean;
     kitchenNotified?: boolean;
     tableLocked?: boolean;
@@ -78,6 +79,7 @@ interface OrderState {
   applyDiscount: (percent: number, approvedBy?: string) => void;
   setTip: (amount: number) => void;
   setCompletedOrderId: (id: string) => void;
+  setOrderId: (id: string) => void;
   setProcessing: (isProcessing: boolean) => void;
   setKitchenNotified: (notified: boolean) => void;
   lockTable: (locked: boolean) => void;
@@ -103,7 +105,7 @@ const EMPTY_ORDER = {
 };
 
 export const useOrderStore = create<OrderState>()(
- persist(
+persist(
 (set, get) => ({
   currentOrder: { ...EMPTY_ORDER },
   heldOrders: [],
@@ -154,7 +156,6 @@ export const useOrderStore = create<OrderState>()(
       const item = state.currentOrder.items.find((i) => i.id === itemId);
       if (!item) return state;
 
-      // Add to voided items audit trail
       const voidedItem = {
         itemId: item.id,
         itemName: item.name,
@@ -247,6 +248,10 @@ export const useOrderStore = create<OrderState>()(
 
   setCompletedOrderId: (id) => {
     set((state) => ({ currentOrder: { ...state.currentOrder, completedOrderId: id } }));
+  },
+
+  setOrderId: (id) => {
+    set((state) => ({ currentOrder: { ...state.currentOrder, orderId: id } }));
   },
 
   applyDiscount: (percent, approvedBy) => {

@@ -2,10 +2,11 @@ import Stripe from 'stripe';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-12-18.acacia',
-});
+// Initialize Stripe only if API key is available
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const stripe = stripeSecretKey 
+  ? new Stripe(stripeSecretKey, {})
+  : null;
 
 // Square SDK import (if needed)
 // import { Client, Environment } from 'square';
@@ -27,6 +28,9 @@ export interface RefundData {
 export class PaymentGatewayService {
   // Create Stripe Payment Intent
   async createStripePaymentIntent(data: PaymentIntentData) {
+    if (!stripe) {
+      throw new AppError('Stripe not configured. Please set STRIPE_SECRET_KEY environment variable.', 500);
+    }
     try {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: data.amount,
@@ -54,6 +58,9 @@ export class PaymentGatewayService {
 
   // Confirm Stripe Payment Intent
   async confirmStripePayment(paymentIntentId: string) {
+    if (!stripe) {
+      throw new AppError('Stripe not configured. Please set STRIPE_SECRET_KEY environment variable.', 500);
+    }
     try {
       const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
       
@@ -65,7 +72,7 @@ export class PaymentGatewayService {
           amount: paymentIntent.amount,
           currency: paymentIntent.currency,
           status: paymentIntent.status,
-          receiptUrl: paymentIntent.charges.data[0]?.receipt_url,
+          receiptUrl: null, // Receipt URL available via separate API call if needed
         };
       } else {
         return {
@@ -83,6 +90,9 @@ export class PaymentGatewayService {
 
   // Process Stripe Refund
   async processStripeRefund(data: RefundData) {
+    if (!stripe) {
+      throw new AppError('Stripe not configured. Please set STRIPE_SECRET_KEY environment variable.', 500);
+    }
     try {
       const refund = await stripe.refunds.create({
         payment_intent: data.paymentIntentId,
@@ -116,6 +126,9 @@ export class PaymentGatewayService {
 
   // Webhook handler for Stripe events
   async handleStripeWebhook(payload: any, signature: string) {
+    if (!stripe) {
+      throw new AppError('Stripe not configured. Please set STRIPE_SECRET_KEY environment variable.', 500);
+    }
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     
     if (!webhookSecret) {
@@ -164,6 +177,9 @@ export class PaymentGatewayService {
 
   // Get payment methods for a customer
   async getStripePaymentMethods(customerId: string) {
+    if (!stripe) {
+      throw new AppError('Stripe not configured. Please set STRIPE_SECRET_KEY environment variable.', 500);
+    }
     try {
       const paymentMethods = await stripe.paymentMethods.list({
         customer: customerId,

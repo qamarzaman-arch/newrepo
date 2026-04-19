@@ -4,6 +4,7 @@ import { X, CookingPot, AlertCircle } from 'lucide-react';
 import { useOrderStore } from '../../stores/orderStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { getHardwareManager } from '../../services/hardwareManager';
+import { orderService } from '../../services/orderService';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -13,7 +14,7 @@ interface Props {
 }
 
 const KitchenDispatchConfirmation: React.FC<Props> = ({ isOpen, onClose, onConfirm }) => {
-  const { currentOrder } = useOrderStore();
+  const { currentOrder, setOrderId } = useOrderStore();
   const { settings } = useSettingsStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,35 +36,51 @@ const KitchenDispatchConfirmation: React.FC<Props> = ({ isOpen, onClose, onConfi
 
     setIsSubmitting(true);
     try {
-      // IMPORTANT: This only prints KOT (Kitchen Order Ticket) for kitchen staff.
-      // The actual order is NOT created here to prevent duplicate orders.
-      // Order creation happens during checkout/payment in CheckoutPayment component.
-      // This ensures one order per transaction and proper payment tracking.
-      
-      const kotData = {
-        ticketNumber: `KOT-${Date.now().toString().slice(-6)}`,
-        orderNumber: 'PENDING',
-        tableNumber: currentOrder.tableNumber,
+      // Create order immediately so it appears in kitchen and cashier screens
+      const orderData = {
         orderType: currentOrder.orderType,
+        tableId: currentOrder.tableId,
+        customerId: currentOrder.customerId,
+        customerName: currentOrder.customerName,
+        customerPhone: currentOrder.customerPhone,
         items: currentOrder.items.map((item) => ({
-          name: item.name,
+          menuItemId: item.menuItemId,
           quantity: item.quantity,
           notes: item.notes,
+          modifiers: item.modifiers,
         })),
-        specialInstructions: currentOrder.notes,
+        notes: currentOrder.notes,
       };
+
+      const response = await orderService.createOrder(orderData);
+      const createdOrder = response.data.data.order;
+
+      // Store order ID in order store for later payment processing
+      setOrderId(createdOrder.id);
 
       // Print KOT if enabled
       if (settings.autoPrintKOT) {
         const hw = getHardwareManager();
+        const kotData = {
+          ticketNumber: `KOT-${Date.now().toString().slice(-6)}`,
+          orderNumber: createdOrder.orderNumber,
+          tableNumber: currentOrder.tableNumber,
+          orderType: currentOrder.orderType,
+          items: currentOrder.items.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            notes: item.notes,
+          })),
+          specialInstructions: currentOrder.notes,
+        };
         await hw.printKOT(kotData);
       }
 
-      toast.success('Kitchen ticket printed! Complete checkout to finalize order.');
+      toast.success('Order sent to kitchen! Proceed to checkout.');
       onConfirm();
     } catch (error: any) {
       console.error('Kitchen dispatch error:', error);
-      toast.error(error.response?.data?.message || 'Failed to print kitchen ticket');
+      toast.error(error.response?.data?.message || 'Failed to send order to kitchen');
     } finally {
       setIsSubmitting(false);
     }

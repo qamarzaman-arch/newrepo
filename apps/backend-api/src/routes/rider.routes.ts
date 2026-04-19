@@ -47,7 +47,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
       where.isAvailable = isAvailable === 'true';
     }
 
-    const riders = await prisma.user.findMany({
+    const riders = await (prisma as any).user.findMany({
       where,
       select: {
         id: true,
@@ -411,7 +411,7 @@ router.get('/available/list', authenticate, async (req: AuthRequest, res: Respon
   try {
     const { latitude, longitude, radius = 10 } = req.query; // radius in km
 
-    const riders = await prisma.user.findMany({
+    const riders = await (prisma as any).user.findMany({
       where: {
         role: 'RIDER',
         isAvailable: true,

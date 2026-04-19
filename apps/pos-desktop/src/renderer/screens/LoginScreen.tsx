@@ -34,7 +34,17 @@ const LoginScreen: React.FC = () => {
 
       login(user, token);
       toast.success('Welcome to POSLytic!');
-      navigate('/pos');
+      
+      // Redirect based on user role
+      if (user.role === 'KITCHEN') {
+        navigate('/kitchen');
+      } else if (user.role === 'CASHIER') {
+        navigate('/cashier-pos');
+      } else if (user.role === 'ADMIN' || user.role === 'MANAGER') {
+        navigate('/dashboard');
+      } else {
+        navigate('/pos');
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       // Error is already handled by axios interceptor

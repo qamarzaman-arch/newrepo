@@ -77,33 +77,33 @@ function createWindow() {
   });
 }
 
-// IPC Handlers
-ipcMain.handle('db-query', (event, sql, params = []) => {
-  // Temporarily disabled - better-sqlite3 not available
-  log.warn('Database queries are currently disabled. Install better-sqlite3 to enable.');
-  return { success: false, error: 'Database not available - better-sqlite3 requires C++ build tools' };
-});
-
-ipcMain.handle('store-get', (event, key) => {
-  return store.get(key);
-});
-
-ipcMain.handle('store-set', (event, key, value) => {
-  store.set(key, value);
-  return true;
-});
-
-ipcMain.handle('get-app-info', () => {
-  return {
-    version: app.getVersion(),
-    path: app.getPath('userData'),
-    isPackaged: app.isPackaged,
-    platform: process.platform,
-  };
-});
-
 // App lifecycle
 app.whenReady().then(() => {
+  // Register IPC handlers after app is ready
+  ipcMain.handle('db-query', (event, sql, params = []) => {
+    // Temporarily disabled - better-sqlite3 not available
+    log.warn('Database queries are currently disabled. Install better-sqlite3 to enable.');
+    return { success: false, error: 'Database not available - better-sqlite3 requires C++ build tools' };
+  });
+
+  ipcMain.handle('store-get', (event, key) => {
+    return store.get(key);
+  });
+
+  ipcMain.handle('store-set', (event, key, value) => {
+    store.set(key, value);
+    return true;
+  });
+
+  ipcMain.handle('get-app-info', () => {
+    return {
+      version: app.getVersion(),
+      path: app.getPath('userData'),
+      isPackaged: app.isPackaged,
+      platform: process.platform,
+    };
+  });
+
   // initializeDatabase(); // Temporarily disabled - better-sqlite3 requires C++ build tools
   log.info('Database initialization skipped (better-sqlite3 not available)');
   

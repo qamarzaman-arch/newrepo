@@ -68,8 +68,8 @@ const createModifierSchema = z.object({
   })).min(1),
 });
 
-// Get all categories with items
-router.get('/categories', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Get all categories with items (public endpoint for cashier)
+router.get('/categories', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const categories = await prisma.menuCategory.findMany({
       where: { isActive: true },
@@ -152,8 +152,8 @@ router.delete('/categories/:id', authenticate, async (req: AuthRequest, res: Res
   }
 });
 
-// Get menu items with filters
-router.get('/items', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Get menu items with filters (public endpoint for cashier)
+router.get('/items', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { categoryId, search, available } = req.query;
 

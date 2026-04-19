@@ -63,6 +63,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRoles?: stri
     return <Navigate to="/cashier-pos" replace />;
   }
 
+  // Redirect kitchen staff from /pos to /kitchen
+  if (currentPath === '/pos' && user.role === 'KITCHEN') {
+    return <Navigate to="/kitchen" replace />;
+  }
+
   // Redirect admin/manager to dashboard on root
   if (currentPath === '/' || currentPath === '') {
     if (user.role === 'ADMIN' || user.role === 'MANAGER') {

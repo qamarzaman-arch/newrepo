@@ -355,30 +355,34 @@ const ReportsScreen: React.FC = () => {
         <div className="space-y-6">
           <div className="bg-surface-lowest rounded-xl p-6 shadow-soft">
             <p className="text-sm text-gray-600">Total Expenses</p>
-            <p className="text-3xl font-bold text-red-600">{formatCurrency(expenseData.totalExpenses)}</p>
+            <p className="text-3xl font-bold text-red-600">{formatCurrency(expenseData.totalExpenses || 0)}</p>
           </div>
 
           <div className="bg-surface-lowest rounded-2xl p-6 shadow-soft">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Expenses by Category</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={Object.entries(expenseData.byCategory).map(([name, value]) => ({ name, value }))}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {Object.entries(expenseData.byCategory).map(([_category, _value], index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {expenseData.byCategory && Object.keys(expenseData.byCategory).length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={Object.entries(expenseData.byCategory || {}).map(([name, value]) => ({ name, value }))}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {Object.entries(expenseData.byCategory || {}).map(([_category, _value], index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-center py-8 text-gray-500">No expense data available</div>
+            )}
           </div>
         </div>
       )}

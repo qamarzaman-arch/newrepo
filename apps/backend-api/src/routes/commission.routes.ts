@@ -112,7 +112,7 @@ router.post('/rate', authenticate, async (req: AuthRequest, res: Response, next:
       },
     });
 
-    logger.info(`Commission rate set for user ${sanitize(data.userId)}: ${sanitize(data.rate)}% by ${sanitize(req.user!.username)}`);
+    logger.info(`Commission rate set for user ${sanitize(data.userId)}: ${data.rate}% by ${sanitize(req.user!.username)}`);
 
     res.status(201).json({
       success: true,
