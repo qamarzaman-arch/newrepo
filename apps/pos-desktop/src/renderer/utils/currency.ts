@@ -70,15 +70,16 @@ export const getCurrency = (code: string): CurrencyConfig => {
 /**
  * Format amount with currency symbol
  */
-export const formatCurrency = (amount: number, currencyCode: string = DEFAULT_CURRENCY): string => {
+export const formatCurrency = (amount: number | undefined | null, currencyCode: string = DEFAULT_CURRENCY): string => {
   const currency = getCurrency(currencyCode);
-  
+  const safeAmount = amount ?? 0;
+
   // For RTL currencies like AED, place symbol after amount
   if (currency.code === 'AED') {
-    return `${amount.toFixed(2)} ${currency.symbol}`;
+    return `${safeAmount.toFixed(2)} ${currency.symbol}`;
   }
-  
-  return `${currency.symbol}${amount.toFixed(2)}`;
+
+  return `${currency.symbol}${safeAmount.toFixed(2)}`;
 };
 
 /**

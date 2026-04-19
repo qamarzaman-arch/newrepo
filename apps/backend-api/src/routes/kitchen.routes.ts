@@ -83,11 +83,23 @@ router.get('/tickets', authenticate, async (req: AuthRequest, res: Response, nex
 // Get active tickets for kitchen display
 router.get('/tickets/active', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+
     const tickets = await prisma.kotTicket.findMany({
       where: {
-        status: {
-          in: ['NEW', 'IN_PROGRESS'],
-        },
+        OR: [
+          {
+            status: {
+              in: ['NEW', 'IN_PROGRESS'],
+            },
+          },
+          {
+            status: 'COMPLETED',
+            completedAt: {
+              gte: twoHoursAgo,
+            },
+          },
+        ],
       },
       include: {
         order: {

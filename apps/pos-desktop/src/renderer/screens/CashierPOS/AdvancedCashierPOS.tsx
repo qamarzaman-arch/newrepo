@@ -85,13 +85,19 @@ const AdvancedCashierPOS: React.FC = () => {
 
     // Handle collect payment event from Active Orders
     const handleCollectPayment = async (e: any) => {
+      console.log('[AdvancedCashierPOS] Collect payment event received:', e.detail);
       const { orderId } = e.detail;
-      if (!orderId) return;
-      
+      if (!orderId) {
+        console.log('[AdvancedCashierPOS] No orderId in event detail');
+        return;
+      }
+
       try {
         // Load order details
+        console.log('[AdvancedCashierPOS] Fetching order:', orderId);
         const response = await orderService.getOrder(orderId);
         const order = response.data.data.order;
+        console.log('[AdvancedCashierPOS] Order loaded:', order);
         
         if (!order) {
           toast.error('Order not found');
@@ -124,11 +130,13 @@ const AdvancedCashierPOS: React.FC = () => {
         });
         
         // Navigate to checkout
+        console.log('[AdvancedCashierPOS] Navigating to CHECKOUT');
         setCurrentStep('CHECKOUT');
         toast.success('Order loaded for payment collection');
-      } catch (error) {
-        console.error('Failed to load order:', error);
-        toast.error('Failed to load order for payment');
+      } catch (error: any) {
+        console.error('[AdvancedCashierPOS] Failed to load order:', error);
+        console.error('[AdvancedCashierPOS] Error response:', error.response?.data);
+        toast.error(error.response?.data?.error?.message || 'Failed to load order for payment');
       }
     };
     window.addEventListener('pos:collect-payment', handleCollectPayment);
@@ -139,7 +147,64 @@ const AdvancedCashierPOS: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('pos:collect-payment', handleCollectPayment);
     };
-  }, [user, navigate, handleNewOrder, clearOrder, setOrderType, setTable, setCustomer]);
+  }, [user, navigate, handleNewOrder, clearOrder, setOrderType, setTable, setCustomer, setCurrentStep]);
+
+  // Handle collect payment from sessionStorage (when coming from Active Orders)
+  useEffect(() => {
+    const collectPaymentOrderId = sessionStorage.getItem('collectPaymentOrderId');
+    console.log('[AdvancedCashierPOS] collectPaymentOrderId from sessionStorage:', collectPaymentOrderId);
+    if (collectPaymentOrderId) {
+      console.log('[AdvancedCashierPOS] Found collectPaymentOrderId:', collectPaymentOrderId);
+      // Load order and go to checkout
+      const loadOrderForPayment = async () => {
+        try {
+          const response = await orderService.getOrder(collectPaymentOrderId);
+          const order = response.data.data.order;
+          if (!order) {
+            toast.error('Order not found');
+            return;
+          }
+          // Pre-populate order store
+          clearOrder();
+          setOrderType(order.orderType);
+          if (order.tableId) {
+            setTable(order.tableId, order.table?.tableNumber);
+          }
+          if (order.customerId || order.customerName) {
+            setCustomer({
+              id: order.customerId,
+              name: order.customerName || 'Walk-in',
+              phone: order.customerPhone,
+            });
+          }
+          console.log('[AdvancedCashierPOS] Loading', order.items?.length, 'items into order store');
+          order.items?.forEach((item: any) => {
+            useOrderStore.getState().addItem({
+              menuItemId: item.menuItemId || item.menuItem?.id,
+              name: item.menuItem?.name || item.name,
+              price: Number(item.unitPrice),
+              quantity: item.quantity,
+              notes: item.notes,
+              modifiers: item.modifiers,
+            });
+          });
+          console.log('[AdvancedCashierPOS] Items loaded, store now has:', useOrderStore.getState().currentOrder.items.length, 'items');
+          // Small delay to ensure store is updated before navigation
+          setTimeout(() => {
+            // Clear sessionStorage to prevent re-processing on refresh
+            sessionStorage.removeItem('collectPaymentOrderId');
+            // Navigate to checkout
+            setCurrentStep('CHECKOUT');
+            toast.success('Order loaded for payment collection');
+          }, 100);
+        } catch (error: any) {
+          console.error('[AdvancedCashierPOS] Failed to load order:', error);
+          toast.error(error.response?.data?.error?.message || 'Failed to load order for payment');
+        }
+      };
+      loadOrderForPayment();
+    }
+  }, [navigate, clearOrder, setOrderType, setTable, setCustomer, setCurrentStep]);
 
   const handleOrderTypeSelect = (type: string) => {
     setLocalOrderType(type);

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Edit, Eye, X, Plus, Trash2, Send, CheckCircle, AlertCircle, Minus, Search, DollarSign, XCircle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { orderService } from '../../services/orderService';
 import { useMenuItems } from '../../hooks/useMenu';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -9,9 +10,11 @@ import { formatCurrency } from '../../utils/currency';
 import toast from 'react-hot-toast';
 
 const CashierActiveOrders: React.FC = () => {
+  const navigate = useNavigate();
   const { settings } = useSettingsStore();
   const queryClient = useQueryClient();
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [showModifyModal, setShowModifyModal] = useState(false);
   const [modifyNotes, setModifyNotes] = useState('');
   const [modifiedItems, setModifiedItems] = useState<any[]>([]);
@@ -219,13 +222,16 @@ const CashierActiveOrders: React.FC = () => {
 
         <div className="flex items-center justify-between pt-3 border-t border-gray-200">
           <span className="text-lg font-black text-primary">
-            {formatCurrency(order.total, settings.currency)}
+            {formatCurrency(order.totalAmount ?? order.total ?? 0, settings.currency)}
           </span>
           <div className="flex gap-2">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setSelectedOrder(order)}
+              onClick={() => {
+                setSelectedOrder(order);
+                setShowViewModal(true);
+              }}
               className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               title="View Details"
             >
@@ -261,8 +267,11 @@ const CashierActiveOrders: React.FC = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
-                  // Navigate to checkout with this order pre-loaded
-                  window.dispatchEvent(new CustomEvent('pos:collect-payment', { detail: { orderId: order.id } }));
+                  // Navigate to cashier page with orderId in state for payment collection
+                  console.log('[CashierActiveOrders] Navigating to cashier-pos with order:', order.id);
+                  sessionStorage.setItem('collectPaymentOrderId', order.id);
+                  navigate('/cashier-pos');
+                  console.log('[CashierActiveOrders] Navigation called');
                 }}
                 className="p-2 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
                 title="Collect Payment"
@@ -569,6 +578,125 @@ const CashierActiveOrders: React.FC = () => {
                   <p>No menu items found</p>
                 </div>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* View Order Details Modal */}
+      <AnimatePresence>
+        {showViewModal && selectedOrder && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowViewModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Order #{selectedOrder.orderNumber || selectedOrder.id.slice(-6)}
+                </h2>
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Order Info */}
+                <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Order Type</p>
+                    <p className="font-semibold text-gray-900">{selectedOrder.orderType?.replace('_', ' ')}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Status</p>
+                    <p className="font-semibold text-gray-900">{selectedOrder.status}</p>
+                  </div>
+                  {selectedOrder.table?.number && (
+                    <div>
+                      <p className="text-xs text-gray-500">Table</p>
+                      <p className="font-semibold text-gray-900">#{selectedOrder.table.number}</p>
+                    </div>
+                  )}
+                  {selectedOrder.customerName && (
+                    <div>
+                      <p className="text-xs text-gray-500">Customer</p>
+                      <p className="font-semibold text-gray-900">{selectedOrder.customerName}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Order Items */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Order Items</h3>
+                  <div className="space-y-2">
+                    {selectedOrder.items?.map((item: any) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900">
+                            {item.quantity}x {item.menuItem?.name || item.name}
+                          </p>
+                          {item.notes && (
+                            <p className="text-xs text-gray-500 mt-1">Note: {item.notes}</p>
+                          )}
+                        </div>
+                        <p className="font-semibold text-primary">
+                          {formatCurrency(item.totalPrice || (item.unitPrice * item.quantity), settings.currency)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Order Summary */}
+                <div className="border-t pt-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-semibold">{formatCurrency(selectedOrder.subtotal, settings.currency)}</span>
+                  </div>
+                  {selectedOrder.discountAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Discount</span>
+                      <span className="font-semibold text-green-600">-{formatCurrency(selectedOrder.discountAmount, settings.currency)}</span>
+                    </div>
+                  )}
+                  {selectedOrder.taxAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Tax</span>
+                      <span className="font-semibold">{formatCurrency(selectedOrder.taxAmount, settings.currency)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                    <span>Total</span>
+                    <span className="text-primary">{formatCurrency(selectedOrder.totalAmount ?? selectedOrder.total, settings.currency)}</span>
+                  </div>
+                </div>
+
+                {selectedOrder.notes && (
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                    <p className="text-xs text-yellow-800 font-semibold mb-1">Order Notes</p>
+                    <p className="text-sm text-yellow-700">{selectedOrder.notes}</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

@@ -60,6 +60,25 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
   const { currentOrder, getSubtotal, getTotal, getDiscount, getTip, applyDiscount, setTip, setCompletedOrderId, setProcessing } = useOrderStore();
   const { settings } = useSettingsStore();
 
+  // Guard for empty orders - redirect back if no items
+  console.log('[CheckoutPayment] Rendering with', currentOrder.items?.length || 0, 'items');
+  if (!currentOrder.items || currentOrder.items.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading order...</p>
+          <button
+            onClick={onBack}
+            className="mt-4 px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const subtotal = getSubtotal();
   const discount = getDiscount();
   const afterDiscount = subtotal - discount;
@@ -239,6 +258,9 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
 
       // 3. Store the order ID for receipt display
       setCompletedOrderId(orderId);
+
+      // Invalidate active orders cache to remove completed order from list
+      queryClient.invalidateQueries({ queryKey: ['cashier-active-orders'] });
 
       // 4. Auto-print receipt if enabled
       if (settings.autoPrintReceipt) {

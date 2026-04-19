@@ -12,22 +12,22 @@ const router = Router();
 // Validation schemas
 const createOrderSchema = z.object({
   orderType: z.enum(['DINE_IN', 'WALK_IN', 'TAKEAWAY', 'DELIVERY', 'PICKUP']),
-  tableId: z.string().optional(),
-  customerId: z.string().optional(),
-  customerName: z.string().optional(),
-  customerPhone: z.string().optional(),
+  tableId: z.string().optional().nullable(),
+  customerId: z.string().optional().nullable(),
+  customerName: z.string().optional().nullable(),
+  customerPhone: z.string().optional().nullable(),
   items: z.array(z.object({
     menuItemId: z.string(),
     quantity: z.number().min(1),
-    notes: z.string().optional(),
-    modifiers: z.string().optional(),
+    notes: z.string().optional().nullable(),
+    modifiers: z.string().optional().nullable(),
   })).min(1),
-  discountCode: z.string().optional(),
-  discountPercent: z.number().min(0).max(100).optional(),
-  discountAmount: z.number().min(0).optional(),
-  tipAmount: z.number().min(0).optional(),
-  notes: z.string().optional(),
-  kitchenNotes: z.string().optional(),
+  discountCode: z.string().optional().nullable(),
+  discountPercent: z.number().min(0).max(100).optional().nullable(),
+  discountAmount: z.number().min(0).optional().nullable(),
+  tipAmount: z.number().min(0).optional().nullable(),
+  notes: z.string().optional().nullable(),
+  kitchenNotes: z.string().optional().nullable(),
 });
 
 // Get all orders with filters
@@ -373,61 +373,67 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
           // Get recipe ingredients for this menu item
           const recipes = await (tx as any).recipe.findMany({
             where: { menuItemId: item.menuItemId },
-            include: { inventoryItem: true },
+            include: {
+              ingredients: {
+                include: { inventoryItem: true },
+              },
+            },
           });
 
           for (const recipe of recipes) {
-            if (recipe.inventoryItemId) {
-              const requiredQty = recipe.quantity * item.quantity;
-              const inventoryItem = recipe.inventoryItem;
+            for (const ingredient of recipe.ingredients || []) {
+              if (ingredient.inventoryItemId && ingredient.inventoryItem) {
+                const requiredQty = ingredient.quantity * item.quantity;
+                const inventoryItem = ingredient.inventoryItem;
 
-              // Check if sufficient stock
-              if (inventoryItem.currentStock < requiredQty) {
-                // Log low stock but don't fail order - kitchen will handle it
-                logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available: ${inventoryItem.currentStock}`);
-              }
+                // Check if sufficient stock
+                if (inventoryItem.currentStock < requiredQty) {
+                  // Log low stock but don't fail order - kitchen will handle it
+                  logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available: ${inventoryItem.currentStock}`);
+                }
 
-              // Deduct from inventory
-              const newStock = Math.max(0, inventoryItem.currentStock - requiredQty);
-              const status = newStock === 0 ? 'OUT_OF_STOCK' :
-                            newStock <= inventoryItem.minStock ? 'LOW_STOCK' : 'IN_STOCK';
+                // Deduct from inventory
+                const newStock = Math.max(0, inventoryItem.currentStock - requiredQty);
+                const status = newStock === 0 ? 'OUT_OF_STOCK' :
+                              newStock <= inventoryItem.minStock ? 'LOW_STOCK' : 'IN_STOCK';
 
-              await (tx as any).inventoryItem.update({
-                where: { id: inventoryItem.id },
-                data: {
-                  currentStock: newStock,
-                  status,
-                },
-              });
-
-              // Record stock movement (if table exists)
-              try {
-                await (tx as any).stockMovement.create({
+                await (tx as any).inventoryItem.update({
+                  where: { id: inventoryItem.id },
                   data: {
-                    inventoryItemId: inventoryItem.id,
-                    type: 'SALE',
-                    quantity: requiredQty,
-                    reference: `Order ${orderNumber}`,
-                    notes: `Auto-deducted for order`,
+                    currentStock: newStock,
+                    status,
                   },
                 });
-              } catch (e) {
-                // Table may not exist, skip
-              }
 
-              // Create low stock alert if needed (if table exists)
-              if (status === 'LOW_STOCK') {
+                // Record stock movement (if table exists)
                 try {
-                  await (tx as any).stockAlert.create({
+                  await (tx as any).stockMovement.create({
                     data: {
                       inventoryItemId: inventoryItem.id,
-                      alertType: 'LOW_STOCK',
-                      message: `${inventoryItem.name} is below minimum level. Current: ${newStock}, Min: ${inventoryItem.minStock}`,
-                      status: 'ACTIVE',
+                      type: 'SALE',
+                      quantity: requiredQty,
+                      reference: `Order ${orderNumber}`,
+                      notes: `Auto-deducted for order`,
                     },
                   });
                 } catch (e) {
                   // Table may not exist, skip
+                }
+
+                // Create low stock alert if needed (if table exists)
+                if (status === 'LOW_STOCK') {
+                  try {
+                    await (tx as any).stockAlert.create({
+                      data: {
+                        inventoryItemId: inventoryItem.id,
+                        alertType: 'LOW_STOCK',
+                        message: `${inventoryItem.name} is below minimum level. Current: ${newStock}, Min: ${inventoryItem.minStock}`,
+                        status: 'ACTIVE',
+                      },
+                    });
+                  } catch (e) {
+                    // Table may not exist, skip
+                  }
                 }
               }
             }
