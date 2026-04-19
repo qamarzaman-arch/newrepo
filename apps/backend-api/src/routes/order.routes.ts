@@ -521,7 +521,17 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res: Response
 // Process payment
 router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { method, amount, reference, notes } = req.body;
+    const { 
+      method, 
+      amount, 
+      reference, 
+      notes,
+      cashReceived,
+      cardLastFour,
+      transferReference,
+      discountAmount,
+      discountPercent,
+    } = req.body;
 
     const order = await prisma.order.findUnique({
       where: { id: req.params.id },
@@ -531,7 +541,29 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
       throw new AppError('Order not found', 404);
     }
 
+    // Handle discount if applied
+    let finalTotalAmount = Number(order.totalAmount);
+    let finalDiscountAmount = Number(order.discountAmount || 0);
+    
+    if (discountAmount && discountAmount > 0) {
+      finalDiscountAmount = discountAmount;
+      finalTotalAmount = Number(order.subtotal || order.totalAmount) - discountAmount + Number(order.taxAmount || 0);
+    }
+
     const paidAmount = Number(order.paidAmount) + amount;
+
+    // Build payment notes with additional details
+    let paymentNotes = notes || '';
+    if (method === 'CASH' && cashReceived) {
+      const change = Number(cashReceived) - amount;
+      paymentNotes = `${paymentNotes} Cash: ${cashReceived}, Change: ${change}`.trim();
+    }
+    if (method === 'CARD' && cardLastFour) {
+      paymentNotes = `${paymentNotes} Card ending: ${cardLastFour}`.trim();
+    }
+    if (method === 'ONLINE_TRANSFER' && transferReference) {
+      paymentNotes = `${paymentNotes} Transfer Ref: ${transferReference}`.trim();
+    }
 
     // Create payment record
     const payment = await prisma.payment.create({
@@ -539,20 +571,29 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
         orderId: order.id,
         method,
         amount,
-        reference,
-        notes,
+        reference: transferReference || reference,
+        notes: paymentNotes || undefined,
         status: 'PAID',
       },
     });
 
-    // Update order
+    // Update order with discount if applied
+    const updateData: any = {
+      paidAmount,
+      paymentStatus: paidAmount >= finalTotalAmount ? 'PAID' : 'PARTIAL',
+      paymentMethod: method,
+    };
+    
+    // Only update discount fields if new discount is applied
+    if (discountAmount && discountAmount > 0) {
+      updateData.discountAmount = finalDiscountAmount;
+      updateData.discountPercent = discountPercent || 0;
+      updateData.totalAmount = finalTotalAmount;
+    }
+
     const updatedOrder = await prisma.order.update({
       where: { id: order.id },
-      data: {
-        paidAmount,
-        paymentStatus: paidAmount >= Number(order.totalAmount) ? 'PAID' : 'PARTIAL',
-        paymentMethod: method,
-      },
+      data: updateData,
       include: {
         payments: true,
         items: {
@@ -566,7 +607,7 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
     let finalOrder = updatedOrder;
     
     // If fully paid and not completed, mark as completed
-    if (paidAmount >= Number(order.totalAmount) && order.status !== 'COMPLETED') {
+    if (paidAmount >= finalTotalAmount && order.status !== 'COMPLETED') {
       finalOrder = await prisma.order.update({
         where: { id: order.id },
         data: {

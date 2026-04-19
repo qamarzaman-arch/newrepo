@@ -238,13 +238,21 @@ router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Respons
       throw new AppError('PIN is required', 400);
     }
 
-    // Get manager PIN from settings
-    const managerPinSetting = await prisma.setting.findUnique({
+    // Get manager PIN from settings - auto-create default if not exists
+    let managerPinSetting = await prisma.setting.findUnique({
       where: { key: 'manager_pin' },
     });
 
+    // If no PIN configured, create default PIN "123456"
     if (!managerPinSetting) {
-      throw new AppError('Manager PIN not configured', 500);
+      const defaultPinHash = await bcrypt.hash('123456', 10);
+      managerPinSetting = await prisma.setting.create({
+        data: {
+          key: 'manager_pin',
+          value: defaultPinHash,
+        },
+      });
+      logger.warn('Created default manager PIN: 123456 - Please change in settings');
     }
 
     // Compare PIN (stored as bcrypt hash)

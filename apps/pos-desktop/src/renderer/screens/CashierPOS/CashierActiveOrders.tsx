@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Edit, Eye, X, Plus, Trash2, Send, CheckCircle, AlertCircle, Minus, Search, DollarSign, XCircle } from 'lucide-react';
+import { Clock, Edit, Eye, X, Plus, Trash2, Send, CheckCircle, AlertCircle, Minus, Search, DollarSign, XCircle, CreditCard, Banknote, Smartphone, Tag, Percent } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import { orderService } from '../../services/orderService';
 import { useMenuItems } from '../../hooks/useMenu';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -10,7 +9,6 @@ import { formatCurrency } from '../../utils/currency';
 import toast from 'react-hot-toast';
 
 const CashierActiveOrders: React.FC = () => {
-  const navigate = useNavigate();
   const { settings } = useSettingsStore();
   const queryClient = useQueryClient();
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -20,6 +18,20 @@ const CashierActiveOrders: React.FC = () => {
   const [modifiedItems, setModifiedItems] = useState<any[]>([]);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentOrder, setPaymentOrder] = useState<any>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'ONLINE_TRANSFER'>('CASH');
+  const [cashReceived, setCashReceived] = useState<string>('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [cardLastFour, setCardLastFour] = useState('');
+  const [transferReference, setTransferReference] = useState('');
+  const [discountPercent, setDiscountPercent] = useState<string>('');
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [showDiscountInput, setShowDiscountInput] = useState(false);
+  const [managerPin, setManagerPin] = useState('');
+  const [isValidatingPin, setIsValidatingPin] = useState(false);
 
   // Load menu items for adding to order
   const { data: menuItems } = useMenuItems({
@@ -78,6 +90,66 @@ const CashierActiveOrders: React.FC = () => {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to cancel order');
+    },
+  });
+
+  // Validate manager PIN for discount
+  const validatePinMutation = useMutation({
+    mutationFn: async (pin: string) => {
+      const response = await fetch('/api/v1/auth/validate-pin', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ pin, operation: 'apply_discount' }),
+      });
+      return response.json();
+    },
+  });
+
+  // Payment processing mutation
+  const processPaymentMutation = useMutation({
+    mutationFn: async ({ 
+      orderId, 
+      paymentData 
+    }: { 
+      orderId: string; 
+      paymentData: { 
+        method: string; 
+        amount: number; 
+        cashReceived?: number;
+        cardLastFour?: string;
+        transferReference?: string;
+        discountAmount?: number;
+        discountPercent?: number;
+      } 
+    }) => {
+      return await orderService.processPayment(orderId, {
+        method: paymentData.method,
+        amount: paymentData.amount,
+        cashReceived: paymentData.cashReceived,
+        cardLastFour: paymentData.cardLastFour,
+        transferReference: paymentData.transferReference,
+        discountAmount: paymentData.discountAmount,
+        discountPercent: paymentData.discountPercent,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cashier-active-orders'] });
+      toast.success('Payment processed successfully!');
+      setShowPaymentModal(false);
+      setPaymentOrder(null);
+      setCashReceived('');
+      setCardLastFour('');
+      setTransferReference('');
+      setDiscountPercent('');
+      setDiscountAmount(0);
+      setShowDiscountInput(false);
+      setManagerPin('');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Payment failed');
     },
   });
 
@@ -267,11 +339,11 @@ const CashierActiveOrders: React.FC = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
-                  // Navigate to cashier page with orderId in state for payment collection
-                  console.log('[CashierActiveOrders] Navigating to cashier-pos with order:', order.id);
-                  sessionStorage.setItem('collectPaymentOrderId', order.id);
-                  navigate('/cashier-pos');
-                  console.log('[CashierActiveOrders] Navigation called');
+                  // Open payment modal directly instead of navigating
+                  console.log('[CashierActiveOrders] Opening payment modal for order:', order.id);
+                  setPaymentOrder(order);
+                  setShowPaymentModal(true);
+                  setCashReceived(order.totalAmount?.toString() || '');
                 }}
                 className="p-2 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
                 title="Collect Payment"
@@ -695,6 +767,364 @@ const CashierActiveOrders: React.FC = () => {
                   className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
                 >
                   Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Payment Modal */}
+      <AnimatePresence>
+        {showPaymentModal && paymentOrder && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => !isProcessingPayment && setShowPaymentModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <DollarSign className="w-6 h-6 text-primary" />
+                    Collect Payment
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    Order #{paymentOrder.orderNumber || paymentOrder.id.slice(-6)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => !isProcessingPayment && setShowPaymentModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Apply Discount Button */}
+              {!showDiscountInput && (
+                <button
+                  onClick={() => setShowDiscountInput(true)}
+                  className="w-full mb-4 flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-primary hover:text-primary transition-colors"
+                >
+                  <Tag className="w-5 h-5" />
+                  <span className="font-semibold">Apply Discount</span>
+                </button>
+              )}
+
+              {/* Discount Input */}
+              {showDiscountInput && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-semibold text-purple-900 flex items-center gap-2">
+                      <Percent className="w-4 h-4" />
+                      Apply Discount
+                    </span>
+                    <button
+                      onClick={() => {
+                        setShowDiscountInput(false);
+                        setDiscountPercent('');
+                        setDiscountAmount(0);
+                        setManagerPin('');
+                      }}
+                      className="text-sm text-purple-600 hover:text-purple-800"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="number"
+                          value={discountPercent}
+                          onChange={(e) => {
+                            const percent = parseFloat(e.target.value) || 0;
+                            setDiscountPercent(e.target.value);
+                            const subtotal = paymentOrder.subtotal || paymentOrder.totalAmount || 0;
+                            setDiscountAmount((subtotal * percent) / 100);
+                          }}
+                          className="w-full pl-4 pr-8 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                          placeholder="0"
+                          min="0"
+                          max="100"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                      </div>
+                      <div className="flex-1 flex items-center px-3 bg-white border border-purple-200 rounded-lg">
+                        <span className="text-purple-700 font-semibold">
+                          -{formatCurrency(discountAmount, settings.currency)}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <input
+                      type="password"
+                      value={managerPin}
+                      onChange={(e) => setManagerPin(e.target.value)}
+                      className="w-full px-4 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                      placeholder="Enter Manager PIN to confirm"
+                      maxLength={6}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Order Summary */}
+              <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-semibold">{formatCurrency(paymentOrder.subtotal, settings.currency)}</span>
+                  </div>
+                  {(paymentOrder.discountAmount > 0 || discountAmount > 0) && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Discount {discountPercent && `(${discountPercent}%)`}</span>
+                      <span className="font-semibold text-green-600">
+                        -{formatCurrency((paymentOrder.discountAmount || 0) + discountAmount, settings.currency)}
+                      </span>
+                    </div>
+                  )}
+                  {paymentOrder.taxAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Tax</span>
+                      <span className="font-semibold">{formatCurrency(paymentOrder.taxAmount, settings.currency)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
+                    <span>Total Amount</span>
+                    <span className="text-primary">
+                      {formatCurrency(
+                        (paymentOrder.totalAmount ?? paymentOrder.total ?? 0) - discountAmount, 
+                        settings.currency
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Method Selection */}
+              <div className="space-y-4 mb-6">
+                <p className="text-sm font-semibold text-gray-700">Payment Method</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    onClick={() => setPaymentMethod('CASH')}
+                    className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                      paymentMethod === 'CASH'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <Banknote className="w-5 h-5" />
+                    <span className="font-semibold text-sm">Cash</span>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod('CARD')}
+                    className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                      paymentMethod === 'CARD'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <CreditCard className="w-5 h-5" />
+                    <span className="font-semibold text-sm">Card</span>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod('ONLINE_TRANSFER')}
+                    className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                      paymentMethod === 'ONLINE_TRANSFER'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <Smartphone className="w-5 h-5" />
+                    <span className="font-semibold text-sm">Transfer</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Cash Payment Fields */}
+              {paymentMethod === 'CASH' && (
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Cash Received
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                        {settings.currency === 'USD' ? '$' : settings.currency === 'EUR' ? '€' : ''}
+                      </span>
+                      <input
+                        type="number"
+                        value={cashReceived}
+                        onChange={(e) => setCashReceived(e.target.value)}
+                        className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-lg font-semibold"
+                        placeholder="0.00"
+                        min={paymentOrder.totalAmount}
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Quick Amount Buttons */}
+                  <div className="flex gap-2">
+                    {[10, 20, 50, 100].map((amount) => (
+                      <button
+                        key={amount}
+                        onClick={() => setCashReceived(amount.toString())}
+                        className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-semibold transition-colors"
+                      >
+                        {formatCurrency(amount, settings.currency)}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setCashReceived(paymentOrder.totalAmount?.toString() || '')}
+                      className="flex-1 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-sm font-semibold transition-colors"
+                    >
+                      Exact
+                    </button>
+                  </div>
+
+                  {/* Change Calculation */}
+                  {parseFloat(cashReceived) > paymentOrder.totalAmount && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-green-800 font-semibold">Change Due</span>
+                        <span className="text-lg font-bold text-green-600">
+                          {formatCurrency(parseFloat(cashReceived) - paymentOrder.totalAmount, settings.currency)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Card Payment Fields */}
+              {paymentMethod === 'CARD' && (
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Card Last 4 Digits (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={cardLastFour}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        setCardLastFour(value);
+                      }}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-lg font-semibold tracking-widest"
+                      placeholder="••••"
+                      maxLength={4}
+                    />
+                  </div>
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                    <p className="text-sm text-blue-800">
+                      <span className="font-semibold">Card Payment</span> - Total amount {formatCurrency((paymentOrder.totalAmount ?? 0) - discountAmount, settings.currency)} will be charged.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Online Transfer Payment Fields */}
+              {paymentMethod === 'ONLINE_TRANSFER' && (
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Transfer Reference Number *
+                    </label>
+                    <input
+                      type="text"
+                      value={transferReference}
+                      onChange={(e) => setTransferReference(e.target.value.toUpperCase())}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-lg font-semibold uppercase"
+                      placeholder="e.g., TRX123456"
+                    />
+                  </div>
+                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl">
+                    <p className="text-sm text-purple-800">
+                      <span className="font-semibold">Online Transfer</span> - Amount {formatCurrency((paymentOrder.totalAmount ?? 0) - discountAmount, settings.currency)} via bank/JazzCash/EasyPaisa.
+                    </p>
+                    <p className="text-xs text-purple-600 mt-1">
+                      Enter the transaction reference number from the transfer.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowPaymentModal(false)}
+                  disabled={isProcessingPayment}
+                  className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    // Validate PIN if discount is being applied
+                    if (discountAmount > 0 && managerPin) {
+                      setIsValidatingPin(true);
+                      const result = await validatePinMutation.mutateAsync(managerPin);
+                      setIsValidatingPin(false);
+                      if (!result.data?.valid) {
+                        toast.error('Invalid manager PIN');
+                        return;
+                      }
+                    }
+                    
+                    setIsProcessingPayment(true);
+                    const finalAmount = (paymentOrder.totalAmount ?? paymentOrder.total ?? 0) - discountAmount;
+                    
+                    processPaymentMutation.mutate(
+                      {
+                        orderId: paymentOrder.id,
+                        paymentData: {
+                          method: paymentMethod,
+                          amount: finalAmount,
+                          cashReceived: paymentMethod === 'CASH' ? parseFloat(cashReceived) : undefined,
+                          cardLastFour: paymentMethod === 'CARD' ? cardLastFour : undefined,
+                          transferReference: paymentMethod === 'ONLINE_TRANSFER' ? transferReference : undefined,
+                          discountAmount: discountAmount > 0 ? discountAmount : undefined,
+                          discountPercent: discountPercent ? parseFloat(discountPercent) : undefined,
+                        },
+                      },
+                      {
+                        onSettled: () => setIsProcessingPayment(false),
+                      }
+                    );
+                  }}
+                  disabled={
+                    isProcessingPayment ||
+                    isValidatingPin ||
+                    (paymentMethod === 'CASH' && parseFloat(cashReceived) < ((paymentOrder.totalAmount ?? 0) - discountAmount)) ||
+                    (paymentMethod === 'ONLINE_TRANSFER' && !transferReference.trim()) ||
+                    (discountAmount > 0 && !managerPin.trim())
+                  }
+                  className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isProcessingPayment || isValidatingPin ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      {isValidatingPin ? 'Validating PIN...' : 'Processing...'}
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      Complete Payment
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>

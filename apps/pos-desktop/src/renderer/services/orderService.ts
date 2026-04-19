@@ -30,8 +30,17 @@ export const orderService = {
   updateOrder: (id: string, data: Partial<CreateOrderData>) => api.put(`/orders/${id}`, data),
   updateStatus: (id: string, status: string, cancelReason?: string) =>
     api.patch(`/orders/${id}/status`, { status, cancelReason }),
-  processPayment: (id: string, paymentData: { method: string; amount: number; reference?: string; notes?: string }) =>
-    api.post(`/orders/${id}/payment`, paymentData),
+  processPayment: (id: string, paymentData: { 
+    method: string; 
+    amount: number; 
+    reference?: string; 
+    notes?: string;
+    cashReceived?: number;
+    cardLastFour?: string;
+    transferReference?: string;
+    discountAmount?: number;
+    discountPercent?: number;
+  }) => api.post(`/orders/${id}/payment`, paymentData),
   getReservations: (params?: { date?: string; status?: string }) =>
     api.get('/orders/reservations', { params }),
   createReservation: (data: any) => api.post('/orders/reservations', data),

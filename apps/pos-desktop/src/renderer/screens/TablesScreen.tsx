@@ -1,97 +1,615 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
 import { tableService } from '../services/tableService';
-import { Users } from 'lucide-react';
+import { 
+  Users, Plus, Settings, RefreshCw, Clock, 
+  CheckCircle2, AlertCircle, Sparkles, LayoutGrid, List,
+  MoreVertical, Edit2, Trash2, MapPin, Search
+} from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const TablesScreen: React.FC = () => {
-  const { data: tablesData, refetch } = useQuery({
+  const queryClient = useQueryClient();
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedTable, setSelectedTable] = useState<any>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [formData, setFormData] = useState({
+    number: '',
+    capacity: 4,
+    location: '',
+    shape: 'round',
+  });
+
+  const { data: tablesData, isLoading, refetch } = useQuery({
     queryKey: ['tables'],
     queryFn: async () => {
       const response = await tableService.getTables();
-      return response.data.data.tables;
+      return response.data.data.tables || [];
     },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ tableId, status }: { tableId: string; status: string }) =>
+      tableService.updateStatus(tableId, status as any),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tables'] });
+      toast.success('Table status updated');
+    },
+    onError: () => toast.error('Failed to update status'),
+  });
+
+  const createTableMutation = useMutation({
+    mutationFn: (data: any) => tableService.createTable(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tables'] });
+      toast.success('Table created successfully');
+      setShowAddModal(false);
+      setFormData({ number: '', capacity: 4, location: '', shape: 'round' });
+    },
+    onError: () => toast.error('Failed to create table'),
+  });
+
+  const deleteTableMutation = useMutation({
+    mutationFn: (id: string) => tableService.deleteTable(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tables'] });
+      toast.success('Table deleted');
+    },
+    onError: () => toast.error('Failed to delete table'),
   });
 
   const tables = tablesData || [];
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      AVAILABLE: 'bg-green-500',
-      OCCUPIED: 'bg-red-500',
-      RESERVED: 'bg-yellow-500',
-      NEEDS_CLEANING: 'bg-orange-500',
-      OUT_OF_ORDER: 'bg-gray-500',
-    };
-    return colors[status] || 'bg-gray-500';
-  };
+  const filteredTables = tables.filter((table: any) => {
+    const matchesSearch = table.number?.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         table.location?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || table.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
 
-  const handleStatusChange = async (tableId: string, newStatus: string) => {
-    await tableService.updateStatus(tableId, newStatus as any);
-    refetch();
+  const getStatusConfig = (status: string) => {
+    const configs: Record<string, { color: string; bg: string; border: string; icon: any; label: string }> = {
+      AVAILABLE: { 
+        color: 'text-green-700', 
+        bg: 'bg-green-100', 
+        border: 'border-green-300',
+        icon: CheckCircle2,
+        label: 'Available'
+      },
+      OCCUPIED: { 
+        color: 'text-red-700', 
+        bg: 'bg-red-100', 
+        border: 'border-red-300',
+        icon: Users,
+        label: 'Occupied'
+      },
+      RESERVED: { 
+        color: 'text-amber-700', 
+        bg: 'bg-amber-100', 
+        border: 'border-amber-300',
+        icon: Clock,
+        label: 'Reserved'
+      },
+      NEEDS_CLEANING: { 
+        color: 'text-orange-700', 
+        bg: 'bg-orange-100', 
+        border: 'border-orange-300',
+        icon: AlertCircle,
+        label: 'Needs Cleaning'
+      },
+      OUT_OF_ORDER: { 
+        color: 'text-gray-700', 
+        bg: 'bg-gray-100', 
+        border: 'border-gray-300',
+        icon: AlertCircle,
+        label: 'Out of Order'
+      },
+    };
+    return configs[status] || configs.OUT_OF_ORDER;
   };
 
   const stats = {
+    total: tables.length,
     available: tables.filter((t: any) => t.status === 'AVAILABLE').length,
     occupied: tables.filter((t: any) => t.status === 'OCCUPIED').length,
     reserved: tables.filter((t: any) => t.status === 'RESERVED').length,
     needsCleaning: tables.filter((t: any) => t.status === 'NEEDS_CLEANING').length,
+    outOfOrder: tables.filter((t: any) => t.status === 'OUT_OF_ORDER').length,
+    utilization: tables.length > 0 
+      ? Math.round((tables.filter((t: any) => t.status === 'OCCUPIED').length / tables.length) * 100)
+      : 0,
   };
+
+  const handleStatusChange = (tableId: string, newStatus: string) => {
+    updateStatusMutation.mutate({ tableId, status: newStatus });
+  };
+
+  const handleCreateTable = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.number) {
+      toast.error('Table number is required');
+      return;
+    }
+    createTableMutation.mutate({
+      number: formData.number,
+      capacity: formData.capacity,
+      location: formData.location,
+      shape: formData.shape,
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-900">Table Management</h1>
+          <div className="animate-pulse w-32 h-10 bg-gray-200 rounded-lg" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="animate-pulse h-24 bg-gray-200 rounded-xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className="animate-pulse h-40 bg-gray-200 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Table Management</h1>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <LayoutGrid className="w-8 h-8 text-primary" />
+            Table Management
+          </h1>
+          <p className="text-gray-600 mt-1">Manage tables, seating, and reservations</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => refetch()}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className="w-5 h-5 text-gray-600" />
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Add Table
+          </button>
+        </div>
+      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-green-100 rounded-xl p-4">
-          <p className="text-sm text-green-800">Available</p>
-          <p className="text-2xl font-bold text-green-900">{stats.available}</p>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {[
+          { label: 'Total Tables', value: stats.total, color: 'bg-blue-100 text-blue-800' },
+          { label: 'Available', value: stats.available, color: 'bg-green-100 text-green-800' },
+          { label: 'Occupied', value: stats.occupied, color: 'bg-red-100 text-red-800' },
+          { label: 'Reserved', value: stats.reserved, color: 'bg-amber-100 text-amber-800' },
+          { label: 'Needs Cleaning', value: stats.needsCleaning, color: 'bg-orange-100 text-orange-800' },
+          { label: 'Utilization', value: `${stats.utilization}%`, color: 'bg-purple-100 text-purple-800' },
+        ].map((stat, index) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+            className={`${stat.color} rounded-xl p-4`}
+          >
+            <p className="text-sm font-medium opacity-80">{stat.label}</p>
+            <p className="text-2xl font-bold">{stat.value}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Filters & Search */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <div className="flex items-center gap-2 flex-1 max-w-md">
+          <Search className="w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search tables..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 outline-none text-gray-700"
+          />
         </div>
-        <div className="bg-red-100 rounded-xl p-4">
-          <p className="text-sm text-red-800">Occupied</p>
-          <p className="text-2xl font-bold text-red-900">{stats.occupied}</p>
-        </div>
-        <div className="bg-yellow-100 rounded-xl p-4">
-          <p className="text-sm text-yellow-800">Reserved</p>
-          <p className="text-2xl font-bold text-yellow-900">{stats.reserved}</p>
-        </div>
-        <div className="bg-orange-100 rounded-xl p-4">
-          <p className="text-sm text-orange-800">Needs Cleaning</p>
-          <p className="text-2xl font-bold text-orange-900">{stats.needsCleaning}</p>
+        <div className="flex items-center gap-2">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="all">All Status</option>
+            <option value="AVAILABLE">Available</option>
+            <option value="OCCUPIED">Occupied</option>
+            <option value="RESERVED">Reserved</option>
+            <option value="NEEDS_CLEANING">Needs Cleaning</option>
+            <option value="OUT_OF_ORDER">Out of Order</option>
+          </select>
+          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Tables Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-        {tables.map((table: any) => (
-          <div
-            key={table.id}
-            className="bg-surface-lowest rounded-2xl p-6 shadow-soft cursor-pointer hover:shadow-medium transition-shadow"
-            onClick={() => {
-              if (table.status === 'OCCUPIED') {
-                handleStatusChange(table.id, 'NEEDS_CLEANING');
-              } else if (table.status === 'NEEDS_CLEANING') {
-                handleStatusChange(table.id, 'AVAILABLE');
-              }
-            }}
-          >
-            <div className={`w-4 h-4 rounded-full ${getStatusColor(table.status)} mx-auto mb-3`}></div>
-            <h3 className="text-xl font-bold text-center text-gray-900 mb-2">Table {table.number}</h3>
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-600 mb-2">
-              <Users className="w-4 h-4" />
-              <span>{table.capacity}</span>
-            </div>
-            <p className="text-xs text-center text-gray-500">{table.location}</p>
-            <p className="text-xs text-center text-gray-400 mt-2 capitalize">{table.status.replace('_', ' ')}</p>
-          </div>
-        ))}
-      </div>
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+          <AnimatePresence>
+            {filteredTables.map((table: any, index: number) => {
+              const statusConfig = getStatusConfig(table.status);
+              const StatusIcon = statusConfig.icon;
+              
+              return (
+                <motion.div
+                  key={table.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ delay: index * 0.03 }}
+                  className={`bg-white rounded-2xl p-5 shadow-soft border-2 ${statusConfig.border} cursor-pointer hover:shadow-medium transition-all group relative overflow-hidden`}
+                  onClick={() => setSelectedTable(table)}
+                >
+                  {/* Status Badge */}
+                  <div className={`absolute top-3 right-3 ${statusConfig.bg} ${statusConfig.color} px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1`}>
+                    <StatusIcon className="w-3 h-3" />
+                  </div>
 
-      {tables.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <p>No tables configured yet</p>
+                  {/* Table Shape Icon */}
+                  <div className={`w-16 h-16 mx-auto mb-3 ${statusConfig.bg} rounded-full flex items-center justify-center`}>
+                    <span className={`text-2xl font-bold ${statusConfig.color}`}>T{table.number}</span>
+                  </div>
+
+                  <h3 className="text-lg font-bold text-center text-gray-900 mb-1">Table {table.number}</h3>
+                  
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-600 mb-2">
+                    <Users className="w-4 h-4" />
+                    <span>{table.capacity} seats</span>
+                  </div>
+                  
+                  {table.location && (
+                    <p className="text-xs text-center text-gray-500 flex items-center justify-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      {table.location}
+                    </p>
+                  )}
+
+                  {/* Quick Actions on Hover */}
+                  <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-gray-900/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex justify-center gap-1">
+                    {table.status === 'OCCUPIED' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStatusChange(table.id, 'NEEDS_CLEANING');
+                        }}
+                        className="px-2 py-1 bg-white text-orange-600 text-xs rounded-lg font-medium"
+                      >
+                        Clean
+                      </button>
+                    )}
+                    {table.status === 'NEEDS_CLEANING' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStatusChange(table.id, 'AVAILABLE');
+                        }}
+                        className="px-2 py-1 bg-green-500 text-white text-xs rounded-lg font-medium"
+                      >
+                        Ready
+                      </button>
+                    )}
+                    {table.status === 'AVAILABLE' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStatusChange(table.id, 'RESERVED');
+                        }}
+                        className="px-2 py-1 bg-amber-500 text-white text-xs rounded-lg font-medium"
+                      >
+                        Reserve
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      ) : (
+        /* List View */
+        <div className="bg-white rounded-xl shadow-soft border border-gray-200 overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Table</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Capacity</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Location</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {filteredTables.map((table: any) => {
+                const statusConfig = getStatusConfig(table.status);
+                const StatusIcon = statusConfig.icon;
+                
+                return (
+                  <tr key={table.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <span className="font-semibold text-gray-900">Table {table.number}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.color}`}>
+                        <StatusIcon className="w-3 h-3" />
+                        {statusConfig.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <Users className="w-4 h-4" />
+                        {table.capacity}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{table.location || '-'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={table.status}
+                          onChange={(e) => handleStatusChange(table.id, e.target.value)}
+                          className="text-sm border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        >
+                          <option value="AVAILABLE">Available</option>
+                          <option value="OCCUPIED">Occupied</option>
+                          <option value="RESERVED">Reserved</option>
+                          <option value="NEEDS_CLEANING">Needs Cleaning</option>
+                          <option value="OUT_OF_ORDER">Out of Order</option>
+                        </select>
+                        <button
+                          onClick={() => setSelectedTable(table)}
+                          className="p-1 hover:bg-gray-100 rounded-lg"
+                        >
+                          <Edit2 className="w-4 h-4 text-gray-600" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Delete this table?')) {
+                              deleteTableMutation.mutate(table.id);
+                            }
+                          }}
+                          className="p-1 hover:bg-red-100 rounded-lg"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
+
+      {filteredTables.length === 0 && !isLoading && (
+        <div className="text-center py-16">
+          <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <LayoutGrid className="w-12 h-12 text-gray-400" />
+          </div>
+          <p className="text-gray-500 text-lg">{searchQuery ? 'No tables match your search' : 'No tables configured yet'}</p>
+          {!searchQuery && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              Add Your First Table
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Add Table Modal */}
+      <AnimatePresence>
+        {showAddModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAddModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl p-6 w-full max-w-md"
+            >
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Plus className="w-6 h-6 text-primary" />
+                Add New Table
+              </h2>
+              <form onSubmit={handleCreateTable} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Table Number</label>
+                  <input
+                    type="text"
+                    value={formData.number}
+                    onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="e.g., 1, A1, VIP-1"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
+                  <input
+                    type="number"
+                    value={formData.capacity}
+                    onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) || 1 })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    min={1}
+                    max={50}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                  <input
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="e.g., Main Hall, Patio, Upstairs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Shape</label>
+                  <select
+                    value={formData.shape}
+                    onChange={(e) => setFormData({ ...formData, shape: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="round">Round</option>
+                    <option value="square">Square</option>
+                    <option value="rectangle">Rectangle</option>
+                    <option value="booth">Booth</option>
+                  </select>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createTableMutation.isPending}
+                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {createTableMutation.isPending ? 'Creating...' : 'Create Table'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Table Details Modal */}
+      <AnimatePresence>
+        {selectedTable && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedTable(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl p-6 w-full max-w-md"
+            >
+              {(() => {
+                const statusConfig = getStatusConfig(selectedTable.status);
+                const StatusIcon = statusConfig.icon;
+                
+                return (
+                  <>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xl font-bold text-gray-900">Table {selectedTable.number}</h2>
+                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bg} ${statusConfig.color}`}>
+                        <StatusIcon className="w-4 h-4" />
+                        {statusConfig.label}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-3 mb-6">
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Capacity</span>
+                        <span className="font-medium flex items-center gap-1">
+                          <Users className="w-4 h-4" />
+                          {selectedTable.capacity} seats
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Location</span>
+                        <span className="font-medium">{selectedTable.location || 'Not specified'}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Shape</span>
+                        <span className="font-medium capitalize">{selectedTable.shape || 'Round'}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-gray-700">Quick Status Change:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {['AVAILABLE', 'OCCUPIED', 'RESERVED', 'NEEDS_CLEANING', 'OUT_OF_ORDER'].map((status) => {
+                          const config = getStatusConfig(status);
+                          const Icon = config.icon;
+                          return (
+                            <button
+                              key={status}
+                              onClick={() => {
+                                handleStatusChange(selectedTable.id, status);
+                                setSelectedTable(null);
+                              }}
+                              disabled={selectedTable.status === status}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                selectedTable.status === status
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : `${config.bg} ${config.color} hover:opacity-80`
+                              }`}
+                            >
+                              <Icon className="w-4 h-4" />
+                              {config.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setSelectedTable(null)}
+                      className="w-full mt-6 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50"
+                    >
+                      Close
+                    </button>
+                  </>
+                );
+              })()}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
