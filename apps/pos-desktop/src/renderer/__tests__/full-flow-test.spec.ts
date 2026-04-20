@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 
 const BASE_URL = 'http://localhost:5176';
-const API_URL = 'http://localhost:3001';
 
 // Helper function to login
 test.describe('Complete Order Flow Tests', () => {

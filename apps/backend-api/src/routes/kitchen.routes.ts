@@ -372,4 +372,53 @@ router.post('/tickets/:id/delay', authenticate, async (req: AuthRequest, res: Re
   }
 });
 
+// NEW: Root /kitchen - returns active tickets (public-ish for kitchen screen)
+router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+
+    const tickets = await prisma.kotTicket.findMany({
+      where: {
+        OR: [
+          {
+            status: {
+              in: ['NEW', 'IN_PROGRESS'],
+            },
+          },
+          {
+            status: 'COMPLETED',
+            completedAt: {
+              gte: twoHoursAgo,
+            },
+          },
+        ],
+      },
+      include: {
+        order: {
+          include: {
+            items: {
+              include: {
+                menuItem: true,
+              },
+            },
+            table: true,
+            customer: true,
+          },
+        },
+      },
+      orderBy: [
+        { priority: 'desc' },
+        { orderedAt: 'asc' },
+      ],
+    });
+
+    res.json({
+      success: true,
+      data: { tickets },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

@@ -795,15 +795,8 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
     }
 
     // Create refund record (using Payment model with negative amount for tracking)
-    await prisma.payment.create({
-      data: {
-        orderId: order.id,
-        method: refundMethod || originalPaymentMethod || 'CASH',
-        amount: -amount, // Negative amount for refund
-        status: 'REFUNDED',
-        notes: `Refund: ${reason} (Type: ${type}, Approved by: ${approvedBy})`,
-      },
-    });
+// Duplicate payment create removed to fix double refund accounting
+// Only one payment record for refund
 
     // Update order with refund info
     const updatedOrder = await prisma.order.update({

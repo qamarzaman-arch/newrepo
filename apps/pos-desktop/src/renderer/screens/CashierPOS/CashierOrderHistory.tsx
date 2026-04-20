@@ -6,12 +6,13 @@ import { orderService } from '../../services/orderService';
 import { getHardwareManager } from '../../services/hardwareManager';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
-import { formatCurrency } from '../../utils/currency';
+import { useCurrencyFormatter } from '../../hooks/useCurrency';
 import RefundModal from '../../components/RefundModal';
 import toast from 'react-hot-toast';
 
 const CashierOrderHistory: React.FC = () => {
   const { settings } = useSettingsStore();
+  const { formatCurrency } = useCurrencyFormatter();
   const { user } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -294,7 +295,7 @@ const CashierOrderHistory: React.FC = () => {
                       <span>{new Date(order.createdAt).toLocaleString()}</span>
                       <span className="flex items-center gap-1">
                         <DollarSign className="w-4 h-4" />
-                        {formatCurrency(order.total, settings.currency)}
+                        {formatCurrency(order.total)}
                       </span>
                       <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full">
                         {getPaymentMethodLabel(order.payments?.[0]?.method || 'CASH')}
@@ -451,7 +452,7 @@ const CashierOrderHistory: React.FC = () => {
                           )}
                         </div>
                         <span className="font-bold text-gray-900">
-                          {formatCurrency(item.price * item.quantity, settings.currency)}
+                          {formatCurrency(item.price * item.quantity)}
                         </span>
                       </div>
                     ))}
@@ -462,21 +463,21 @@ const CashierOrderHistory: React.FC = () => {
                 <div className="border-t border-gray-200 pt-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="font-semibold">{formatCurrency(selectedOrder.subtotal || 0, settings.currency)}</span>
+                    <span className="font-semibold">{formatCurrency(selectedOrder.subtotal || 0)}</span>
                   </div>
                   {selectedOrder.discount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-green-600">Discount</span>
-                      <span className="font-semibold text-green-600">-{formatCurrency(selectedOrder.discount, settings.currency)}</span>
+                      <span className="font-semibold text-green-600">-{formatCurrency(selectedOrder.discount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Tax</span>
-                    <span className="font-semibold">{formatCurrency(selectedOrder.tax || 0, settings.currency)}</span>
+                    <span className="font-semibold">{formatCurrency(selectedOrder.tax || 0)}</span>
                   </div>
                   <div className="flex justify-between items-center pt-2 border-t border-gray-200">
                     <span className="font-bold text-gray-900">Total</span>
-                    <span className="text-2xl font-black text-primary">{formatCurrency(selectedOrder.total, settings.currency)}</span>
+                    <span className="text-2xl font-black text-primary">{formatCurrency(selectedOrder.total)}</span>
                   </div>
                 </div>
 

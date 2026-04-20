@@ -16,6 +16,7 @@ import { ViewOrderModal } from './components/ViewOrderModal';
 
 const CashierActiveOrders: React.FC = () => {
   const { settings } = useSettingsStore();
+  const { formatCurrency } = useCurrencyFormatter();
   const queryClient = useQueryClient();
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState(false);

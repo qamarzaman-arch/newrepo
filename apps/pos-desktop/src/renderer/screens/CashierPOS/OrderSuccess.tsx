@@ -8,7 +8,7 @@ import {
 import { useOrderStore } from '../../stores/orderStore';
 import { getHardwareManager } from '../../services/hardwareManager';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { formatCurrency } from '../../utils/currency';
+import { useCurrencyFormatter } from '../../hooks/useCurrency';
 import toast from 'react-hot-toast';
 
 interface OrderSuccessProps {
@@ -19,6 +19,7 @@ interface OrderSuccessProps {
 const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder, change = 0 }) => {
   const { currentOrder, getTotal, clearOrder } = useOrderStore();
   const { settings } = useSettingsStore();
+  const { formatCurrency } = useCurrencyFormatter();
   const [showConfetti, setShowConfetti] = useState(true);
   const [isPrinting, setIsPrinting] = useState(false);
 
@@ -175,7 +176,7 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder, change = 0 }) =
                       {item.quantity}x {item.name}
                     </span>
                     <span className="text-gray-900 font-semibold">
-                      {formatCurrency(item.price * item.quantity, currencyCode)}
+                      {formatCurrency(item.price * item.quantity)}
                     </span>
                   </div>
                 ))}
@@ -186,7 +187,7 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder, change = 0 }) =
                 <div className="flex justify-between items-center">
                   <span className="font-manrope font-bold text-gray-900">Total</span>
                   <span className="font-manrope text-2xl font-black text-primary">
-                    {formatCurrency(receiptData.total, currencyCode)}
+                    {formatCurrency(receiptData.total)}
                   </span>
                 </div>
               </div>

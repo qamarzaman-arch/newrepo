@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Clock, Edit, Eye, Send, CheckCircle, DollarSign, XCircle } from 'lucide-react';
-import { formatCurrency } from '../../../utils/currency';
+import { useCurrencyFormatter } from '../../../hooks/useCurrency';
 
 interface OrderCardProps {
   order: {
@@ -33,6 +33,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   onComplete,
   onCancel,
 }) => {
+  const { formatCurrency } = useCurrencyFormatter();
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'PENDING':
