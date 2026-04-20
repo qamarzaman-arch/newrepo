@@ -1,8 +1,8 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import { prisma } from '../server';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { prisma } from '../config/database';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 
@@ -56,8 +56,8 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
   }
 });
 
-// Create user
-router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Create user (Admin/Manager only)
+router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createUserSchema.parse(req.body);
 
@@ -94,8 +94,8 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
   }
 });
 
-// Update user
-router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Update user (Admin/Manager only)
+router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { fullName, email, phone, role, isActive } = req.body;
 
@@ -156,8 +156,8 @@ router.patch('/:id/pin', authenticate, async (req: AuthRequest, res: Response, n
   }
 });
 
-// Delete user (deactivate)
-router.delete('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Delete user (deactivate) (Admin/Manager only)
+router.delete('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.user.update({
       where: { id: req.params.id },

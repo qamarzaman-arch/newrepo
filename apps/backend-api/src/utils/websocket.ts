@@ -153,10 +153,14 @@ export class WebSocketManager {
 let websocketManager: WebSocketManager | null = null;
 
 export function getWebSocketManager(): WebSocketManager {
-  if (!websocketManager && global.socketIO) {
-    websocketManager = new WebSocketManager(global.socketIO);
+  if (!websocketManager) {
+    if (global.socketIO) {
+      websocketManager = new WebSocketManager(global.socketIO);
+    } else {
+      throw new Error('WebSocketManager not initialized. Call initializeWebSocketManager() first in server.ts');
+    }
   }
-  return websocketManager!;
+  return websocketManager;
 }
 
 export function initializeWebSocketManager(io: SocketIOServer): WebSocketManager {

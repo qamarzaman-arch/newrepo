@@ -1,11 +1,22 @@
 import { Router, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { z } from 'zod';
+import { prisma } from '../config/database';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 
-const prisma = new PrismaClient();
 const router = Router();
+
+const openDrawerSchema = z.object({
+  openingBalance: z.number().positive(),
+  notes: z.string().optional(),
+});
+
+const closeDrawerSchema = z.object({
+  closingBalance: z.number().positive(),
+  expectedBalance: z.number().optional(),
+  notes: z.string().optional(),
+});
 
 // Get current open cash drawer
 router.get('/current', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -49,7 +60,7 @@ router.get('/history', authenticate, async (req: AuthRequest, res: Response, nex
 // Open cash drawer (start shift)
 router.post('/open', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { openingBalance } = req.body;
+    const { openingBalance } = openDrawerSchema.parse(req.body);
 
     // Check if there's already an open drawer
     const existingOpen = await (prisma as any).cashDrawer.findFirst({
@@ -86,7 +97,7 @@ router.post('/open', authenticate, async (req: AuthRequest, res: Response, next:
 // Close cash drawer (end shift)
 router.post('/:id/close', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { closingBalance, closingNotes, expectedBalance } = req.body;
+    const { closingBalance, expectedBalance, notes } = closeDrawerSchema.parse(req.body);
 
     const drawer = await (prisma as any).cashDrawer.findUnique({
       where: { id: req.params.id },
@@ -100,19 +111,18 @@ router.post('/:id/close', authenticate, async (req: AuthRequest, res: Response, 
       throw new AppError('Cash drawer is already closed', 400);
     }
 
-    const closingBalanceNum = parseFloat(closingBalance) || 0;
-    const expectedBalanceNum = parseFloat(expectedBalance) || drawer.openingBalance;
-    const discrepancy = closingBalanceNum - expectedBalanceNum;
+    const expectedBalanceNum = expectedBalance || drawer.openingBalance;
+    const discrepancy = closingBalance - expectedBalanceNum;
 
     const updatedDrawer = await (prisma as any).cashDrawer.update({
       where: { id: req.params.id },
       data: {
         closedById: req.user!.userId,
-        closingBalance: closingBalanceNum,
+        closingBalance,
         expectedBalance: expectedBalanceNum,
         discrepancy,
         closedAt: new Date(),
-        closingNotes: closingNotes || '',
+        closingNotes: notes || '',
         status: 'closed',
       },
     });

@@ -1,95 +1,113 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../stores/authStore';
 
-interface WebSocketMessage {
-  type: string;
-  payload: any;
-}
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
 
 type MessageHandler = (data: any) => void;
 
 export function useWebSocket() {
   const [isConnected, setIsConnected] = useState(false);
-  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
-  const ws = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const socketRef = useRef<Socket | null>(null);
   const messageHandlers = useRef<Map<string, MessageHandler[]>>(new Map());
   const { token } = useAuthStore();
 
   const connect = useCallback(() => {
-    if (!token || ws.current?.readyState === WebSocket.OPEN) return;
+    if (!token) return;
 
-    const wsUrl = `${process.env.REACT_APP_WS_URL || 'ws://localhost:3001'}/ws?token=${token}`;
-    
+    // Disconnect existing socket if any
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+
     try {
-      ws.current = new WebSocket(wsUrl);
+      const socket = io(SOCKET_URL, {
+        auth: { token },
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+      });
 
-      ws.current.onopen = () => {
-        console.log('WebSocket connected');
+      socket.on('connect', () => {
+        console.log('Socket.IO connected');
         setIsConnected(true);
-      };
+      });
 
-      ws.current.onmessage = (event) => {
-        try {
-          const message: WebSocketMessage = JSON.parse(event.data);
-          setLastMessage(message);
-          
-          // Call registered handlers for this message type
-          const handlers = messageHandlers.current.get(message.type) || [];
-          handlers.forEach(handler => handler(message.payload));
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
-        }
-      };
-
-      ws.current.onclose = () => {
-        console.log('WebSocket disconnected');
+      socket.on('disconnect', (reason) => {
+        console.log('Socket.IO disconnected:', reason);
         setIsConnected(false);
-        
-        // Attempt reconnection after 5 seconds
-        reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
-        }, 5000);
-      };
+      });
 
-      ws.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
+      socket.on('connect_error', (error) => {
+        console.error('Socket.IO connection error:', error.message);
+        setIsConnected(false);
+      });
+
+      // Listen for all custom events and dispatch to registered handlers
+      socket.onAny((eventName, ...args) => {
+        const handlers = messageHandlers.current.get(eventName) || [];
+        const payload = args.length === 1 ? args[0] : args;
+        handlers.forEach(handler => handler(payload));
+      });
+
+      socketRef.current = socket;
     } catch (error) {
-      console.error('Failed to connect WebSocket:', error);
+      console.error('Failed to connect Socket.IO:', error);
     }
   }, [token]);
 
   const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
     }
-    ws.current?.close();
-    ws.current = null;
     setIsConnected(false);
   }, []);
 
-  const send = useCallback((type: string, payload: any) => {
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type, payload }));
+  const emit = useCallback((event: string, payload: any) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit(event, payload);
     } else {
-      console.warn('WebSocket not connected');
+      console.warn('Socket.IO not connected');
     }
   }, []);
 
-  const subscribe = useCallback((messageType: string, handler: MessageHandler) => {
-    const handlers = messageHandlers.current.get(messageType) || [];
+  const subscribe = useCallback((event: string, handler: MessageHandler) => {
+    const handlers = messageHandlers.current.get(event) || [];
     handlers.push(handler);
-    messageHandlers.current.set(messageType, handlers);
+    messageHandlers.current.set(event, handlers);
+
+    // Also register directly on socket if connected
+    if (socketRef.current) {
+      socketRef.current.on(event, handler);
+    }
 
     // Return unsubscribe function
     return () => {
-      const currentHandlers = messageHandlers.current.get(messageType) || [];
+      const currentHandlers = messageHandlers.current.get(event) || [];
       messageHandlers.current.set(
-        messageType,
+        event,
         currentHandlers.filter(h => h !== handler)
       );
+      if (socketRef.current) {
+        socketRef.current.off(event, handler);
+      }
     };
+  }, []);
+
+  const joinRoom = useCallback((room: string) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('join-room', room);
+    }
+  }, []);
+
+  const leaveRoom = useCallback((room: string) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('leave-room', room);
+    }
   }, []);
 
   useEffect(() => {
@@ -99,27 +117,40 @@ export function useWebSocket() {
 
   return {
     isConnected,
-    lastMessage,
-    send,
+    emit,
     subscribe,
     connect,
     disconnect,
+    joinRoom,
+    leaveRoom,
+    socket: socketRef.current,
   };
 }
 
 // Specialized hook for kitchen real-time updates
 export function useKitchenWebSocket(onNewTicket?: (ticket: any) => void, onTicketUpdate?: (ticket: any) => void) {
-  const { subscribe, isConnected } = useWebSocket();
+  const { subscribe, joinRoom, isConnected } = useWebSocket();
 
   useEffect(() => {
-    const unsubNew = subscribe('KITCHEN_TICKET_CREATED', onNewTicket || (() => {}));
-    const unsubUpdate = subscribe('KITCHEN_TICKET_UPDATED', onTicketUpdate || (() => {}));
+    if (!isConnected) return;
+
+    // Join the kitchen room
+    joinRoom('kitchen');
+
+    const unsubNew = subscribe('order:new', onNewTicket || (() => {}));
+    const unsubCreated = subscribe('ticket:created', onNewTicket || (() => {}));
+    const unsubUpdate = subscribe('order:updated', onTicketUpdate || (() => {}));
+    const unsubTicketUpdate = subscribe('ticket:updated', onTicketUpdate || (() => {}));
+    const unsubStatusChanged = subscribe('order:status-changed', onTicketUpdate || (() => {}));
 
     return () => {
       unsubNew();
+      unsubCreated();
       unsubUpdate();
+      unsubTicketUpdate();
+      unsubStatusChanged();
     };
-  }, [subscribe, onNewTicket, onTicketUpdate]);
+  }, [subscribe, joinRoom, isConnected, onNewTicket, onTicketUpdate]);
 
   return { isConnected };
 }

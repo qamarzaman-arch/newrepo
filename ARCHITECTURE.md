@@ -19,7 +19,7 @@ Modern, offline-first restaurant POS system built with Electron + React for desk
 ### Backend API
 - **Runtime**: Node.js 20+
 - **Framework**: Express.js
-- **Database**: PostgreSQL 15+
+- **Database**: MySQL 8.0+
 - **ORM**: Prisma
 - **Authentication**: JWT + bcrypt
 - **Real-time**: Socket.io Server
@@ -186,7 +186,7 @@ See `DATABASE_SCHEMA.md` for complete Prisma schema.
 
 ### Architecture
 1. **Local Database**: SQLite for offline operation
-2. **Cloud Database**: PostgreSQL for multi-device sync
+2. **Cloud Database**: MySQL for multi-device sync
 3. **Sync Queue**: Track all mutations locally
 4. **Conflict Resolution**: Last-write-wins with manual override option
 5. **Auto-Sync**: Background sync when online

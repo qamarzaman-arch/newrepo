@@ -2,8 +2,8 @@ import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import { prisma } from '../server';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { prisma } from '../config/database';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 
@@ -112,8 +112,8 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
   }
 });
 
-// Register (Admin only in production)
-router.post('/register', async (req: Request, res: Response, next: NextFunction) => {
+// Register (Admin/Manager only)
+router.post('/register', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { username, email, password, fullName, role, phone, pin } = registerSchema.parse(req.body);
 

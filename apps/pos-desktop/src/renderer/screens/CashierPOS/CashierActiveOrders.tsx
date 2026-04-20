@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Edit, Eye, X, Plus, Trash2, Send, CheckCircle, AlertCircle, Minus, Search, DollarSign, XCircle, CreditCard, Banknote, Smartphone, Tag, Percent } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -7,6 +7,12 @@ import { useMenuItems } from '../../hooks/useMenu';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { formatCurrency } from '../../utils/currency';
 import toast from 'react-hot-toast';
+import { useActiveOrders } from './hooks/useActiveOrders';
+import { usePaymentFlow } from './hooks/usePaymentFlow';
+import { OrderCard } from './components/OrderCard';
+import { PaymentModal } from './components/PaymentModal';
+import { ModifyOrderModal } from './components/ModifyOrderModal';
+import { ViewOrderModal } from './components/ViewOrderModal';
 
 const CashierActiveOrders: React.FC = () => {
   const { settings } = useSettingsStore();

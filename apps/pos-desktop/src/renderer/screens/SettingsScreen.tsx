@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
 import { Store, CreditCard, Printer, Shield, Bell, Monitor, Palette } from 'lucide-react';
 import { useSettingsStore, AppSettings } from '../stores/settingsStore';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const SettingsScreen: React.FC = () => {
   const { settings, updateSettings, resetSettings } = useSettingsStore();
   const [localSettings, setLocalSettings] = useState<AppSettings>({ ...settings });
+  const [isChangingPin, setIsChangingPin] = useState(false);
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinLoading, setPinLoading] = useState(false);
 
   const handleToggle = (key: string) => {
     setLocalSettings({
@@ -24,6 +30,42 @@ const SettingsScreen: React.FC = () => {
       resetSettings();
       setLocalSettings(useSettingsStore.getState().settings);
       toast.success('Settings reset to defaults');
+    }
+  };
+
+  const handleChangePin = () => {
+    setIsChangingPin(true);
+  };
+
+  const handleConfirmPinChange = async () => {
+    if (newPin.length < 4) {
+      toast.error('PIN must be at least 4 characters');
+      return;
+    }
+    if (newPin !== confirmPin) {
+      toast.error('PINs do not match');
+      return;
+    }
+    setPinLoading(true);
+    try {
+      // Validate current PIN first
+      const validRes = await api.post('/auth/validate-pin', { pin: currentPin, operation: 'change_pin' });
+      if (!validRes.data.data.valid) {
+        toast.error('Current PIN is incorrect');
+        setPinLoading(false);
+        return;
+      }
+      // Update PIN on backend
+      await api.put('/settings/manager-pin', { newPin });
+      toast.success('Manager PIN updated successfully');
+      setIsChangingPin(false);
+      setCurrentPin('');
+      setNewPin('');
+      setConfirmPin('');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || 'Failed to update PIN');
+    } finally {
+      setPinLoading(false);
     }
   };
 
@@ -88,7 +130,7 @@ const SettingsScreen: React.FC = () => {
       items: [
         { label: 'Require PIN for Void', key: 'requirePinForVoid', value: localSettings.requirePinForVoid, type: 'toggle' },
         { label: 'Require PIN for Refund', key: 'requirePinForRefund', value: localSettings.requirePinForRefund, type: 'toggle' },
-        { label: 'Manager PIN', key: 'managerPin', value: localSettings.managerPin, type: 'text' },
+        { label: 'Change Manager PIN', key: 'changePin', value: '••••••', type: 'action', action: handleChangePin },
         { label: 'Session Timeout (min)', key: 'sessionTimeout', value: localSettings.sessionTimeout, type: 'number' },
         { label: 'Two Factor Auth', key: 'twoFactorAuth', value: localSettings.twoFactorAuth, type: 'toggle' },
       ],
@@ -138,6 +180,13 @@ const SettingsScreen: React.FC = () => {
                           } mt-0.5`}
                         ></div>
                       </div>
+                    ) : item.type === 'action' ? (
+                      <button
+                        onClick={'action' in item ? item.action : undefined}
+                        className="px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm font-semibold hover:bg-primary/20 transition-colors"
+                      >
+                        Change PIN
+                      </button>
                     ) : item.type === 'info' ? (
                       <span className="text-sm font-semibold text-gray-900">{item.value}</span>
                     ) : (
@@ -155,6 +204,58 @@ const SettingsScreen: React.FC = () => {
           );
         })}
       </div>
+
+      {isChangingPin && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="bg-surface-lowest rounded-2xl p-6 shadow-soft w-96">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Change Manager PIN</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">Current PIN</label>
+                <input
+                  type="password"
+                  value={currentPin}
+                  onChange={(e) => setCurrentPin(e.target.value)}
+                  className="px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-primary focus:outline-none w-48"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">New PIN</label>
+                <input
+                  type="password"
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value)}
+                  className="px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-primary focus:outline-none w-48"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">Confirm PIN</label>
+                <input
+                  type="password"
+                  value={confirmPin}
+                  onChange={(e) => setConfirmPin(e.target.value)}
+                  className="px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-primary focus:outline-none w-48"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-4 mt-6">
+              <button
+                onClick={() => setIsChangingPin(false)}
+                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmPinChange}
+                className="px-6 py-3 gradient-btn rounded-xl font-semibold"
+                disabled={pinLoading}
+              >
+                {pinLoading ? 'Loading...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-end gap-4">
         <button onClick={handleReset} className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">

@@ -1,8 +1,10 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { paymentGatewayService } from '../services/paymentGateway.service';
+import { prisma } from '../config/database';
 import { logger, sanitize } from '../utils/logger';
 
 const router = Router();
@@ -91,13 +93,24 @@ router.post('/refund', authenticate, async (req: AuthRequest, res: Response, nex
   try {
     const data = refundSchema.parse(req.body);
 
-    // Verify manager PIN if configured
+    // Verify manager PIN
     const { managerPin } = req.body;
-    if (process.env.REQUIRE_MANAGER_PIN_FOR_REFUND === 'true') {
-      if (!managerPin) {
-        throw new AppError('Manager PIN required for refunds', 403);
-      }
-      // Verify PIN logic here
+    if (!managerPin) {
+      throw new AppError('Manager PIN required for refunds', 403);
+    }
+
+    const managerPinSetting = await prisma.setting.findUnique({
+      where: { key: 'manager_pin' },
+    });
+
+    if (!managerPinSetting) {
+      throw new AppError('Manager PIN not configured', 500);
+    }
+
+    const isValidPin = await bcrypt.compare(managerPin, managerPinSetting.value);
+    if (!isValidPin) {
+      logger.warn(`Failed refund PIN validation for payment ${data.paymentIntentId}`);
+      throw new AppError('Invalid manager PIN', 401);
     }
 
     let result;
@@ -123,16 +136,23 @@ router.post('/refund', authenticate, async (req: AuthRequest, res: Response, nex
 });
 
 // Stripe webhook endpoint (no authentication - uses signature verification)
+// Note: This route must use express.raw() middleware for signature verification
 router.post('/webhooks/stripe', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const signature = req.headers['stripe-signature'] as string;
-    
+
     if (!signature) {
       throw new AppError('Stripe signature missing', 400);
     }
 
-    const result = await paymentGatewayService.handleStripeWebhook(req.body, signature);
-    
+    // req.body is a Buffer due to express.raw() middleware
+    const payload = req.body as Buffer;
+    if (!payload) {
+      throw new AppError('Request body missing', 400);
+    }
+
+    const result = await paymentGatewayService.handleStripeWebhook(payload, signature);
+
     res.json(result);
   } catch (error) {
     next(error);
@@ -167,13 +187,36 @@ router.get('/status/:paymentIntentId', authenticate, async (req: AuthRequest, re
     const { paymentIntentId } = req.params;
     const { provider = 'stripe' } = req.query;
 
-    // Implementation would check payment status with provider
+    let status;
+    let paymentDetails;
+
+    if (provider === 'stripe') {
+      const result = await paymentGatewayService.confirmStripePayment(paymentIntentId);
+      if (result.success) {
+        status = result.status;
+        paymentDetails = {
+          amount: result.amount,
+          currency: result.currency,
+          receiptUrl: result.receiptUrl,
+        };
+      } else {
+        status = result.status;
+        paymentDetails = {
+          requiresAction: result.requiresAction,
+          clientSecret: result.clientSecret,
+        };
+      }
+    } else {
+      throw new AppError('Square status check not yet implemented', 501);
+    }
+
     res.json({
       success: true,
       data: {
         paymentIntentId,
         provider,
-        status: 'pending', // Placeholder
+        status,
+        paymentDetails,
       },
     });
   } catch (error) {

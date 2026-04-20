@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import { prisma } from '../server';
+import { prisma } from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
@@ -11,7 +11,7 @@ const router = Router();
 
 // Validation schemas
 const createOrderSchema = z.object({
-  orderType: z.enum(['DINE_IN', 'WALK_IN', 'TAKEAWAY', 'DELIVERY', 'PICKUP']),
+  orderType: z.enum(['DINE_IN', 'WALK_IN', 'TAKEAWAY', 'DELIVERY', 'PICKUP', 'RESERVATION']),
   tableId: z.string().optional().nullable(),
   customerId: z.string().optional().nullable(),
   customerName: z.string().optional().nullable(),
@@ -210,22 +210,38 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
   }
 });
 
-// Create new order
+// Create new order with retry logic for order number generation
 router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createOrderSchema.parse(req.body);
 
-    // Generate order number
+    // Generate unique order number with retry logic
     const today = new Date();
     const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
-    const count = await prisma.order.count({
-      where: {
-        orderedAt: {
-          gte: new Date(today.setHours(0, 0, 0, 0)),
-        },
-      },
-    });
-    const orderNumber = `ORD-${dateStr}-${String(count + 1).padStart(3, '0')}`;
+    let orderNumber: string;
+    let attempts = 0;
+    const maxAttempts = 5;
+
+    while (attempts < maxAttempts) {
+      const timestamp = Date.now().toString(36).slice(-4).toUpperCase();
+      const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+      orderNumber = `ORD-${dateStr}-${timestamp}${random}`;
+
+      // Check if order number already exists
+      const existing = await prisma.order.findUnique({
+        where: { orderNumber },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        break;
+      }
+
+      attempts++;
+      if (attempts >= maxAttempts) {
+        throw new AppError('Failed to generate unique order number, please retry', 500);
+      }
+    }
 
     // Calculate totals
     let subtotal = 0;
@@ -329,7 +345,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
           items: {
             create: orderItems,
           },
-        } as any,
+        },
         include: {
           items: {
             include: {
@@ -367,19 +383,22 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
         kotCounter++;
       }
 
-      // Auto-deduct inventory for items with menuItem recipes
+      // Auto-deduct inventory for items with recipes OR direct inventory link
       for (const item of newOrder.items) {
-        if (item.menuItemId) {
-          // Get recipe ingredients for this menu item
-          const recipes = await (tx as any).recipe.findMany({
-            where: { menuItemId: item.menuItemId },
-            include: {
-              ingredients: {
-                include: { inventoryItem: true },
-              },
-            },
-          });
+        if (!item.menuItemId) continue;
 
+        // First: Try to deduct via recipe ingredients
+        const recipes = await (tx as any).recipe.findMany({
+          where: { menuItemId: item.menuItemId },
+          include: {
+            ingredients: {
+              include: { inventoryItem: true },
+            },
+          },
+        });
+
+        if (recipes.length > 0) {
+          // Deduct via recipe ingredients
           for (const recipe of recipes) {
             for (const ingredient of recipe.ingredients || []) {
               if (ingredient.inventoryItemId && ingredient.inventoryItem) {
@@ -388,7 +407,6 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
 
                 // Check if sufficient stock
                 if (inventoryItem.currentStock < requiredQty) {
-                  // Log low stock but don't fail order - kitchen will handle it
                   logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available: ${inventoryItem.currentStock}`);
                 }
 
@@ -405,36 +423,84 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
                   },
                 });
 
-                // Record stock movement (if table exists)
+                // Record stock movement
                 try {
                   await (tx as any).stockMovement.create({
                     data: {
                       inventoryItemId: inventoryItem.id,
                       type: 'SALE',
                       quantity: requiredQty,
+                      previousStock: inventoryItem.currentStock,
+                      newStock,
                       reference: `Order ${orderNumber}`,
-                      notes: `Auto-deducted for order`,
+                      notes: `Auto-deducted via recipe for order item`,
+                      performedById: req.user!.userId,
                     },
                   });
                 } catch (e) {
                   // Table may not exist, skip
                 }
+              }
+            }
+          }
+        } else {
+          // Second: No recipe - try direct inventory item link
+          const inventoryItems = await (tx as any).inventoryItem.findMany({
+            where: { menuItemId: item.menuItemId, isActive: true },
+          });
 
-                // Create low stock alert if needed (if table exists)
-                if (status === 'LOW_STOCK') {
-                  try {
-                    await (tx as any).stockAlert.create({
-                      data: {
-                        inventoryItemId: inventoryItem.id,
-                        alertType: 'LOW_STOCK',
-                        message: `${inventoryItem.name} is below minimum level. Current: ${newStock}, Min: ${inventoryItem.minStock}`,
-                        status: 'ACTIVE',
-                      },
-                    });
-                  } catch (e) {
-                    // Table may not exist, skip
-                  }
-                }
+          for (const inventoryItem of inventoryItems) {
+            const requiredQty = item.quantity;
+
+            // Check if sufficient stock
+            if (inventoryItem.currentStock < requiredQty) {
+              logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available: ${inventoryItem.currentStock}`);
+            }
+
+            // Deduct from inventory
+            const newStock = Math.max(0, inventoryItem.currentStock - requiredQty);
+            const status = newStock === 0 ? 'OUT_OF_STOCK' :
+                          newStock <= inventoryItem.minStock ? 'LOW_STOCK' : 'IN_STOCK';
+
+            await (tx as any).inventoryItem.update({
+              where: { id: inventoryItem.id },
+              data: {
+                currentStock: newStock,
+                status,
+              },
+            });
+
+            // Record stock movement
+            try {
+              await (tx as any).stockMovement.create({
+                data: {
+                  inventoryItemId: inventoryItem.id,
+                  type: 'SALE',
+                  quantity: requiredQty,
+                  previousStock: inventoryItem.currentStock,
+                  newStock,
+                  reference: `Order ${orderNumber}`,
+                  notes: `Auto-deducted via direct link: ${inventoryItem.name}`,
+                  performedById: req.user!.userId,
+                },
+              });
+            } catch (e) {
+              // Table may not exist, skip
+            }
+
+            // Create low stock alert if needed (if table exists)
+            if (status === 'LOW_STOCK') {
+              try {
+                await (tx as any).stockAlert.create({
+                  data: {
+                    inventoryItemId: inventoryItem.id,
+                    alertType: 'LOW_STOCK',
+                    message: `${inventoryItem.name} is below minimum level. Current: ${newStock}, Min: ${inventoryItem.minStock}`,
+                    isResolved: false,
+                  },
+                });
+              } catch (e) {
+                // Table may not exist, skip
               }
             }
           }
@@ -744,23 +810,12 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
       where: { id: order.id },
       data: {
         status: type === 'FULL' ? 'REFUNDED' : 'PARTIALLY_REFUNDED',
-      } as any,
+      },
       include: {
         items: { include: { menuItem: true } },
         table: true,
         customer: true,
         payments: true,
-      },
-    });
-
-    // Create negative payment record for refund
-    await prisma.payment.create({
-      data: {
-        orderId: order.id,
-        method: refundMethod || originalPaymentMethod || 'CASH',
-        amount: -amount,
-        status: 'REFUNDED',
-        notes: `Refund: ${reason} (Approved by: ${approvedBy})`,
       },
     });
 

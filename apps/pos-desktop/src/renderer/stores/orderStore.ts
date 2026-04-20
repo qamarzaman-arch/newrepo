@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { useSettingsStore } from './settingsStore';
+import { settingsService, CurrentRates } from '../services/settingsService';
 
 export interface OrderItem {
   id: string;
@@ -17,7 +17,7 @@ export interface OrderItem {
 
 export interface HeldOrder {
   id: string;
-  orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'PICKUP';
+  orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'PICKUP' | 'WALK_IN' | 'RESERVATION';
   tableId?: string;
   tableNumber?: string;
   customerName?: string;
@@ -36,7 +36,7 @@ export interface HeldOrder {
 interface OrderState {
   currentOrder: {
     items: OrderItem[];
-    orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'PICKUP';
+    orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'PICKUP' | 'WALK_IN' | 'RESERVATION';
     tableId?: string;
     tableNumber?: string;
     customerId?: string;
@@ -65,6 +65,7 @@ interface OrderState {
     voidedAt: string;
     voidedBy?: string;
   }>;
+  backendRates: CurrentRates | null;
   addItem: (item: Omit<OrderItem, 'id'>) => void;
   removeItem: (itemId: string) => void;
   voidItem: (itemId: string, reason: string, voidedBy?: string) => void;
@@ -72,7 +73,7 @@ interface OrderState {
   updateNotes: (itemId: string, notes: string) => void;
   setOrderNotes: (notes: string) => void;
   clearOrder: () => void;
-  setOrderType: (type: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'PICKUP') => void;
+  setOrderType: (type: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'PICKUP' | 'WALK_IN' | 'RESERVATION') => void;
   setTable: (tableId: string, tableNumber?: string) => void;
   setCustomer: (customer: { id?: string; name: string; phone?: string; address?: string }) => void;
   setGuestCount: (count: number) => void;
@@ -87,7 +88,16 @@ interface OrderState {
   resumeOrder: (heldOrderId: string) => void;
   removeHeldOrder: (heldOrderId: string) => void;
   cleanupExpiredHeldOrders: (maxAgeHours?: number) => void;
-  getVoidedItems: () => typeof get extends () => infer S ? S extends OrderState ? S['voidedItems'] : never : never;
+  fetchBackendRates: () => Promise<void>;
+  getVoidedItems: () => Array<{
+    itemId: string;
+    itemName: string;
+    quantity: number;
+    price: number;
+    reason: string;
+    voidedAt: string;
+    voidedBy?: string;
+  }>;
   getSubtotal: () => number;
   getDiscount: () => number;
   getTax: () => number;
@@ -110,6 +120,16 @@ persist(
   currentOrder: { ...EMPTY_ORDER },
   heldOrders: [],
   voidedItems: [],
+  backendRates: null,
+
+  fetchBackendRates: async () => {
+    try {
+      const rates = await settingsService.getCurrentRates();
+      set({ backendRates: rates });
+    } catch (error) {
+      console.error('Failed to fetch backend rates:', error);
+    }
+  },
 
   addItem: (item) => {
     set((state) => {
@@ -377,16 +397,20 @@ persist(
     const subtotal = get().getSubtotal();
     const discount = get().getDiscount();
     const afterDiscount = subtotal - discount;
-    const { settings } = useSettingsStore.getState();
-    return afterDiscount * ((settings.taxRate || 0) / 100);
+    const rates = get().backendRates;
+    // Use backend tax rate, fallback to 0 if not loaded
+    const taxRate = rates?.taxRate ?? 0;
+    return afterDiscount * (taxRate / 100);
   },
 
   getServiceCharge: () => {
     const subtotal = get().getSubtotal();
     const discount = get().getDiscount();
     const afterDiscount = subtotal - discount;
-    const { settings } = useSettingsStore.getState();
-    return afterDiscount * ((settings.serviceCharge || 0) / 100);
+    const rates = get().backendRates;
+    // Use backend service charge rate, fallback to 0 if not loaded
+    const serviceChargeRate = rates?.serviceChargeRate ?? 0;
+    return afterDiscount * (serviceChargeRate / 100);
   },
 
   getTip: () => get().currentOrder.tipAmount || 0,
@@ -395,11 +419,30 @@ persist(
     const subtotal = get().getSubtotal();
     const discount = get().getDiscount();
     const afterDiscount = subtotal - discount;
-    const { settings } = useSettingsStore.getState();
-    const tax = afterDiscount * ((settings.taxRate || 0) / 100);
-    const serviceCharge = afterDiscount * ((settings.serviceCharge || 0) / 100);
+    const rates = get().backendRates;
+
+    // Calculate tax from backend rate
+    const taxRate = rates?.taxRate ?? 0;
+    const tax = afterDiscount * (taxRate / 100);
+
+    // Calculate service charge from backend rate
+    const serviceChargeRate = rates?.serviceChargeRate ?? 0;
+    const serviceCharge = afterDiscount * (serviceChargeRate / 100);
+
+    // Add any additional surcharges from backend
+    let surchargesTotal = 0;
+    if (rates?.surcharges) {
+      surchargesTotal = rates.surcharges.reduce((sum, surcharge) => {
+        if (surcharge.type === 'PERCENTAGE') {
+          return sum + (afterDiscount * (surcharge.value / 100));
+        } else {
+          return sum + surcharge.value;
+        }
+      }, 0);
+    }
+
     const tip = get().getTip();
-    return afterDiscount + tax + serviceCharge + tip;
+    return afterDiscount + tax + serviceCharge + surchargesTotal + tip;
   },
 }),
   {

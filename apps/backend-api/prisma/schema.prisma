@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -54,7 +54,7 @@ model User {
 model Session {
   id        String   @id @default(uuid())
   userId    String
-  token     String   @db.Text
+  token     String
   expiresAt DateTime
   createdAt DateTime @default(now())
 
@@ -151,7 +151,7 @@ model MenuItemTag {
 model Order {
   id              String        @id @default(uuid())
   orderNumber     String        @unique
-  orderType       String     @default("DINE_IN")
+  orderType       String        @default("DINE_IN")
   status          String   @default("PENDING")
 
   customerId      String?
@@ -347,6 +347,7 @@ model InventoryItem {
   warehouse   Warehouse?  @relation(fields: [warehouseId], references: [id])
   movements   StockMovement[]
   adjustments StockAdjustment[]
+  stockAlerts StockAlert[]
   recipeIngredients RecipeIngredient[]
   purchaseOrderItems PurchaseOrderItem[]
 
@@ -372,6 +373,24 @@ model StockMovement {
 
   @@index([inventoryItemId])
   @@index([type])
+  @@index([createdAt])
+}
+
+model StockAlert {
+  id              String   @id @default(uuid())
+  inventoryItemId String
+  alertType       String   // LOW_STOCK, OUT_OF_STOCK, EXPIRED
+  message         String?
+  isResolved      Boolean  @default(false)
+  resolvedAt      DateTime?
+  resolvedById    String?
+  createdAt       DateTime @default(now())
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([inventoryItemId])
+  @@index([alertType])
+  @@index([isResolved])
   @@index([createdAt])
 }
 
@@ -687,7 +706,7 @@ model SyncQueue {
   operation   String
   modelName   String
   recordId    String
-  payload     String   @db.LongText
+  payload     String
   status      String   @default("pending")
   retryCount  Int      @default(0)
   errorMessage String?
@@ -722,7 +741,7 @@ model AuditLog {
   action    String
   entity    String
   entityId  String?
-  changes   String?   @db.LongText
+  changes   String?
   ipAddress String?
   userAgent String?
 
@@ -740,7 +759,7 @@ model ReportCache {
   id          String   @id @default(uuid())
   reportType  String
   period      String
-  data        String   @db.LongText
+  data        String
   generatedAt DateTime @default(now())
   expiresAt   DateTime
 
@@ -785,7 +804,7 @@ model Recipe {
   id              String   @id @default(uuid())
   name            String
   description     String?
-  instructions   String?  @db.LongText
+  instructions   String?
   prepTimeMinutes  Int      @default(0)
   cookTimeMinutes Int      @default(0)
   servings        Int      @default(1)

@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Clock, AlertCircle, CheckCircle, PlayCircle, 
   TrendingUp, BarChart3, ListFilter, Timer,
   Flame, Snowflake, Utensils
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { kitchenService, KotTicket } from '../services/kitchenService';
 import toast from 'react-hot-toast';
+import { io } from 'socket.io-client';
+import { useAuthStore } from '../stores/authStore';
+import { API_BASE_URL } from '../services/api';
 
 interface PrepListItem {
   id: string;
@@ -22,6 +25,38 @@ const AdvancedKitchenScreen: React.FC = () => {
   const [activeView, setActiveView] = useState<'board' | 'analytics' | 'prep-list'>('board');
   const [selectedStation, setSelectedStation] = useState<string>('all');
   const [prepList, setPrepList] = useState<PrepListItem[]>([]);
+  const queryClient = useQueryClient();
+  const { token } = useAuthStore();
+
+  useEffect(() => {
+    // Extract base WS URL from API URL (e.g. http://localhost:3001/api/v1 -> http://localhost:3001)
+    const wsUrl = API_BASE_URL.replace('/api/v1', '');
+    const socket = io(wsUrl, {
+      auth: { token },
+      autoConnect: true,
+    });
+
+    socket.on('connect', () => {
+      socket.emit('join-room', 'kitchen');
+    });
+
+    socket.on('order:new', (data) => {
+      queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
+      toast.success(`New order requires preparation`);
+    });
+
+    socket.on('order:updated', () => {
+      queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
+    });
+
+    socket.on('order:status-changed', () => {
+      queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [token, queryClient]);
 
   const { data: ticketsData, refetch, isRefetching } = useQuery({
     queryKey: ['kitchen-tickets'],
@@ -29,7 +64,6 @@ const AdvancedKitchenScreen: React.FC = () => {
       const response = await kitchenService.getActiveTickets();
       return response.data.data.tickets || [];
     },
-    refetchInterval: 5000,
   });
 
   // Fetch real peak hours data from report service

@@ -1,14 +1,26 @@
 import { Router, Response, NextFunction } from 'express';
-import { prisma } from '../server';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { z } from 'zod';
+import { prisma } from '../config/database';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 
 const router = Router();
+
+// Query validation schemas
+const dateQuerySchema = z.object({
+  date: z.string().optional(),
+});
+
+const dateRangeQuerySchema = z.object({
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  limit: z.string().optional(),
+});
 
 // Daily sales report
 router.get('/sales/daily', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { date } = req.query;
-    const targetDate = date ? new Date(date as string) : new Date();
+    const query = dateQuerySchema.parse(req.query);
+    const targetDate = query.date ? new Date(query.date) : new Date();
     targetDate.setHours(0, 0, 0, 0);
     const endDate = new Date(targetDate);
     endDate.setHours(23, 59, 59, 999);
@@ -343,6 +355,165 @@ router.get('/top-items', authenticate, async (req: AuthRequest, res: Response, n
     );
 
     res.json({ success: true, data: { items: itemsWithDetails } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Profit & Loss report with COGS calculation
+router.get('/profit-loss', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    const start = startDate ? new Date(startDate as string) : new Date();
+    start.setHours(0, 0, 0, 0);
+    if (!startDate) start.setDate(start.getDate() - 30); // Default: last 30 days
+
+    const end = endDate ? new Date(endDate as string) : new Date();
+    end.setHours(23, 59, 59, 999);
+
+    // Get all orders in period
+    const orders = await prisma.order.findMany({
+      where: {
+        orderedAt: { gte: start, lte: end },
+        status: { notIn: ['CANCELLED', 'VOIDED'] },
+      },
+      include: {
+        items: {
+          include: {
+            menuItem: {
+              include: {
+                recipes: {
+                  include: {
+                    ingredients: {
+                      include: {
+                        inventoryItem: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Calculate revenue
+    const totalRevenue = orders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+
+    // Calculate COGS based on recipe ingredients
+    let totalCOGS = 0;
+    for (const order of orders) {
+      for (const item of order.items) {
+        const menuItem = item.menuItem;
+        if (menuItem?.recipes && menuItem.recipes.length > 0) {
+          // Use recipe to calculate COGS
+          for (const recipe of menuItem.recipes) {
+            for (const ingredient of recipe.ingredients) {
+              const unitCost = ingredient.inventoryItem?.costPerUnit || 0;
+              totalCOGS += unitCost * ingredient.quantity * item.quantity;
+            }
+          }
+        } else {
+          // Fallback: use menu item cost if no recipe
+          totalCOGS += (menuItem?.cost || 0) * item.quantity;
+        }
+      }
+    }
+
+    // Get expenses
+    const expenses = await prisma.expense.findMany({
+      where: { expenseDate: { gte: start, lte: end } },
+    });
+    const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+
+    // Calculate metrics
+    const grossProfit = totalRevenue - totalCOGS;
+    const grossProfitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+    const netProfit = grossProfit - totalExpenses;
+    const netProfitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+    res.json({
+      success: true,
+      data: {
+        period: { start, end },
+        revenue: {
+          total: totalRevenue,
+          orderCount: orders.length,
+          averageOrderValue: orders.length > 0 ? totalRevenue / orders.length : 0,
+        },
+        cogs: {
+          total: totalCOGS,
+          percentage: totalRevenue > 0 ? (totalCOGS / totalRevenue) * 100 : 0,
+        },
+        grossProfit: {
+          total: grossProfit,
+          margin: grossProfitMargin,
+        },
+        expenses: {
+          total: totalExpenses,
+          breakdown: expenses.reduce((acc, e) => {
+            acc[e.category] = (acc[e.category] || 0) + Number(e.amount);
+            return acc;
+          }, {} as Record<string, number>),
+        },
+        netProfit: {
+          total: netProfit,
+          margin: netProfitMargin,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Export sales report as CSV
+router.get('/export/sales', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    const start = startDate ? new Date(startDate as string) : new Date();
+    start.setHours(0, 0, 0, 0);
+    if (!startDate) start.setDate(start.getDate() - 30);
+
+    const end = endDate ? new Date(endDate as string) : new Date();
+    end.setHours(23, 59, 59, 999);
+
+    const orders = await prisma.order.findMany({
+      where: {
+        orderedAt: { gte: start, lte: end },
+        status: { notIn: ['CANCELLED'] },
+      },
+      include: {
+        items: { include: { menuItem: true } },
+        customer: true,
+        cashier: { select: { fullName: true } },
+      },
+      orderBy: { orderedAt: 'asc' },
+    });
+
+    // Generate CSV
+    const headers = ['Order Number', 'Date', 'Customer', 'Cashier', 'Items', 'Subtotal', 'Tax', 'Discount', 'Total', 'Status'];
+    const rows = orders.map(order => [
+      order.orderNumber,
+      order.orderedAt.toISOString(),
+      order.customerName || 'Walk-in',
+      order.cashier?.fullName || '',
+      order.items.map(i => `${i.menuItem?.name} x${i.quantity}`).join('; '),
+      order.subtotal.toString(),
+      order.taxAmount.toString(),
+      order.discountAmount.toString(),
+      order.totalAmount.toString(),
+      order.status,
+    ]);
+
+    const csv = [headers.join(','), ...rows.map(r => r.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="sales-report-${start.toISOString().split('T')[0]}.csv"`);
+    res.send(csv);
   } catch (error) {
     next(error);
   }

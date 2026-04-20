@@ -1,6 +1,6 @@
-import { Router, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { prisma } from '../server';
+import { prisma } from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
@@ -155,7 +155,7 @@ router.delete('/categories/:id', authenticate, async (req: AuthRequest, res: Res
 // Get menu items with filters (public endpoint for cashier)
 router.get('/items', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { categoryId, search, available } = req.query;
+    const { categoryId, search, available, page = '1', limit = '50' } = req.query;
 
     const where: any = { isActive: true };
 
@@ -168,23 +168,39 @@ router.get('/items', async (req: Request, res: Response, next: NextFunction) => 
       ];
     }
 
-    const items = await prisma.menuItem.findMany({
-      where,
-      include: {
-        category: true,
-        modifiers: {
-          include: {
-            options: true,
+    const pageNum = Math.max(1, Number(page));
+    const limitNum = Math.min(100, Math.max(1, Number(limit)));
+
+    const [items, total] = await Promise.all([
+      prisma.menuItem.findMany({
+        where,
+        include: {
+          category: true,
+          modifiers: {
+            include: {
+              options: true,
+            },
           },
+          tags: true,
         },
-        tags: true,
-      },
-      orderBy: { displayOrder: 'asc' },
-    });
+        orderBy: { displayOrder: 'asc' },
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+      }),
+      prisma.menuItem.count({ where }),
+    ]);
 
     res.json({
       success: true,
-      data: { items },
+      data: {
+        items,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      },
     });
   } catch (error) {
     next(error);

@@ -10,6 +10,7 @@ import { useOrders, useAllOrders } from '../hooks/useOrders';
 import { orderService } from '../services/orderService';
 import { tableService } from '../services/tableService';
 import { useQuery } from '@tanstack/react-query';
+import { useAuthStore } from '../stores/authStore';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
 import toast from 'react-hot-toast';
 
@@ -21,8 +22,12 @@ const AdvancedOrdersScreen: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundManagerPin, setRefundManagerPin] = useState('');
+  const [refundReason, setRefundReason] = useState('');
+  const [isRefunding, setIsRefunding] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const { formatCurrency } = useCurrencyFormatter();
+  const { user } = useAuthStore();
 
   const { data: ordersData, refetch, isLoading } = useOrders({
     status: statusFilter || undefined,
@@ -626,7 +631,11 @@ const AdvancedOrdersScreen: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold">Process Refund</h3>
               <button
-                onClick={() => setShowRefundModal(false)}
+                onClick={() => {
+                  setShowRefundModal(false);
+                  setRefundManagerPin('');
+                  setRefundReason('');
+                }}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
                 <XCircle className="w-5 h-5" />
@@ -641,22 +650,71 @@ const AdvancedOrdersScreen: React.FC = () => {
             <p className="text-sm text-gray-600 mb-4">
               Are you sure you want to process a refund for this order? This action requires manager PIN.
             </p>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-sm font-semibold text-gray-700 block mb-1">Reason for Refund</label>
+                <input
+                  type="text"
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  placeholder="E.g., Customer dissatisfied, wrong item..."
+                  className="w-full px-4 py-2 border-2 text-sm border-gray-200 rounded-xl focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-gray-700 block mb-1">Manager PIN</label>
+                <input
+                  type="password"
+                  value={refundManagerPin}
+                  onChange={(e) => setRefundManagerPin(e.target.value)}
+                  maxLength={6}
+                  placeholder="Enter PIN"
+                  className="w-full px-4 py-2 text-center tracking-widest text-xl border-2 border-orange-300 rounded-xl focus:border-orange-500 focus:outline-none"
+                />
+              </div>
+            </div>
             <div className="flex gap-3">
               <button
-                onClick={() => setShowRefundModal(false)}
-                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                onClick={() => {
+                  setShowRefundModal(false);
+                  setRefundManagerPin('');
+                  setRefundReason('');
+                }}
+                disabled={isRefunding}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  toast.success('Refund processed!');
-                  setShowRefundModal(false);
-                  refetch();
+                onClick={async () => {
+                  if (!refundManagerPin || !refundReason) {
+                    toast.error('Please enter reason and manager PIN');
+                    return;
+                  }
+                  setIsRefunding(true);
+                  try {
+                    await orderService.refundOrder(selectedOrder.id, {
+                      type: 'FULL',
+                      amount: selectedOrder.totalAmount,
+                      reason: refundReason,
+                      managerPin: refundManagerPin,
+                      approvedBy: user?.id || 'system',
+                    });
+                    toast.success('Refund processed successfully!');
+                    setShowRefundModal(false);
+                    setRefundManagerPin('');
+                    setRefundReason('');
+                    refetch();
+                  } catch (error: any) {
+                    toast.error(error.response?.data?.error?.message || 'Failed to process refund');
+                  } finally {
+                    setIsRefunding(false);
+                  }
                 }}
-                className="flex-1 py-3 bg-orange-600 text-white rounded-xl font-semibold hover:bg-orange-700 transition-colors"
+                disabled={isRefunding || !refundManagerPin || !refundReason}
+                className="flex-1 py-3 bg-orange-600 text-white rounded-xl font-semibold hover:bg-orange-700 transition-colors disabled:opacity-50"
               >
-                Confirm Refund
+                {isRefunding ? 'Processing...' : 'Confirm Refund'}
               </button>
             </div>
           </motion.div>

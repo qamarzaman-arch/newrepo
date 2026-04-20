@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { prisma } from '../server';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { prisma } from '../config/database';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 
@@ -80,8 +80,8 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
   }
 });
 
-// Create expense
-router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Create expense (Admin/Manager only)
+router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createExpenseSchema.parse(req.body);
 
@@ -115,8 +115,8 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
   }
 });
 
-// Update expense
-router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Update expense (Admin/Manager only)
+router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { category, description, amount, paymentMethod, notes } = req.body;
 
@@ -132,8 +132,8 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
   }
 });
 
-// Delete expense
-router.delete('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Delete expense (Admin/Manager only)
+router.delete('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.expense.delete({ where: { id: req.params.id } });
     res.json({ success: true, message: 'Expense deleted' });
