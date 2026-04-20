@@ -27,4 +27,6 @@ export const tableService = {
   updateLayout: (tables: Array<{ id: string; posX: number; posY: number; width?: number; height?: number }>) =>
     api.put('/tables/layout', { tables }),
   deleteTable: (id: string) => api.delete(`/tables/${id}`),
+  mergeTables: (sourceId: string, targetId: string) =>
+    api.post(`/tables/${sourceId}/merge`, { targetTableId: targetId }),
 };

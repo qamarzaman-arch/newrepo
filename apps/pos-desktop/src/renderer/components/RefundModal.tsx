@@ -7,7 +7,7 @@ import { validationService } from '../services/validationService';
 import { getHardwareManager } from '../services/hardwareManager';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useAuthStore } from '../stores/authStore';
-import { formatCurrency } from '../utils/currency';
+import { useCurrencyFormatter } from '../hooks/useCurrency';
 import toast from 'react-hot-toast';
 
 interface RefundModalProps {
@@ -20,6 +20,7 @@ interface RefundModalProps {
 type RefundType = 'FULL' | 'PARTIAL';
 
 const RefundModal: React.FC<RefundModalProps> = ({ isOpen, onClose, order, onSuccess }) => {
+  const { formatCurrency } = useCurrencyFormatter();
   const { settings } = useSettingsStore();
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
@@ -244,7 +245,7 @@ const RefundModal: React.FC<RefundModalProps> = ({ isOpen, onClose, order, onSuc
               <div>
                 <p className="text-gray-500">Order Total</p>
                 <p className="font-bold text-gray-900 text-lg">
-                  {formatCurrency(order.total, settings.currency)}
+                  {formatCurrency(order.total)}
                 </p>
               </div>
               <div>
@@ -284,7 +285,7 @@ const RefundModal: React.FC<RefundModalProps> = ({ isOpen, onClose, order, onSuc
               >
                 <p className="font-bold text-gray-900">Full Refund</p>
                 <p className="text-sm text-gray-600 mt-1">
-                  {formatCurrency(order.total, settings.currency)}
+                  {formatCurrency(order.total)}
                 </p>
               </button>
               <button
@@ -326,7 +327,7 @@ const RefundModal: React.FC<RefundModalProps> = ({ isOpen, onClose, order, onSuc
                           </p>
                         </div>
                         <span className="font-bold text-gray-900">
-                          {formatCurrency(item.price * item.quantity, settings.currency)}
+                          {formatCurrency(item.price * item.quantity)}
                         </span>
                       </div>
                     </button>
@@ -335,7 +336,7 @@ const RefundModal: React.FC<RefundModalProps> = ({ isOpen, onClose, order, onSuc
                 {selectedItems.size > 0 && (
                   <div className="mt-2 p-3 bg-red-50 rounded-lg">
                     <p className="text-sm text-red-800">
-                      Selected items total: <strong>{formatCurrency(calculatePartialRefund(), settings.currency)}</strong>
+                      Selected items total: <strong>{formatCurrency(calculatePartialRefund())}</strong>
                     </p>
                   </div>
                 )}

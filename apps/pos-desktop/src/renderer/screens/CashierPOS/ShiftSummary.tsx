@@ -13,12 +13,13 @@ import { validationService } from '@/services/validationService';
 import { cashDrawerService, CashDrawer } from '@/services/cashDrawerService';
 import { logAction } from '@/services/auditLogService';
 import { useQuery } from '@tanstack/react-query';
-import { formatCurrency } from '@/utils/currency';
+import { useCurrencyFormatter } from '@/hooks/useCurrency';
 import toast from 'react-hot-toast';
 
 const ShiftSummary: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { formatCurrency } = useCurrencyFormatter();
   const [isEndingShift, setIsEndingShift] = React.useState(false);
   const [isEditingOpeningBalance, setIsEditingOpeningBalance] = React.useState(false);
   const [openingBalanceInput, setOpeningBalanceInput] = React.useState('');

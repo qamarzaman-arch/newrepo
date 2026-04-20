@@ -30,19 +30,27 @@ import toast from 'react-hot-toast';
 
 // Role-based route access control
 const ALLOWED_ROUTES: Record<string, string[]> = {
-  '/orders': ['ADMIN', 'MANAGER', 'STAFF'],
+  '/orders': ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER'],
   '/kitchen': ['ADMIN', 'MANAGER', 'KITCHEN'],
-  '/tables': ['ADMIN', 'MANAGER', 'STAFF'],
-  '/menu': ['ADMIN', 'MANAGER'],
-  '/customers': ['ADMIN', 'MANAGER', 'STAFF'],
+  '/tables': ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER'],
+  '/menu': ['ADMIN', 'MANAGER', 'CASHIER'],
+  '/customers': ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER'],
   '/inventory': ['ADMIN', 'MANAGER'],
-  '/reports': ['ADMIN', 'MANAGER'],
+  '/reports': ['ADMIN', 'MANAGER', 'CASHIER'],
   '/settings': ['ADMIN', 'MANAGER'],
-  '/staff': ['ADMIN', 'MANAGER'],
+  '/staff': ['ADMIN', 'MANAGER', 'CASHIER'],
+  '/staff-attendance': ['ADMIN', 'MANAGER', 'CASHIER'],
   '/vendors': ['ADMIN', 'MANAGER'],
-  '/delivery': ['ADMIN', 'MANAGER', 'STAFF'],
+  '/delivery': ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER', 'RIDER'],
+  '/rider-deliveries': ['RIDER', 'ADMIN', 'MANAGER'],
+  '/rider-history': ['RIDER', 'ADMIN', 'MANAGER'],
   '/financial': ['ADMIN', 'MANAGER'],
-  '/dashboard': ['ADMIN', 'MANAGER', 'STAFF'],
+  '/dashboard': ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER'],
+  '/cashier-pos': ['CASHIER', 'ADMIN', 'MANAGER'],
+  '/cashier-orders': ['CASHIER', 'ADMIN', 'MANAGER'],
+  '/cashier-history': ['CASHIER', 'ADMIN', 'MANAGER'],
+  '/cashier-tables': ['CASHIER', 'ADMIN', 'MANAGER'],
+  '/shift-summary': ['CASHIER', 'RIDER', 'ADMIN', 'MANAGER', 'STAFF'],
 };
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRoles?: string[] }> = ({ 
@@ -93,8 +101,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRoles?: stri
       return <KitchenLayout>{children}</KitchenLayout>;
     }
 
-    // Cashiers get minimal, speed-optimized layout
-    if (user.role === 'CASHIER') {
+    // Cashiers and Riders get minimal, speed-optimized layout
+    if (user.role === 'CASHIER' || user.role === 'RIDER') {
       return <CashierLayout>{children}</CashierLayout>;
     }
 
@@ -126,7 +134,12 @@ const DefaultRedirect: React.FC = () => {
   if (user.role === 'KITCHEN') {
     return <Navigate to="/kitchen" replace />;
   }
-  
+
+  // Riders go to rider deliveries
+  if (user.role === 'RIDER') {
+    return <Navigate to="/rider-deliveries" replace />;
+  }
+
   // Cashiers go to POS
   return <Navigate to="/cashier-pos" replace />;
 };
@@ -290,6 +303,38 @@ function AnimatedRoutes() {
           element={
             <ProtectedRoute>
               <FinancialManagementScreen />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff-attendance"
+          element={
+            <ProtectedRoute>
+              <StaffScreen />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/rider-deliveries"
+          element={
+            <ProtectedRoute>
+              <DeliveryManagementScreen />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/rider-history"
+          element={
+            <ProtectedRoute>
+              <CashierOrderHistory />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cashier-tables"
+          element={
+            <ProtectedRoute>
+              <TablesScreen />
             </ProtectedRoute>
           }
         />

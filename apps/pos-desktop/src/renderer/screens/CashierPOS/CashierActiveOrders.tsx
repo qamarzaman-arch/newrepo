@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderService } from '../../services/orderService';
 import { useMenuItems } from '../../hooks/useMenu';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { formatCurrency } from '../../utils/currency';
+import { useCurrencyFormatter } from '../../hooks/useCurrency';
 import toast from 'react-hot-toast';
 import { useActiveOrders } from './hooks/useActiveOrders';
 import { usePaymentFlow } from './hooks/usePaymentFlow';

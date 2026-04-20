@@ -429,7 +429,14 @@ const AdvancedCashierPOS: React.FC = () => {
       <KitchenDispatchConfirmation
         isOpen={showKitchenModal}
         onClose={() => setShowKitchenModal(false)}
-        onConfirm={() => setShowKitchenModal(false)}
+        onConfirm={() => {
+          setShowKitchenModal(false);
+          // Auto-start new order after sending to kitchen
+          setTimeout(() => {
+            handleNewOrder();
+            toast.success('Order sent! Starting new order...', { duration: 2000 });
+          }, 500);
+        }}
       />
 
       {/* Offline Banner */}

@@ -32,7 +32,7 @@ export { useLoyalty } from './useLoyalty';
 export { useAuditLogs, useEntityAuditLogs } from './useAuditLogs';
 
 // WebSocket
-export { useWebSocket, useKitchenWebSocket } from './useWebSocket';
+export { useWebSocket, useKitchenWebSocket, useCashierWebSocket, useRiderWebSocket } from './useWebSocket';
 
 // Currency
 export { useCurrencyFormatter } from './useCurrency';

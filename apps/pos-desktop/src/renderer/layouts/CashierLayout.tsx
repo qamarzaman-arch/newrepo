@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { LogOut, HelpCircle, Clock, ShoppingCart, History, LayoutDashboard, X, Keyboard, Phone, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LogOut, HelpCircle, Clock, ShoppingCart, History, LayoutDashboard, X, Keyboard, Phone, ChevronLeft, ChevronRight, Users, Truck, Bell, Table as TableIcon } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { useCashierWebSocket } from '../hooks/useWebSocket';
+import ShiftManager from '../components/ShiftManager';
+import toast from 'react-hot-toast';
 
 interface CashierLayoutProps {
   children: React.ReactNode;
@@ -20,13 +23,52 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
   const [showHelp, setShowHelp] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // Cashier-specific menu items
+  // Cashier-specific menu items with delivery, tables, and attendance
   const cashierMenuItems = [
     { icon: LayoutDashboard, label: 'POS Terminal', path: '/cashier-pos' },
     { icon: ShoppingCart, label: 'Active Orders', path: '/cashier-orders' },
+    { icon: TableIcon, label: 'Tables', path: '/cashier-tables' },
+    { icon: Truck, label: 'Deliveries', path: '/delivery' },
+    { icon: Users, label: 'Staff Attendance', path: '/staff-attendance' },
     { icon: History, label: 'Order History', path: '/cashier-history' },
     { icon: Clock, label: 'Shift Summary', path: '/shift-summary' },
   ];
+
+  // Rider-specific menu items
+  const riderMenuItems = [
+    { icon: Truck, label: 'My Deliveries', path: '/rider-deliveries' },
+    { icon: History, label: 'Delivery History', path: '/rider-history' },
+    { icon: Clock, label: 'My Shifts', path: '/shift-summary' },
+  ];
+
+  // Select menu based on user role
+  const menuItems = user?.role === 'RIDER' ? riderMenuItems : cashierMenuItems;
+
+  // Handle kitchen completion notifications
+  const handleKitchenNotification = useCallback((data: any) => {
+    const orderNumber = data?.orderNumber || data?.order?.orderNumber || 'Unknown';
+    toast.success(
+      () => (
+        <div className="flex flex-col">
+          <span className="font-bold">Order #{orderNumber} Ready!</span>
+          <span className="text-sm">Kitchen has completed the order</span>
+          <button
+            onClick={() => navigate('/cashier-orders')}
+            className="mt-2 text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+          >
+            View Orders
+          </button>
+        </div>
+      ),
+      {
+        duration: 5000,
+        icon: <Bell className="w-5 h-5 text-green-500" />,
+      }
+    );
+  }, [navigate]);
+
+  // Subscribe to kitchen notifications
+  useCashierWebSocket(handleKitchenNotification);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -72,7 +114,7 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-2">
-          {cashierMenuItems.map((item, index) => {
+          {menuItems.map((item, index) => {
             const isActive = location.pathname === item.path.split('?')[0];
             const Icon = item.icon;
 
@@ -112,61 +154,49 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
           })}
         </nav>
 
-        {/* Bottom Actions */}
-        <div className="mt-auto flex flex-col gap-3 w-full px-3">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowHelp(true)}
-            className="w-full aspect-square rounded-xl bg-white/10 text-white/80 flex items-center justify-center hover:bg-white/20 transition-colors"
-            title="Help & Support"
-          >
-            <HelpCircle className="w-6 h-6" />
-          </motion.button>
+        {/* Bottom Actions - Compact Row Layout */}
+        <div className="mt-auto p-3 border-t border-white/10">
+          <div className="flex gap-2">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowHelp(true)}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 transition-colors text-sm"
+              title="Help"
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span className="text-xs font-medium">Help</span>
+            </motion.button>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleLogout}
-            className="w-full aspect-square rounded-xl bg-red-500/20 text-red-200 flex items-center justify-center hover:bg-red-500/30 transition-colors"
-            title="Logout"
-          >
-            <LogOut className="w-6 h-6" />
-          </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleLogout}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-500/20 text-red-100 hover:bg-red-500/30 transition-colors text-sm"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="text-xs font-medium">Logout</span>
+            </motion.button>
+          </div>
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main Content - Wrapped with ShiftManager for shift enforcement */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Minimal Top Bar for Cashiers */}
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-3">
-            <h1 className="font-manrope text-xl font-bold text-gray-900">POSLytic</h1>
-            <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded-full">Cashier Mode</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm font-semibold text-gray-900">{user?.fullName || 'Cashier'}</p>
-              <p className="text-xs text-gray-500 capitalize">{user?.role?.toLowerCase()}</p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-              {user?.fullName?.charAt(0) || 'C'}
-            </div>
-          </div>
-        </header>
-
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          >
-            {children}
-          </motion.div>
-        </main>
+        <ShiftManager>
+          {/* Content Area - No duplicate header, sidebar has all navigation */}
+          <main className="flex-1 overflow-y-auto bg-gray-50">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              {children}
+            </motion.div>
+          </main>
+        </ShiftManager>
       </div>
 
       {/* Help Modal */}

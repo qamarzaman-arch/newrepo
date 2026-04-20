@@ -304,4 +304,80 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response, next
   }
 });
 
+// Merge two tables
+router.post('/:id/merge', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { targetTableId } = z.object({ targetTableId: z.string() }).parse(req.body);
+    const sourceTableId = req.params.id;
+
+    const sourceTable = await prisma.table.findUnique({
+      where: { id: sourceTableId },
+      include: {
+        orders: {
+          where: { status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+        },
+      },
+    });
+
+    const targetTable = await prisma.table.findUnique({
+      where: { id: targetTableId },
+      include: {
+        orders: {
+          where: { status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+        },
+      },
+    });
+
+    if (!sourceTable || !targetTable) {
+      throw new AppError('Table not found', 404);
+    }
+
+    if (sourceTable.status !== 'OCCUPIED' && targetTable.status !== 'OCCUPIED') {
+      throw new AppError('At least one table must be occupied to merge', 400);
+    }
+
+    // Combine capacities
+    const combinedCapacity = sourceTable.capacity + targetTable.capacity;
+
+    // Mark source table as merged (unavailable)
+    await prisma.table.update({
+      where: { id: sourceTableId },
+      data: {
+        status: 'OUT_OF_ORDER',
+        notes: `Merged with Table ${targetTable.number}`,
+      },
+    });
+
+    // Update target table capacity
+    await prisma.table.update({
+      where: { id: targetTableId },
+      data: {
+        capacity: combinedCapacity,
+        notes: `Combined with Table ${sourceTable.number} (Total capacity: ${combinedCapacity})`,
+      },
+    });
+
+    // Move any active orders from source to target
+    if (sourceTable.orders.length > 0) {
+      await prisma.order.updateMany({
+        where: { tableId: sourceTableId, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+        data: { tableId: targetTableId },
+      });
+    }
+
+    logger.info(`Tables merged: ${sourceTable.number} into ${targetTable.number} by ${sanitize(req.user!.username)}`);
+
+    res.json({
+      success: true,
+      data: {
+        mergedTable: targetTable,
+        message: `Tables ${sourceTable.number} and ${targetTable.number} merged successfully`,
+        combinedCapacity,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

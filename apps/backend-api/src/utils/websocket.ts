@@ -86,9 +86,33 @@ export class WebSocketManager {
     logger.info(`WebSocket: Delivery created - ${delivery.id}`);
   }
 
-  emitDeliveryStatusChanged(deliveryId: string, status: string) {
-    this.io.emit(`delivery:${deliveryId}:status`, { deliveryId, status });
+  emitDeliveryStatusChanged(deliveryId: string, status: string, riderId?: string) {
+    this.io.emit(`delivery:${deliveryId}:status`, { deliveryId, status, riderId });
+    // Also notify specific rider room if rider assigned
+    if (riderId) {
+      this.io.to(`rider:${riderId}`).emit('delivery:assigned', { deliveryId, status });
+    }
     logger.info(`WebSocket: Delivery status changed - ${deliveryId} to ${status}`);
+  }
+
+  /**
+   * Emit rider-specific events
+   */
+  emitRiderPickupNotification(riderId: string, order: any) {
+    this.io.to(`rider:${riderId}`).emit('rider:pickup-ready', {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      customerAddress: order.delivery?.address,
+      customerPhone: order.customerPhone,
+      pickupTime: new Date().toISOString(),
+      message: `Order ${order.orderNumber} is ready for pickup!`,
+    });
+    logger.info(`WebSocket: Rider pickup notification - ${riderId} for order ${order.id}`);
+  }
+
+  emitRiderLocationUpdate(riderId: string, location: { lat: number; lng: number }) {
+    this.io.to('admin').emit(`rider:${riderId}:location`, { riderId, location, timestamp: new Date().toISOString() });
   }
 
   /**

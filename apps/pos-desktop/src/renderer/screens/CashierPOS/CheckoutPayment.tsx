@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -105,6 +105,37 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
       setCashReceived((prev) => prev + value);
     }
   };
+
+  // Handle physical keyboard input
+  const handleKeyboardInput = useCallback((e: KeyboardEvent) => {
+    // Only handle when in CASH or SPLIT mode
+    if (paymentMethod !== 'CASH' && paymentMethod !== 'SPLIT') return;
+    
+    const key = e.key;
+    
+    // Handle numbers
+    if (/^[0-9]$/.test(key)) {
+      setCashReceived((prev) => prev + key);
+    } else if (key === '.') {
+      // Prevent multiple decimal points
+      setCashReceived((prev) => prev.includes('.') ? prev : prev + '.');
+    } else if (key === 'Backspace') {
+      setCashReceived((prev) => prev.slice(0, -1));
+    } else if (key === 'Escape') {
+      setCashReceived('');
+    } else if (key === 'Enter') {
+      // Auto-fill exact amount on Enter if no amount entered
+      if (!cashReceived) {
+        setCashReceived(total.toFixed(2));
+      }
+    }
+  }, [paymentMethod, cashReceived, total]);
+
+  // Subscribe to keyboard events
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyboardInput);
+    return () => window.removeEventListener('keydown', handleKeyboardInput);
+  }, [handleKeyboardInput]);
 
   const handleQuickAmount = (type: 'exact' | 'next10' | 'next20') => {
     if (type === 'exact') {
@@ -511,11 +542,32 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
               </div>
             )}
 
-            {/* Cash Display */}
-            <div className="bg-gray-50 rounded-2xl p-6 mb-4 text-right border border-gray-200">
-              <span className="font-manrope text-5xl font-black text-primary">
-                {cashReceived ? formatCurrency(cashReceivedNum, currencyCode) : formatCurrency(0, currencyCode)}
-              </span>
+            {/* Cash Display - Editable with Keyboard */}
+            <div className="bg-gray-50 rounded-2xl p-6 mb-4 border border-gray-200">
+              <label className="text-xs text-gray-500 uppercase tracking-wide mb-1 block">
+                Cash Received (Type or use keypad)
+              </label>
+              <div className="flex items-center justify-end gap-2">
+                <span className="text-2xl text-gray-400">{currencyCode === 'USD' ? '$' : currencyCode}</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={cashReceived}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || /^∝*\.?∝*$/.test(val)) {
+                      setCashReceived(val);
+                    }
+                  }}
+                  placeholder="0.00"
+                  className="font-manrope text-5xl font-black text-primary bg-transparent border-none outline-none text-right w-full max-w-[300px] placeholder:text-gray-300"
+                  autoFocus
+                />
+              </div>
+              <p className="text-xs text-gray-400 text-right mt-1">
+                Press numbers on keyboard or use keypad below
+              </p>
             </div>
 
             {/* Quick Amount Buttons */}

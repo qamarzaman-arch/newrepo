@@ -99,12 +99,12 @@ export const commissionService = {
         create: {
           userId,
           date: today,
-          totalOrders: 1,
+          ordersHandled: 1,
           totalSales: orderAmount,
           totalCommission: calculation.commissionAmount,
         },
         update: {
-          totalOrders: { increment: 1 },
+          ordersHandled: { increment: 1 },
           totalSales: { increment: orderAmount },
           totalCommission: { increment: calculation.commissionAmount },
         },

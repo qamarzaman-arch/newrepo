@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -54,7 +54,7 @@ model User {
 model Session {
   id        String   @id @default(uuid())
   userId    String
-  token     String
+  token     String   @db.Text
   expiresAt DateTime
   createdAt DateTime @default(now())
 
@@ -148,10 +148,19 @@ model MenuItemTag {
   @@index([tag])
 }
 
+enum OrderType {
+  DINE_IN
+  WALK_IN
+  TAKEAWAY
+  DELIVERY
+  PICKUP
+  RESERVATION
+}
+
 model Order {
   id              String        @id @default(uuid())
   orderNumber     String        @unique
-  orderType       String        @default("DINE_IN")
+  orderType       OrderType     @default(DINE_IN)
   status          String   @default("PENDING")
 
   customerId      String?
@@ -634,6 +643,7 @@ model StaffPerformance {
 
   ordersHandled Int    @default(0)
   totalSales    Float @default(0) 
+  totalCommission Float @default(0)
   avgOrderValue Float @default(0) 
   tips          Float @default(0) 
   cancellations Int    @default(0)
@@ -706,7 +716,7 @@ model SyncQueue {
   operation   String
   modelName   String
   recordId    String
-  payload     String
+  payload     String   @db.LongText
   status      String   @default("pending")
   retryCount  Int      @default(0)
   errorMessage String?
@@ -741,7 +751,7 @@ model AuditLog {
   action    String
   entity    String
   entityId  String?
-  changes   String?
+  changes   String?   @db.LongText
   ipAddress String?
   userAgent String?
 
@@ -759,7 +769,7 @@ model ReportCache {
   id          String   @id @default(uuid())
   reportType  String
   period      String
-  data        String
+  data        String   @db.LongText
   generatedAt DateTime @default(now())
   expiresAt   DateTime
 
@@ -804,7 +814,7 @@ model Recipe {
   id              String   @id @default(uuid())
   name            String
   description     String?
-  instructions   String?
+  instructions   String?  @db.LongText
   prepTimeMinutes  Int      @default(0)
   cookTimeMinutes Int      @default(0)
   servings        Int      @default(1)
