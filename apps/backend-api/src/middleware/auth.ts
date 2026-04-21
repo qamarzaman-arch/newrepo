@@ -9,17 +9,19 @@ export interface AuthRequest extends Request {
     username: string;
     role: string;
   };
+  storeId?: string;
 }
 
 export async function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
+    // Support x-store-id header
+    req.storeId = (req.headers['x-store-id'] as string) || 'MAIN';
 
     if (!token) {
       throw new AppError('Authentication required', 401);
     }
 
-    // Check session in database
     const session = await prisma.session.findFirst({
       where: { token },
       include: { user: true },
@@ -38,7 +40,6 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
       throw new AppError('User account is disabled', 403);
     }
 
-    // Verify JWT
     const decoded: any = jwt.verify(
       token,
       process.env.JWT_SECRET as string

@@ -2,30 +2,31 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from './auth';
 import { AuditLogService } from '../services/auditLog.service';
 
-export function audit(action: string, entity: string) {
+export const auditAction = (action: string, entity: string) => {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const originalJson = res.json;
+    // Wrap the original end function to log after response is sent
+    const originalEnd = res.end;
 
-    res.json = function(body: any) {
+    (res as any).end = function (chunk: any, encoding: any, callback: any) {
+      res.end = originalEnd;
+      const result = res.end(chunk, encoding, callback);
+
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        const userId = req.user?.userId || null;
-        const entityId = body?.data?.id || req.params.id;
-        const ipAddress = req.ip;
-        const userAgent = req.headers['user-agent'];
-
+        // Log successful actions
         AuditLogService.log(
-          userId,
+          req.user?.userId || null,
           action,
           entity,
-          entityId,
-          req.body,
-          ipAddress,
-          userAgent
-        ).catch(err => console.error('Audit logging failed:', err));
+          req.params.id || (res as any).locals?.entityId,
+          req.method !== 'GET' ? req.body : null,
+          req.ip,
+          req.headers['user-agent']
+        ).catch(err => console.error('Audit log failed:', err));
       }
-      return originalJson.call(this, body);
+
+      return result;
     };
 
     next();
   };
-}
+};

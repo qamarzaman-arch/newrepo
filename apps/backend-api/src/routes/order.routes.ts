@@ -1,7 +1,8 @@
-import { ValidationService } from "../services/validation.service";
-import { ReceiptService } from "../services/receipt.service";
-import { AuditLogService } from "../services/auditLog.service";
-import { Router, Response, NextFunction } from 'express';
+import { InventoryService } from '../services/inventory.service';
+import { ValidationService } from '../services/validation.service';
+import { ReceiptService } from '../services/receipt.service';
+import { AuditLogService } from '../services/auditLog.service';
+import { Router, Response, NextFunction, Request } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../server';
@@ -33,188 +34,8 @@ const createOrderSchema = z.object({
   kitchenNotes: z.string().optional(),
 });
 
-// Get all orders with filters
-router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const { status, orderType, paymentMethod, startDate, endDate, page = 1, limit = 50 } = req.query;
-
-    const where: any = {};
-
-    // Support comma-separated status (e.g., status=PENDING,PREPARING,READY)
-    if (status) {
-      const statusList = (status as string).split(',').filter(Boolean);
-      if (statusList.length === 1) {
-        where.status = statusList[0];
-      } else if (statusList.length > 1) {
-        where.status = { in: statusList };
-      }
-    }
-
-    if (orderType) where.orderType = orderType;
-
-    // Support payment method filtering via payments relation
-    let paymentFilter: any = {};
-    if (paymentMethod && paymentMethod !== 'all') {
-      paymentFilter = {
-        some: {
-          method: paymentMethod as string,
-        },
-      };
-    }
-
-    if (startDate || endDate) {
-      where.orderedAt = {};
-      if (startDate) where.orderedAt.gte = new Date(startDate as string);
-      if (endDate) where.orderedAt.lte = new Date(endDate as string);
-    }
-
-    const [orders, total] = await Promise.all([
-      prisma.order.findMany({
-        where: {
-          ...where,
-          ...(paymentMethod && paymentMethod !== 'all' ? { payments: paymentFilter } : {}),
-        },
-        include: {
-          items: {
-            include: {
-              menuItem: true,
-            },
-          },
-          table: true,
-          customer: true,
-          cashier: {
-            select: { id: true, fullName: true },
-          },
-          delivery: true,
-          payments: true,
-        },
-        orderBy: { orderedAt: 'desc' },
-        skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit),
-      }),
-      prisma.order.count({
-        where: {
-          ...where,
-          ...(paymentMethod && paymentMethod !== 'all' ? { payments: paymentFilter } : {}),
-        },
-      }),
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        orders,
-        pagination: {
-          total,
-          page: Number(page),
-          limit: Number(limit),
-          totalPages: Math.ceil(total / Number(limit)),
-        },
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-// Get reservations (orders with RESERVATION type)
-router.get('/reservations', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const { status } = req.query;
-    
-    const where: any = {
-      orderType: 'RESERVATION',
-    };
-    
-    if (status) where.status = status as string;
-
-    const reservations = await prisma.order.findMany({
-      where,
-      include: {
-        customer: true,
-        table: true,
-      },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    res.json({ success: true, data: { reservations } });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Create reservation (as a separate order type)
-router.post('/reservations', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const { customerName, customerPhone, tableId, notes } = req.body;
-
-    const today = new Date();
-    const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
-    const count = await prisma.order.count({
-      where: {
-        orderType: 'RESERVATION',
-        createdAt: { gte: new Date(today.setHours(0, 0, 0, 0)) },
-      },
-    });
-    const orderNumber = `RES-${dateStr}-${String(count + 1).padStart(3, '0')}`;
-
-    const reservation = await prisma.order.create({
-      data: {
-        orderNumber,
-        orderType: 'RESERVATION',
-        status: 'PENDING',
-        customerName,
-        customerPhone,
-        tableId,
-        notes,
-        cashierId: req.user!.userId,
-        subtotal: 0,
-        totalAmount: 0,
-      },
-    });
-
-    res.status(201).json({ success: true, data: { reservation } });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get single order
-router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const order = await prisma.order.findUnique({
-      where: { id: req.params.id },
-      include: {
-        items: {
-          include: {
-            menuItem: true,
-          },
-        },
-        table: true,
-        customer: true,
-        payments: true,
-        cashier: {
-          select: { id: true, fullName: true },
-        },
-        delivery: true,
-        kotTickets: true,
-      },
-    });
-
-    if (!order) {
-      throw new AppError('Order not found', 404);
-    }
-
-    res.json({
-      success: true,
-      data: { order },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Create new order
-router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Create order
+router.post('/', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createOrderSchema.parse(req.body);
 
@@ -222,7 +43,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
     const today = new Date();
     const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
     const count = await prisma.order.count({
-      where: {
+      where: { storeId: req.storeId,
         orderedAt: {
           gte: new Date(today.setHours(0, 0, 0, 0)),
         },
@@ -236,7 +57,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
 
     for (const item of data.items) {
       const menuItem = await prisma.menuItem.findUnique({
-        where: { id: item.menuItemId },
+        where: { storeId: req.storeId, id: item.menuItemId },
       });
 
       if (!menuItem || !menuItem.isActive || !menuItem.isAvailable) {
@@ -256,14 +77,12 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
       });
     }
 
-    // Apply discount - prefer frontend values over code lookup
     let discountAmount = data.discountAmount || 0;
     let discountPercent = data.discountPercent || 0;
 
-    // If discount code provided, look it up (frontend values take precedence if both provided)
     if (data.discountCode && !discountAmount && !discountPercent) {
       const discount = await prisma.discount.findUnique({
-        where: { code: data.discountCode },
+        where: { storeId: req.storeId, code: data.discountCode },
       });
 
       if (discount && discount.isActive) {
@@ -276,41 +95,16 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
       }
     }
 
-    // Calculate tax - get from settings
     const taxSetting = await prisma.setting.findUnique({
-      where: { key: 'tax_rate' },
+      where: { storeId: req.storeId, key: 'tax_rate' },
     });
     const taxRate = taxSetting ? parseFloat(taxSetting.value) : 0;
     const taxAmount = (subtotal - discountAmount) * (taxRate / 100);
 
-    // Calculate surcharge - get applicable surcharges
-    const surcharges = await prisma.surcharge.findMany({
-      where: {
-        isActive: true,
-        OR: [
-          { applicableTo: 'all' },
-          { applicableTo: data.orderType.toLowerCase() },
-        ],
-      },
-    });
-
-    let surchargeAmount = 0;
-    for (const surcharge of surcharges) {
-      if (surcharge.type === 'percentage') {
-        surchargeAmount += (subtotal * Number(surcharge.value)) / 100;
-      } else {
-        surchargeAmount += Number(surcharge.value);
-      }
-    }
-
-    // Get tip from frontend (cashier-entered tip)
     const tipAmount = data.tipAmount || 0;
+    const totalAmount = subtotal - discountAmount + taxAmount + tipAmount;
 
-    const totalAmount = subtotal - discountAmount + taxAmount + surchargeAmount + tipAmount;
-
-    // Create order with transaction
     const order = await prisma.$transaction(async (tx) => {
-      // Create order
       const newOrder = await tx.order.create({
         data: {
           orderNumber,
@@ -323,7 +117,6 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
           discountAmount,
           discountPercent,
           taxAmount,
-          surchargeAmount,
           tipAmount: tipAmount || undefined,
           totalAmount,
           cashierId: req.user!.userId,
@@ -342,10 +135,14 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
         },
       });
 
-      // Update table status if dine-in
+      // Deduct ingredients based on recipes
+      for (const item of data.items) {
+        await InventoryService.deductIngredientsForMenuItem(item.menuItemId, item.quantity, tx);
+      }
+
       if (data.orderType === 'DINE_IN' && data.tableId) {
         await tx.table.update({
-          where: { id: data.tableId },
+          where: { storeId: req.storeId, id: data.tableId },
           data: {
             status: 'OCCUPIED',
             currentOrderId: newOrder.id,
@@ -353,99 +150,24 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
         });
       }
 
-      // Create KOT tickets for kitchen with unique timestamp-based IDs
-      let kotCounter = 1;
-      for (const item of newOrder.items) {
-        const timestamp = Date.now();
-        const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        await tx.kotTicket.create({
-          data: {
-            ticketNumber: `KOT-${dateStr}-${String(kotCounter).padStart(3, '0')}-${timestamp}-${randomSuffix}`,
-            orderId: newOrder.id,
-            orderItemId: item.id,
-            course: 'main',
-            status: 'NEW',
-          },
-        });
-        kotCounter++;
-      }
+      const kotCount = await tx.kotTicket.count({
+        where: { storeId: req.storeId, createdAt: { gte: new Date(today.setHours(0, 0, 0, 0)) } },
+      });
 
-      // Auto-deduct inventory for items with menuItem recipes
-      for (const item of newOrder.items) {
-        if (item.menuItemId) {
-          // Get recipe ingredients for this menu item
-          const recipes = await (tx as any).recipe.findMany({
-            where: { menuItemId: item.menuItemId },
-            include: { inventoryItem: true },
-          });
-
-          for (const recipe of recipes) {
-            if (recipe.inventoryItemId) {
-              const requiredQty = recipe.quantity * item.quantity;
-              const inventoryItem = recipe.inventoryItem;
-
-              // Check if sufficient stock
-              if (inventoryItem.currentStock < requiredQty) {
-                // Log low stock but don't fail order - kitchen will handle it
-                logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available: ${inventoryItem.currentStock}`);
-              }
-
-              // Deduct from inventory
-              const newStock = Math.max(0, inventoryItem.currentStock - requiredQty);
-              const status = newStock === 0 ? 'OUT_OF_STOCK' :
-                            newStock <= inventoryItem.minStock ? 'LOW_STOCK' : 'IN_STOCK';
-
-              await (tx as any).inventoryItem.update({
-                where: { id: inventoryItem.id },
-                data: {
-                  currentStock: newStock,
-                  status,
-                },
-              });
-
-              // Record stock movement (if table exists)
-              try {
-                await (tx as any).stockMovement.create({
-                  data: {
-                    inventoryItemId: inventoryItem.id,
-                    type: 'SALE',
-                    quantity: requiredQty,
-                    reference: `Order ${orderNumber}`,
-                    notes: `Auto-deducted for order`,
-                  },
-                });
-              } catch (e) {
-                // Table may not exist, skip
-              }
-
-              // Create low stock alert if needed (if table exists)
-              if (status === 'LOW_STOCK') {
-                try {
-                  await (tx as any).stockAlert.create({
-                    data: {
-                      inventoryItemId: inventoryItem.id,
-                      alertType: 'LOW_STOCK',
-                      message: `${inventoryItem.name} is below minimum level. Current: ${newStock}, Min: ${inventoryItem.minStock}`,
-                      status: 'ACTIVE',
-                    },
-                  });
-                } catch (e) {
-                  // Table may not exist, skip
-                }
-              }
-            }
-          }
-        }
-      }
+      const kot = await tx.kotTicket.create({
+        data: {
+          ticketNumber: `KOT-${dateStr}-${String(kotCount + 1).padStart(3, '0')}`,
+          orderId: newOrder.id,
+          status: 'NEW',
+          notes: data.kitchenNotes,
+        },
+      });
 
       return newOrder;
     });
 
-    // Emit real-time event via WebSocket
     const ws = getWebSocketManager();
     ws.emitOrderCreated(order);
-
-    logger.info(`Order created: ${sanitize(orderNumber)} by ${sanitize(req.user!.username)}`);
 
     res.status(201).json({
       success: true,
@@ -454,420 +176,120 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
-// Update order status
-router.patch('/:id/status', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Update existing order
+router.put('/:id', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { status, cancelReason, managerPin } = req.body;
-
-    // Required PIN for cancellation/voiding
-    if (status === 'CANCELLED' || status === 'VOIDED') {
-      if (!managerPin) throw new AppError('Manager PIN required for this action', 401);
-      await ValidationService.authorizeAction(managerPin, `Order ${status}`);
-    }
-
-
+    const { notes, items, kitchenNotes, notifyKitchen } = req.body;
     const order = await prisma.order.findUnique({
-      where: { id: req.params.id },
+      where: { storeId: req.storeId, id: req.params.id },
+      include: { items: { include: { menuItem: true } } },
     });
+    if (!order) throw new AppError('Order not found', 404);
 
-    if (!order) {
-      throw new AppError('Order not found', 404);
-    }
-
-    const updatedOrder = await prisma.order.update({
-      where: { id: req.params.id },
-      data: {
-        status,
-        ...(status === 'CANCELLED' && {
-          cancelledAt: new Date(),
-          cancelReason,
-        }),
-        ...(status === 'COMPLETED' && {
-          completedAt: new Date(),
-        }),
-      },
-      include: {
-        items: {
-          include: {
-            menuItem: true,
-          },
-        },
-        table: true,
-      },
-    });
-
-    // Update table status if order completed or cancelled
-    if ((status === 'COMPLETED' || status === 'CANCELLED') && order.tableId) {
-      await prisma.table.update({
-        where: { id: order.tableId },
-        data: {
-          status: 'NEEDS_CLEANING',
-          currentOrderId: null,
-        },
-      });
-    }
-
-    // Emit real-time event via WebSocket
-    const ws = getWebSocketManager();
-    ws.emitOrderUpdated(updatedOrder.id, updatedOrder);
-
-    res.json({
-      success: true,
-      data: { order: updatedOrder },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Process payment
-router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const { method, amount, reference, notes } = req.body;
-
-    const order = await prisma.order.findUnique({
-      where: { id: req.params.id },
-    });
-
-    if (!order) {
-      throw new AppError('Order not found', 404);
-    }
-
-    const paidAmount = Number(order.paidAmount) + amount;
-
-    // Create payment record
-    const payment = await prisma.payment.create({
-      data: {
-        orderId: order.id,
-        method,
-        amount,
-        reference,
-        notes,
-        status: 'PAID',
-      },
-    });
-
-    // Update order
-    const updatedOrder = await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        paidAmount,
-        paymentStatus: paidAmount >= Number(order.totalAmount) ? 'PAID' : 'PARTIAL',
-        paymentMethod: method,
-      },
-      include: {
-        payments: true,
-        items: {
-          include: {
-            menuItem: true,
-          },
-        },
-      },
-    });
-
-    let finalOrder = updatedOrder;
-    
-    // If fully paid and not completed, mark as completed
-    if (paidAmount >= Number(order.totalAmount) && order.status !== 'COMPLETED') {
-      finalOrder = await prisma.order.update({
-        where: { id: order.id },
-        data: {
-          status: 'COMPLETED',
-          completedAt: new Date(),
-        },
-        include: {
-          payments: true,
-          items: {
-            include: {
-              menuItem: true,
-            },
-          },
-        },
-      });
-
-      // Free up table
-      if (order.tableId) {
-        await prisma.table.update({
-          where: { id: order.tableId },
-          data: {
-            status: 'NEEDS_CLEANING',
-            currentOrderId: null,
-          },
-        });
+    let updatedOrder;
+    await prisma.$transaction(async (tx) => {
+      const updateData: any = { notes, kitchenNotes };
+      if (items && items.length > 0) {
+        // Simple replace items for this enhancement
+        await tx.orderItem.deleteMany({ where: { storeId: req.storeId, orderId: order.id } });
+        for (const item of items) {
+           const menuItem = await tx.menuItem.findUnique({ where: { storeId: req.storeId, id: item.menuItemId } });
+           if (menuItem) {
+              await tx.orderItem.create({
+                 data: {
+                    orderId: order.id,
+                    menuItemId: menuItem.id,
+                    quantity: item.quantity,
+                    unitPrice: menuItem.price,
+                    totalPrice: Number(menuItem.price) * item.quantity,
+                 }
+              });
+              // Deduct added ingredients
+              await InventoryService.deductIngredientsForMenuItem(menuItem.id, item.quantity, tx);
+           }
+        }
       }
-      
-      // Emit WebSocket event for status change to COMPLETED
-      const ws = getWebSocketManager();
-      ws.emitOrderStatusChanged(finalOrder.id, 'COMPLETED');
-    }
+      updatedOrder = await tx.order.update({
+        where: { storeId: req.storeId, id: order.id },
+        data: updateData,
+        include: { items: { include: { menuItem: true } }, table: true },
+      });
+    });
 
-    // Emit real-time event via WebSocket for payment update
     const ws = getWebSocketManager();
-    ws.emitOrderStatusChanged(finalOrder.id, finalOrder.status);
-
-    logger.info(`Payment processed for order ${sanitize(order.orderNumber)}: ${amount}`);
-
-    res.json({
-      success: true,
-      data: {
-        order: updatedOrder,
-        payment,
-      },
-    });
+    ws.emitOrderUpdated(updatedOrder!.id, updatedOrder!);
+    res.json({ success: true, data: { order: updatedOrder } });
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
-
-// Update reservation
-router.put('/reservations/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Get all orders
+router.get('/', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { status, tableId, notes } = req.body;
+    const { status, orderType, page = 1, limit = 20 } = req.query as any;
+    const where: any = {};
+    if (status) where.status = status;
+    if (orderType) where.orderType = orderType;
 
-    const reservation = await prisma.order.update({
-      where: { id: req.params.id },
-      data: {
-        status,
-        tableId,
-        notes,
-      },
-    });
-
-    res.json({ success: true, data: { reservation } });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Delete/cancel reservation
-router.delete('/reservations/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    await prisma.order.update({
-      where: { id: req.params.id },
-      data: {
-        status: 'CANCELLED',
-      },
-    });
-    res.json({ success: true, message: 'Reservation cancelled' });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Process refund for order
-router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const { type, reason, amount, items, managerPin, approvedBy, refundMethod, originalPaymentMethod } = req.body;
-
-    const order = await prisma.order.findUnique({
-      where: { id: req.params.id },
-      include: { payments: true },
-    });
-
-    if (!order) {
-      throw new AppError('Order not found', 404);
-    }
-
-    // Verify order was paid
-    if (order.paymentStatus !== 'PAID') {
-      throw new AppError('Cannot refund unpaid order', 400);
-    }
-
-    await ValidationService.authorizeAction(managerPin, 'Order Refund');
-    // Validate manager PIN
-    const managerPinSetting = await prisma.setting.findUnique({
-      where: { key: 'manager_pin' },
-    });
-
-    if (!managerPinSetting) {
-      throw new AppError('Manager PIN not configured', 500);
-    }
-
-    const isValidPin = await bcrypt.compare(managerPin, managerPinSetting.value);
-    if (!isValidPin) {
-      logger.warn(`Failed refund PIN validation for order ${order.id}`);
-      throw new AppError('Invalid manager PIN', 401);
-    }
-
-    // Create refund record (using Payment model with negative amount for tracking)
-    await prisma.payment.create({
-      data: {
-        orderId: order.id,
-        method: refundMethod || originalPaymentMethod || 'CASH',
-        amount: -amount, // Negative amount for refund
-        status: 'REFUNDED',
-        notes: `Refund: ${reason} (Type: ${type}, Approved by: ${approvedBy})`,
-      },
-    });
-
-    // Update order with refund info
-    const updatedOrder = await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        status: type === 'FULL' ? 'REFUNDED' : 'PARTIALLY_REFUNDED',
-      } as any,
+    const orders = await prisma.order.findMany({
+      where,
       include: {
         items: { include: { menuItem: true } },
         table: true,
         customer: true,
-        payments: true,
       },
+      orderBy: { orderedAt: 'desc' },
+      skip: (Number(page) - 1) * Number(limit),
+      take: Number(limit),
     });
 
-    // Create negative payment record for refund
-    await prisma.payment.create({
-      data: {
-        orderId: order.id,
-        method: refundMethod || originalPaymentMethod || 'CASH',
-        amount: -amount,
-        status: 'REFUNDED',
-        notes: `Refund: ${reason} (Approved by: ${approvedBy})`,
-      },
-    });
-
-    // Update daily stats for reporting
-    logger.info(`Refund processed for order ${order.id}: ${amount} (${type})`);
-
-    res.json({
-      success: true,
-      data: { order: updatedOrder, refundAmount: amount, refundType: type },
-    });
+    res.json({ success: true, data: { orders } });
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
-// Update existing order (for modifying active orders)
-router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Payment processing
+router.post('/:id/payment', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { notes, items, kitchenNotes, notifyKitchen } = req.body;
+    const { method, amount } = req.body;
+    const order = await prisma.order.findUnique({ where: { storeId: req.storeId, id: req.params.id } });
+    if (!order) throw new AppError('Order not found', 404);
 
+    const paidAmount = Number(order.paidAmount) + amount;
+    const updatedOrder = await prisma.order.update({
+      where: { storeId: req.storeId, id: order.id },
+      data: {
+        paidAmount,
+        paymentStatus: paidAmount >= Number(order.totalAmount) ? 'PAID' : 'PARTIAL',
+        paymentMethod: method,
+        status: paidAmount >= Number(order.totalAmount) ? 'COMPLETED' : order.status,
+      },
+    });
+
+    if (updatedOrder.status === 'COMPLETED' && order.tableId) {
+      await prisma.table.update({
+        where: { storeId: req.storeId, id: order.tableId },
+        data: { status: 'NEEDS_CLEANING', currentOrderId: null },
+      });
+    }
+
+    res.json({ success: true, data: { order: updatedOrder } });
+  } catch (error) {
+    next(error);
+  }
+}) as any);
+
+// Receipt retrieval
+router.get('/:id/receipt', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
     const order = await prisma.order.findUnique({
-      where: { id: req.params.id },
+      where: { storeId: req.storeId, id: req.params.id },
       include: { items: { include: { menuItem: true } } },
     });
-
-    if (!order) {
-      throw new AppError('Order not found', 404);
-    }
-
-    // Only allow updates to orders that aren't completed/cancelled
-    if (order.status === 'COMPLETED' || order.status === 'CANCELLED' || order.status === 'REFUNDED') {
-      throw new AppError('Cannot modify completed or cancelled orders', 400);
-    }
-
-    let updatedOrder;
-
-    await prisma.$transaction(async (tx) => {
-      // Update basic fields
-      const updateData: any = {
-        notes,
-        kitchenNotes,
-      };
-
-      // If items changed, recalculate totals
-      if (items && items.length > 0) {
-        let subtotal = 0;
-        const orderItems = [];
-
-        // Delete existing items
-        await tx.orderItem.deleteMany({
-          where: { orderId: order.id },
-        });
-
-        // Create new items
-        for (const item of items) {
-          const menuItem = await tx.menuItem.findUnique({
-            where: { id: item.menuItemId || item.menuItem?.id },
-          });
-
-          if (!menuItem) continue;
-
-          const totalPrice = Number(menuItem.price) * item.quantity;
-          subtotal += totalPrice;
-
-          orderItems.push({
-            orderId: order.id,
-            menuItemId: menuItem.id,
-            quantity: item.quantity,
-            unitPrice: menuItem.price,
-            totalPrice,
-            notes: item.notes,
-            modifiers: item.modifiers,
-          });
-        }
-
-        // Create all new items
-        await tx.orderItem.createMany({
-          data: orderItems,
-        });
-
-        // Update order totals
-        updateData.subtotal = subtotal;
-        updateData.totalAmount = subtotal - (order.discountAmount || 0) + (order.taxAmount || 0) + (order.surchargeAmount || 0);
-      }
-
-      updatedOrder = await tx.order.update({
-        where: { id: order.id },
-        data: updateData,
-        include: {
-          items: { include: { menuItem: true } },
-          table: true,
-          customer: true,
-        },
-      });
-
-      // Create new KOT tickets if kitchen notification requested
-      if (notifyKitchen && items) {
-        const today = new Date();
-        const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
-
-        for (const item of items) {
-          const kotCount = await tx.kotTicket.count({
-            where: { createdAt: { gte: new Date(today.setHours(0, 0, 0, 0)) } },
-          });
-
-          await tx.kotTicket.create({
-            data: {
-              ticketNumber: `KOT-${dateStr}-${String(kotCount + 1).padStart(3, '0')}-MOD`,
-              orderId: order.id,
-              course: 'main',
-              status: 'NEW',
-              notes: `Order modified - added ${item.quantity}x ${item.name || 'item'}`,
-            },
-          });
-        }
-      }
-    });
-
-    // Emit real-time event
-    const ws = getWebSocketManager();
-    ws.emitOrderUpdated(updatedOrder!.id, updatedOrder!);
-
-    res.json({
-      success: true,
-      data: { order: updatedOrder },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-
-// Get order receipt (formatted text)
-router.get('/:id/receipt', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const order = await prisma.order.findUnique({
-      where: { id: req.params.id },
-      include: {
-        items: { include: { menuItem: true } },
-        table: true,
-      },
-    });
-
     if (!order) throw new AppError('Order not found', 404);
 
     const settingsRecords = await prisma.setting.findMany();
@@ -875,14 +297,10 @@ router.get('/:id/receipt', authenticate, async (req: AuthRequest, res: Response,
     settingsRecords.forEach(s => settings[s.key] = s.value);
 
     const receiptText = ReceiptService.generateReceiptText(order, settings);
-
-    res.json({
-      success: true,
-      data: { receiptText },
-    });
+    res.json({ success: true, data: { receiptText } });
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
 export default router;

@@ -64,6 +64,7 @@ model Session {
 }
 
 model MenuCategory {
+  storeId         String?      @default("MAIN")
   id          String   @id @default(uuid())
   name        String
   description String?
@@ -81,6 +82,7 @@ model MenuCategory {
 model MenuItem {
   id              String   @id @default(uuid())
   categoryId      String
+  storeId         String?      @default("MAIN")
   name            String
   description     String?
   price           Float  
@@ -90,6 +92,7 @@ model MenuItem {
   barcode         String?
   isActive        Boolean  @default(true)
   isAvailable     Boolean  @default(true)
+  station         String   @default("GRILL")
   prepTimeMinutes Int      @default(15)
   taxRate         Float   @default(0) 
   displayOrder    Int      @default(0)
@@ -111,6 +114,7 @@ model MenuItem {
 }
 
 model ItemModifier {
+  storeId         String?      @default("MAIN")
   id            String   @id @default(uuid())
   menuItemId    String
   name          String
@@ -138,6 +142,7 @@ model ModifierOption {
 }
 
 model MenuItemTag {
+  storeId         String?      @default("MAIN")
   id         String @id @default(uuid())
   menuItemId String
   tag        String
@@ -151,6 +156,7 @@ model MenuItemTag {
 model Order {
   id              String        @id @default(uuid())
   orderNumber     String        @unique
+  storeId         String?      @default("MAIN")
   orderType       String     @default("DINE_IN")
   status          String   @default("PENDING")
 
@@ -204,6 +210,7 @@ model Order {
 }
 
 model OrderItem {
+  storeId         String?      @default("MAIN")
   id              String   @id @default(uuid())
   orderId         String
   menuItemId      String
@@ -246,6 +253,7 @@ model Payment {
 }
 
 model Table {
+  storeId         String?      @default("MAIN")
   id          String      @id @default(uuid())
   number      String
   capacity    Int         @default(4)
@@ -269,6 +277,7 @@ model Table {
 }
 
 model Customer {
+  storeId         String?      @default("MAIN")
   id              String   @id @default(uuid())
   firstName       String
   lastName        String
@@ -315,6 +324,7 @@ model LoyaltyTransaction {
 }
 
 model InventoryItem {
+  storeId         String?      @default("MAIN")
   id              String       @id @default(uuid())
   menuItemId      String?
   name            String
@@ -408,6 +418,7 @@ model Warehouse {
 }
 
 model KotTicket {
+  storeId         String?      @default("MAIN")
   id            String       @id @default(uuid())
   ticketNumber  String       @unique
   orderId       String
@@ -473,6 +484,7 @@ model Delivery {
 }
 
 model Expense {
+  storeId         String?      @default("MAIN")
   id          String           @id @default(uuid())
   expenseNumber String         @unique
   category    String
@@ -497,6 +509,7 @@ model Expense {
 }
 
 model Discount {
+  storeId         String?      @default("MAIN")
   id            String   @id @default(uuid())
   name          String
   code          String?  @unique
@@ -587,6 +600,7 @@ model CashDrawer {
 }
 
 model Shift {
+  storeId         String?      @default("MAIN")
   id          String     @id @default(uuid())
   userId      String
   shiftNumber String     @unique
@@ -633,6 +647,7 @@ model StaffPerformance {
 }
 
 model Vendor {
+  storeId         String?      @default("MAIN")
   id          String   @id @default(uuid())
   name        String
   contactName String?
@@ -655,6 +670,7 @@ model Vendor {
 }
 
 model Setting {
+  storeId         String?      @default("MAIN")
   id        String   @id @default(uuid())
   key       String   @unique
   value     String   
@@ -822,6 +838,7 @@ model RecipeIngredient {
 
 // Purchase Orders
 model PurchaseOrder {
+  storeId         String?      @default("MAIN")
   id              String   @id @default(uuid())
   vendorId        String
   status         String   @default("PENDING")
@@ -853,4 +870,13 @@ model PurchaseOrderItem {
 
   @@index([purchaseOrderId])
   @@index([inventoryItemId])
+}
+
+model Store {
+  id        String   @id @default(uuid())
+  name      String
+  location  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -1,5 +1,3 @@
-import { PrismaClient } from '@prisma/client';
-
 export class ReceiptService {
   static generateReceiptText(order: any, settings: any): string {
     const lines = [];

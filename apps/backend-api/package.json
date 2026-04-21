@@ -1,5 +1,5 @@
 {
-  "name": "@poslytic/backend-api",
+  "name": "@restaurant-pos/backend-api",
   "version": "1.0.0",
   "description": "Backend API for Restaurant POS System",
   "main": "dist/server.js",

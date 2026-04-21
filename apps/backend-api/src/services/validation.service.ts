@@ -11,13 +11,10 @@ export class ValidationService {
     });
 
     if (!managerPinSetting) {
-      // Fallback to default if not set in DB
       return pin === '123456';
     }
 
-    // Settings might be stored as plain text or hashed depending on implementation
-    // For enterprise security, we should hash them, but let's support both
-    if (managerPinSetting.value.startsWith('')) {
+    if (managerPinSetting.value.startsWith('$2')) {
       return await bcrypt.compare(pin, managerPinSetting.value);
     }
 

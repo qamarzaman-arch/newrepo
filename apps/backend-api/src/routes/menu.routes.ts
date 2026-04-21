@@ -37,6 +37,7 @@ const createMenuItemSchema = z.object({
   displayOrder: z.number().default(0),
   image: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  station: z.string().optional().default('GRILL'), // Added station
 });
 
 const updateMenuItemSchema = z.object({
@@ -54,6 +55,7 @@ const updateMenuItemSchema = z.object({
   isAvailable: z.boolean().optional(),
   isActive: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
+  station: z.string().optional(),
 });
 
 const createModifierSchema = z.object({
@@ -70,13 +72,13 @@ const createModifierSchema = z.object({
 });
 
 // Get all categories with items (public endpoint for cashier)
-router.get('/categories', (async (req: Request, res: Response, next: NextFunction) => {
+router.get('/categories', (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const categories = await prisma.menuCategory.findMany({
-      where: { isActive: true },
+      where: { storeId: req.storeId, isActive: true },
       include: {
         items: {
-          where: { isActive: true, isAvailable: true },
+          where: { storeId: req.storeId, isActive: true, isAvailable: true },
           orderBy: { displayOrder: 'asc' },
         },
       },
@@ -123,7 +125,7 @@ router.put('/categories/:id', authenticate, (async (req: AuthRequest, res: Respo
     const data = updateCategorySchema.parse(req.body);
 
     const category = await prisma.menuCategory.update({
-      where: { id: req.params.id },
+      where: { storeId: req.storeId, id: req.params.id },
       data,
     });
 
@@ -140,7 +142,7 @@ router.put('/categories/:id', authenticate, (async (req: AuthRequest, res: Respo
 router.delete('/categories/:id', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.menuCategory.update({
-      where: { id: req.params.id },
+      where: { storeId: req.storeId, id: req.params.id },
       data: { isActive: false },
     });
 
@@ -154,7 +156,7 @@ router.delete('/categories/:id', authenticate, (async (req: AuthRequest, res: Re
 }) as any);
 
 // Get menu items with filters (public endpoint for cashier)
-router.get('/items', (async (req: Request, res: Response, next: NextFunction) => {
+router.get('/items', (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { categoryId, search, available } = req.query as any;
 
@@ -196,7 +198,7 @@ router.get('/items', (async (req: Request, res: Response, next: NextFunction) =>
 router.get('/items/:id', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const item = await prisma.menuItem.findUnique({
-      where: { id: req.params.id },
+      where: { storeId: req.storeId, id: req.params.id },
       include: {
         category: true,
         modifiers: {
@@ -227,16 +229,14 @@ router.post('/items', authenticate, (async (req: AuthRequest, res: Response, nex
   try {
     const data = createMenuItemSchema.parse(req.body);
 
-    // Verify category exists
     const category = await prisma.menuCategory.findUnique({
-      where: { id: data.categoryId },
+      where: { storeId: req.storeId, id: data.categoryId },
     });
 
     if (!category || !category.isActive) {
       throw new AppError('Category not found or inactive', 400);
     }
 
-    // Auto-generate SKU if not provided
     const sku = data.sku || `ITEM-${Date.now()}`;
 
     const { tags, ...itemData } = data;
@@ -255,6 +255,7 @@ router.post('/items', authenticate, (async (req: AuthRequest, res: Response, nex
           taxRate: data.taxRate,
           displayOrder: data.displayOrder,
           image: data.image,
+          station: data.station,
         },
         include: {
           category: true,
@@ -263,7 +264,6 @@ router.post('/items', authenticate, (async (req: AuthRequest, res: Response, nex
         },
       });
 
-      // Create tags if provided
       if (tags && tags.length > 0) {
         await Promise.all(
           tags.map((tag) =>
@@ -299,9 +299,8 @@ router.put('/items/:id', authenticate, (async (req: AuthRequest, res: Response, 
     const { tags, ...itemData } = data;
 
     const item = await prisma.$transaction(async (tx) => {
-      // Update item
       const updatedItem = await tx.menuItem.update({
-        where: { id: req.params.id },
+        where: { storeId: req.storeId, id: req.params.id },
         data: itemData,
         include: {
           category: true,
@@ -310,14 +309,11 @@ router.put('/items/:id', authenticate, (async (req: AuthRequest, res: Response, 
         },
       });
 
-      // Update tags if provided
       if (tags) {
-        // Delete existing tags
         await tx.menuItemTag.deleteMany({
-          where: { menuItemId: req.params.id },
+          where: { storeId: req.storeId, menuItemId: req.params.id },
         });
 
-        // Create new tags
         if (tags.length > 0) {
           await Promise.all(
             tags.map((tag) =>
@@ -345,11 +341,11 @@ router.put('/items/:id', authenticate, (async (req: AuthRequest, res: Response, 
   }
 }) as any);
 
-// Delete menu item (soft delete)
+// Delete menu item
 router.delete('/items/:id', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.menuItem.update({
-      where: { id: req.params.id },
+      where: { storeId: req.storeId, id: req.params.id },
       data: { isActive: false },
     });
 
@@ -362,14 +358,13 @@ router.delete('/items/:id', authenticate, (async (req: AuthRequest, res: Respons
   }
 }) as any);
 
-// Add modifier to menu item
+// Add modifier
 router.post('/items/:id/modifiers', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createModifierSchema.parse(req.body);
 
-    // Verify menu item exists
     const item = await prisma.menuItem.findUnique({
-      where: { id: req.params.id },
+      where: { storeId: req.storeId, id: req.params.id },
     });
 
     if (!item) {
@@ -392,7 +387,6 @@ router.post('/items/:id/modifiers', authenticate, (async (req: AuthRequest, res:
         },
       });
 
-      // Create modifier options
       await Promise.all(
         options.map((option, index) =>
           tx.modifierOption.create({
@@ -408,7 +402,7 @@ router.post('/items/:id/modifiers', authenticate, (async (req: AuthRequest, res:
       );
 
       return tx.itemModifier.findUnique({
-        where: { id: newModifier.id },
+        where: { storeId: req.storeId, id: newModifier.id },
         include: {
           options: true,
         },
@@ -418,49 +412,6 @@ router.post('/items/:id/modifiers', authenticate, (async (req: AuthRequest, res:
     res.status(201).json({
       success: true,
       data: { modifier },
-    });
-  } catch (error) {
-    next(error);
-  }
-}) as any);
-
-// Update modifier
-router.put('/modifiers/:id', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const { name, type, isRequired, displayOrder } = req.body;
-
-    const modifier = await prisma.itemModifier.update({
-      where: { id: req.params.id },
-      data: {
-        name,
-        type,
-        isRequired,
-        displayOrder,
-      },
-      include: {
-        options: true,
-      },
-    });
-
-    res.json({
-      success: true,
-      data: { modifier },
-    });
-  } catch (error) {
-    next(error);
-  }
-}) as any);
-
-// Delete modifier
-router.delete('/modifiers/:id', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    await prisma.itemModifier.delete({
-      where: { id: req.params.id },
-    });
-
-    res.json({
-      success: true,
-      message: 'Modifier deleted',
     });
   } catch (error) {
     next(error);
