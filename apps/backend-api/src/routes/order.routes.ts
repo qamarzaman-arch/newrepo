@@ -2,7 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../config/database';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 import { getWebSocketManager } from '../utils/websocket';
@@ -22,13 +22,14 @@ const createOrderSchema = z.object({
     quantity: z.number().min(1),
     notes: z.string().optional().nullable(),
     modifiers: z.string().optional().nullable(),
-  })).min(1),
+  })).optional(),
   discountCode: z.string().optional().nullable(),
   discountPercent: z.number().min(0).max(100).optional().nullable(),
   discountAmount: z.number().min(0).optional().nullable(),
   tipAmount: z.number().min(0).optional().nullable(),
   notes: z.string().optional().nullable(),
   kitchenNotes: z.string().optional().nullable(),
+  idempotencyKey: z.string().optional(),
 });
 
 // Get all orders with filters
@@ -141,9 +142,25 @@ router.get('/reservations', authenticate, async (req: AuthRequest, res: Response
 });
 
 // Create reservation (as a separate order type)
-router.post('/reservations', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/reservations', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { customerName, customerPhone, tableId, notes } = req.body;
+    const { customerName, customerPhone, tableId, notes, status = 'PENDING' } = req.body;
+
+    // Check for duplicate reservation with same phone number and active status
+    const existingReservation = await prisma.order.findFirst({
+      where: {
+        orderType: 'RESERVATION',
+        customerPhone,
+        status: { in: ['PENDING', 'CONFIRMED'] },
+      },
+    });
+
+    if (existingReservation) {
+      return res.status(400).json({
+        success: false,
+        error: 'A reservation with this phone number already exists',
+      });
+    }
 
     const today = new Date();
     const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
@@ -159,7 +176,7 @@ router.post('/reservations', authenticate, async (req: AuthRequest, res: Respons
       data: {
         orderNumber,
         orderType: 'RESERVATION',
-        status: 'PENDING',
+        status,
         customerName,
         customerPhone,
         tableId,
@@ -170,7 +187,51 @@ router.post('/reservations', authenticate, async (req: AuthRequest, res: Respons
       },
     });
 
+    // Update table status to RESERVED if reservation is CONFIRMED
+    if (status === 'CONFIRMED' && tableId) {
+      await prisma.table.update({
+        where: { id: tableId },
+        data: { status: 'RESERVED' },
+      });
+    }
+
     res.status(201).json({ success: true, data: { reservation } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Reprint bill
+router.post('/:id/reprint', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: req.params.id },
+      include: {
+        items: {
+          include: {
+            menuItem: true,
+          },
+        },
+        table: true,
+        customer: true,
+        payments: true,
+        cashier: {
+          select: { id: true, fullName: true },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+
+    // Log reprint action
+    logger.info(`Bill for order ${sanitize(order.orderNumber)} reprinted by ${sanitize(req.user!.username)}`);
+
+    res.json({
+      success: true,
+      data: { order },
+    });
   } catch (error) {
     next(error);
   }
@@ -211,36 +272,46 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
   }
 });
 
-// Create new order with retry logic for order number generation
 router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createOrderSchema.parse(req.body);
 
-    // Generate unique order number with retry logic
+    // Generate unique order number
     const today = new Date();
     const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
-    let orderNumber: string;
-    let attempts = 0;
-    const maxAttempts = 5;
 
-    while (attempts < maxAttempts) {
-      const timestamp = Date.now().toString(36).slice(-4).toUpperCase();
-      const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-      orderNumber = `ORD-${dateStr}-${timestamp}${random}`;
+    // Get today's order count
+    const count = await prisma.order.count({
+      where: {
+        createdAt: { gte: new Date(today.setHours(0, 0, 0, 0)) },
+      },
+    });
 
-      // Check if order number already exists
-      const existing = await prisma.order.findUnique({
-        where: { orderNumber },
-        select: { id: true },
+    const orderNumber = `ORD-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+
+    // Auto-create customer if customerName and customerPhone are provided but customerId is not
+    let customerId = data.customerId;
+    if (!customerId && data.customerName && data.customerPhone) {
+      // Check if customer already exists with this phone number
+      const existingCustomer = await prisma.customer.findFirst({
+        where: { phone: data.customerPhone },
       });
 
-      if (!existing) {
-        break;
-      }
-
-      attempts++;
-      if (attempts >= maxAttempts) {
-        throw new AppError('Failed to generate unique order number, please retry', 500);
+      if (existingCustomer) {
+        customerId = existingCustomer.id;
+      } else {
+        // Create new customer - split customerName into firstName and lastName
+        const nameParts = data.customerName.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        const newCustomer = await prisma.customer.create({
+          data: {
+            firstName,
+            lastName,
+            phone: data.customerPhone,
+          },
+        });
+        customerId = newCustomer.id;
       }
     }
 
@@ -248,26 +319,28 @@ router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, r
     let subtotal = 0;
     const orderItems = [];
 
-    for (const item of data.items) {
-      const menuItem = await prisma.menuItem.findUnique({
-        where: { id: item.menuItemId },
-      });
+    if (data.items && data.items.length > 0) {
+      for (const item of data.items) {
+        const menuItem = await prisma.menuItem.findUnique({
+          where: { id: item.menuItemId },
+        });
 
-      if (!menuItem || !menuItem.isActive || !menuItem.isAvailable) {
-        throw new AppError(`Menu item ${item.menuItemId} is not available`, 400);
+        if (!menuItem || !menuItem.isActive || !menuItem.isAvailable) {
+          throw new AppError(`Menu item ${item.menuItemId} is not available`, 400);
+        }
+
+        const totalPrice = Number(menuItem.price) * item.quantity;
+        subtotal += totalPrice;
+
+        orderItems.push({
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          unitPrice: menuItem.price,
+          totalPrice,
+          notes: item.notes,
+          modifiers: item.modifiers,
+        });
       }
-
-      const totalPrice = Number(menuItem.price) * item.quantity;
-      subtotal += totalPrice;
-
-      orderItems.push({
-        menuItemId: item.menuItemId,
-        quantity: item.quantity,
-        unitPrice: menuItem.price,
-        totalPrice,
-        notes: item.notes,
-        modifiers: item.modifiers,
-      });
     }
 
     // Apply discount - prefer frontend values over code lookup
@@ -367,9 +440,42 @@ router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, r
         });
       }
 
-      // Create KOT tickets for kitchen with unique timestamp-based IDs
+      // Create KOT tickets for kitchen with unique timestamp-based IDs and auto-priority
+      // Priority rules: Walk-in (highest) > Takeaway > Dine-in > Delivery (lowest)
+      const priorityMap: Record<string, string> = {
+        WALK_IN: 'high',
+        TAKEAWAY: 'medium-high',
+        DINE_IN: 'medium',
+        DELIVERY: 'low',
+        PICKUP: 'medium-high',
+      };
+      const priority = priorityMap[data.orderType] || 'medium';
+      
+      // Kitchen station mapping based on menu item category
+      const stationMap: Record<string, string> = {
+        'Pizza': 'pizza',
+        'Pasta': 'pizza',
+        'Drinks': 'bar',
+        'Beverages': 'bar',
+        'Appetizers': 'cold',
+        'Salads': 'cold',
+        'Desserts': 'cold',
+        'Grill': 'grill',
+        'BBQ': 'grill',
+        'Main Course': 'grill',
+      };
+      
       let kotCounter = 1;
       for (const item of newOrder.items) {
+        const menuItem = await tx.menuItem.findUnique({
+          where: { id: item.menuItemId },
+          include: { category: true },
+        });
+        
+        // Determine station based on category
+        const categoryName = menuItem?.category?.name || 'Main Course';
+        const station = stationMap[categoryName] || 'grill';
+        
         const timestamp = Date.now();
         const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
         await tx.kotTicket.create({
@@ -379,6 +485,8 @@ router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, r
             orderItemId: item.id,
             course: 'main',
             status: 'NEW',
+            priority,
+            station,
           },
         });
         kotCounter++;
@@ -406,23 +514,34 @@ router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, r
                 const requiredQty = ingredient.quantity * item.quantity;
                 const inventoryItem = ingredient.inventoryItem;
 
-                // Check if sufficient stock
-                if (inventoryItem.currentStock < requiredQty) {
-                  logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available: ${inventoryItem.currentStock}`);
-                }
-
-                // Deduct from inventory
-                const newStock = Math.max(0, inventoryItem.currentStock - requiredQty);
+                // Atomically deduct from inventory with stock check
+                // This prevents race conditions by ensuring stock >= required in the update
+                const previousStock = inventoryItem.currentStock;
+                const newStock = Math.max(0, previousStock - requiredQty);
                 const status = newStock === 0 ? 'OUT_OF_STOCK' :
                               newStock <= inventoryItem.minStock ? 'LOW_STOCK' : 'IN_STOCK';
 
-                await (tx as any).inventoryItem.update({
-                  where: { id: inventoryItem.id },
+                const updateResult = await (tx as any).inventoryItem.updateMany({
+                  where: { 
+                    id: inventoryItem.id,
+                    currentStock: { gte: requiredQty } // Only update if enough stock
+                  },
                   data: {
-                    currentStock: newStock,
+                    currentStock: { decrement: requiredQty },
                     status,
                   },
                 });
+
+                // Verify update happened - if not, stock was insufficient due to race condition
+                if (updateResult.count === 0) {
+                  logger.error(`Race condition detected: ${inventoryItem.name} - Required: ${requiredQty} but stock was taken by concurrent order`);
+                  throw new AppError(`Insufficient stock for ${inventoryItem.name}. Please check inventory and retry.`, 409);
+                }
+
+                // Log low stock warning if applicable
+                if (previousStock < requiredQty * 2) {
+                  logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available before deduction: ${previousStock}`);
+                }
 
                 // Record stock movement
                 try {
@@ -453,23 +572,34 @@ router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, r
           for (const inventoryItem of inventoryItems) {
             const requiredQty = item.quantity;
 
-            // Check if sufficient stock
-            if (inventoryItem.currentStock < requiredQty) {
-              logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available: ${inventoryItem.currentStock}`);
-            }
-
-            // Deduct from inventory
-            const newStock = Math.max(0, inventoryItem.currentStock - requiredQty);
+            // Atomically deduct from inventory with stock check
+            // This prevents race conditions by ensuring stock >= required in the update
+            const previousStock = inventoryItem.currentStock;
+            const newStock = Math.max(0, previousStock - requiredQty);
             const status = newStock === 0 ? 'OUT_OF_STOCK' :
                           newStock <= inventoryItem.minStock ? 'LOW_STOCK' : 'IN_STOCK';
 
-            await (tx as any).inventoryItem.update({
-              where: { id: inventoryItem.id },
+            const updateResult = await (tx as any).inventoryItem.updateMany({
+              where: { 
+                id: inventoryItem.id,
+                currentStock: { gte: requiredQty } // Only update if enough stock
+              },
               data: {
-                currentStock: newStock,
+                currentStock: { decrement: requiredQty },
                 status,
               },
             });
+
+            // Verify update happened - if not, stock was insufficient due to race condition
+            if (updateResult.count === 0) {
+              logger.error(`Race condition detected: ${inventoryItem.name} - Required: ${requiredQty} but stock was taken by concurrent order`);
+              throw new AppError(`Insufficient stock for ${inventoryItem.name}. Please check inventory and retry.`, 409);
+            }
+
+            // Log low stock warning if applicable
+            if (previousStock < requiredQty * 2) {
+              logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available before deduction: ${previousStock}`);
+            }
 
             // Record stock movement
             try {
@@ -527,7 +657,7 @@ router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, r
 });
 
 // Update order status
-router.patch('/:id/status', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { status, cancelReason } = req.body;
 
@@ -572,6 +702,19 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res: Response
       });
     }
 
+    // Log status change to audit trail
+    await (prisma as any).orderModificationHistory.create({
+      data: {
+        orderId: req.params.id,
+        fieldName: 'status',
+        oldValue: order.status,
+        newValue: status,
+        reason: cancelReason || `Status changed from ${order.status} to ${status}`,
+        modifiedById: req.user!.userId,
+        modifiedAt: new Date(),
+      },
+    });
+
     // Emit real-time event via WebSocket
     const ws = getWebSocketManager();
     ws.emitOrderUpdated(updatedOrder.id, updatedOrder);
@@ -600,87 +743,70 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
       discountPercent,
     } = req.body;
 
-    const order = await prisma.order.findUnique({
-      where: { id: req.params.id },
-    });
+    // Wrap entire payment processing in a database transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Get order with lock
+      const order = await tx.order.findUnique({
+        where: { id: req.params.id },
+      });
 
-    if (!order) {
-      throw new AppError('Order not found', 404);
-    }
+      if (!order) {
+        throw new AppError('Order not found', 404);
+      }
 
-    // Handle discount if applied
-    let finalTotalAmount = Number(order.totalAmount);
-    let finalDiscountAmount = Number(order.discountAmount || 0);
-    
-    if (discountAmount && discountAmount > 0) {
-      finalDiscountAmount = discountAmount;
-      finalTotalAmount = Number(order.subtotal || order.totalAmount) - discountAmount + Number(order.taxAmount || 0);
-    }
+      // Handle discount if applied
+      let finalTotalAmount = Number(order.totalAmount);
+      let finalDiscountAmount = Number(order.discountAmount || 0);
+      
+      if (discountAmount && discountAmount > 0) {
+        finalDiscountAmount = discountAmount;
+        finalTotalAmount = Number(order.subtotal || order.totalAmount) - discountAmount + Number(order.taxAmount || 0);
+      }
 
-    const paidAmount = Number(order.paidAmount) + amount;
+      const paidAmount = Number(order.paidAmount) + amount;
 
-    // Build payment notes with additional details
-    let paymentNotes = notes || '';
-    if (method === 'CASH' && cashReceived) {
-      const change = Number(cashReceived) - amount;
-      paymentNotes = `${paymentNotes} Cash: ${cashReceived}, Change: ${change}`.trim();
-    }
-    if (method === 'CARD' && cardLastFour) {
-      paymentNotes = `${paymentNotes} Card ending: ${cardLastFour}`.trim();
-    }
-    if (method === 'ONLINE_TRANSFER' && transferReference) {
-      paymentNotes = `${paymentNotes} Transfer Ref: ${transferReference}`.trim();
-    }
+      // Build payment notes with additional details
+      let paymentNotes = notes || '';
+      if (method === 'CASH' && cashReceived) {
+        const change = Number(cashReceived) - amount;
+        paymentNotes = `${paymentNotes} Cash: ${cashReceived}, Change: ${change}`.trim();
+      }
+      if (method === 'CARD' && cardLastFour) {
+        paymentNotes = `${paymentNotes} Card ending: ${cardLastFour}`.trim();
+      }
+      if (method === 'ONLINE_TRANSFER' && transferReference) {
+        paymentNotes = `${paymentNotes} Transfer Ref: ${transferReference}`.trim();
+      }
 
-    // Create payment record
-    const payment = await prisma.payment.create({
-      data: {
-        orderId: order.id,
-        method,
-        amount,
-        reference: transferReference || reference,
-        notes: paymentNotes || undefined,
-        status: 'PAID',
-      },
-    });
-
-    // Update order with discount if applied
-    const updateData: any = {
-      paidAmount,
-      paymentStatus: paidAmount >= finalTotalAmount ? 'PAID' : 'PARTIAL',
-      paymentMethod: method,
-    };
-    
-    // Only update discount fields if new discount is applied
-    if (discountAmount && discountAmount > 0) {
-      updateData.discountAmount = finalDiscountAmount;
-      updateData.discountPercent = discountPercent || 0;
-      updateData.totalAmount = finalTotalAmount;
-    }
-
-    const updatedOrder = await prisma.order.update({
-      where: { id: order.id },
-      data: updateData,
-      include: {
-        payments: true,
-        items: {
-          include: {
-            menuItem: true,
-          },
-        },
-      },
-    });
-
-    let finalOrder = updatedOrder;
-    
-    // If fully paid and not completed, mark as completed
-    if (paidAmount >= finalTotalAmount && order.status !== 'COMPLETED') {
-      finalOrder = await prisma.order.update({
-        where: { id: order.id },
+      // Create payment record
+      const payment = await tx.payment.create({
         data: {
-          status: 'COMPLETED',
-          completedAt: new Date(),
+          orderId: order.id,
+          method,
+          amount,
+          reference: transferReference || reference,
+          notes: paymentNotes || undefined,
+          status: 'PAID',
         },
+      });
+
+      // Update order with discount if applied
+      const updateData: any = {
+        paidAmount,
+        paymentStatus: paidAmount >= finalTotalAmount ? 'PAID' : 'PARTIAL',
+        paymentMethod: method,
+      };
+      
+      // Only update discount fields if new discount is applied
+      if (discountAmount && discountAmount > 0) {
+        updateData.discountAmount = finalDiscountAmount;
+        updateData.discountPercent = discountPercent || 0;
+        updateData.totalAmount = finalTotalAmount;
+      }
+
+      let finalOrder = await tx.order.update({
+        where: { id: order.id },
+        data: updateData,
         include: {
           payments: true,
           items: {
@@ -691,32 +817,58 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
         },
       });
 
-      // Free up table
-      if (order.tableId) {
-        await prisma.table.update({
-          where: { id: order.tableId },
+      // If fully paid and not completed, mark as completed
+      if (paidAmount >= finalTotalAmount && order.status !== 'COMPLETED') {
+        finalOrder = await tx.order.update({
+          where: { id: order.id },
           data: {
-            status: 'NEEDS_CLEANING',
-            currentOrderId: null,
+            status: 'COMPLETED',
+            completedAt: new Date(),
+          },
+          include: {
+            payments: true,
+            items: {
+              include: {
+                menuItem: true,
+              },
+            },
           },
         });
+
+        // Free up table
+        if (order.tableId) {
+          await tx.table.update({
+            where: { id: order.tableId },
+            data: {
+              status: 'NEEDS_CLEANING',
+              currentOrderId: null,
+            },
+          });
+        }
       }
-      
-      // Emit WebSocket event for status change to COMPLETED
-      const ws = getWebSocketManager();
+
+      return { order: finalOrder, payment, paidAmount, finalTotalAmount };
+    }, {
+      isolationLevel: 'Serializable',
+      maxWait: 5000,
+      timeout: 10000,
+    });
+
+    const { order: finalOrder, payment } = result;
+
+    // Emit WebSocket events outside transaction
+    const ws = getWebSocketManager();
+    if (result.paidAmount >= result.finalTotalAmount) {
       ws.emitOrderStatusChanged(finalOrder.id, 'COMPLETED');
     }
-
-    // Emit real-time event via WebSocket for payment update
-    const ws = getWebSocketManager();
     ws.emitOrderStatusChanged(finalOrder.id, finalOrder.status);
 
-    logger.info(`Payment processed for order ${sanitize(order.orderNumber)}: ${amount}`);
+    logger.info(`Payment processed for order ${sanitize(finalOrder.orderNumber)}: ${amount}`);
 
     res.json({
       success: true,
       data: {
-        order: updatedOrder,
+        order: finalOrder,
         payment,
       },
     });
@@ -727,9 +879,28 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
 
 
 // Update reservation
-router.put('/reservations/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/reservations/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { status, tableId, notes } = req.body;
+    const { status, tableId, notes, customerPhone } = req.body;
+
+    // Check for duplicate reservation with same phone number and active status (excluding current reservation)
+    if (customerPhone) {
+      const existingReservation = await prisma.order.findFirst({
+        where: {
+          orderType: 'RESERVATION',
+          customerPhone,
+          status: { in: ['PENDING', 'CONFIRMED'] },
+          id: { not: req.params.id },
+        },
+      });
+
+      if (existingReservation) {
+        return res.status(400).json({
+          success: false,
+          error: 'A reservation with this phone number already exists',
+        });
+      }
+    }
 
     const reservation = await prisma.order.update({
       where: { id: req.params.id },
@@ -737,8 +908,25 @@ router.put('/reservations/:id', authenticate, async (req: AuthRequest, res: Resp
         status,
         tableId,
         notes,
+        ...(customerPhone && { customerPhone }),
       },
     });
+
+    // Update table status to RESERVED if reservation is CONFIRMED
+    if (status === 'CONFIRMED' && tableId) {
+      await prisma.table.update({
+        where: { id: tableId },
+        data: { status: 'RESERVED' },
+      });
+    }
+
+    // Update table status to AVAILABLE if reservation is CANCELLED or COMPLETED
+    if ((status === 'CANCELLED' || status === 'COMPLETED') && reservation.tableId) {
+      await prisma.table.update({
+        where: { id: reservation.tableId },
+        data: { status: 'AVAILABLE' },
+      });
+    }
 
     res.json({ success: true, data: { reservation } });
   } catch (error) {
@@ -747,7 +935,7 @@ router.put('/reservations/:id', authenticate, async (req: AuthRequest, res: Resp
 });
 
 // Delete/cancel reservation
-router.delete('/reservations/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.delete('/reservations/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.order.update({
       where: { id: req.params.id },
@@ -836,7 +1024,7 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
 });
 
 // Update existing order (for modifying active orders)
-router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { notes, items, kitchenNotes, notifyKitchen } = req.body;
 
@@ -945,6 +1133,40 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
     res.json({
       success: true,
       data: { order: updatedOrder },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete order
+router.delete('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!order) {
+      throw new AppError('Order not found', 404);
+    }
+
+    // Only allow deletion of orders that aren't completed/cancelled
+    if (order.status === 'COMPLETED' || order.status === 'CANCELLED') {
+      throw new AppError('Cannot delete completed or cancelled orders', 400);
+    }
+
+    await prisma.order.update({
+      where: { id: req.params.id },
+      data: {
+        status: 'CANCELLED',
+      },
+    });
+
+    logger.info(`Order ${sanitize(order.orderNumber)} deleted by ${sanitize(req.user!.username)}`);
+
+    res.json({
+      success: true,
+      message: 'Order deleted successfully',
     });
   } catch (error) {
     next(error);

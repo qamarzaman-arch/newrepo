@@ -19,7 +19,6 @@ export interface PaymentState {
 
 export function usePaymentFlow() {
   const queryClient = useQueryClient();
-  const [isProcessing, setIsProcessing] = useState(false);
   const [isValidatingPin, setIsValidatingPin] = useState(false);
 
   const processPayment = useMutation({
@@ -45,11 +44,11 @@ export function usePaymentFlow() {
       return orderService.processPayment(orderId, {
         method,
         amount,
-        cashReceived,
+        cashReceived: cashReceived ? parseFloat(cashReceived) : undefined,
         cardLastFour,
         transferReference,
         discountAmount,
-        discountPercent,
+        discountPercent: discountPercent ? parseFloat(discountPercent) : undefined,
       });
     },
     onSuccess: () => {
@@ -64,8 +63,8 @@ export function usePaymentFlow() {
   const validateManagerPin = useCallback(async (pin: string): Promise<boolean> => {
     setIsValidatingPin(true);
     try {
-      const response = await validationService.validateManagerPin(pin);
-      return response.data.data.valid;
+      const isValid = await validationService.validateManagerPin(pin, 'payment');
+      return isValid;
     } catch {
       return false;
     } finally {
@@ -83,7 +82,7 @@ export function usePaymentFlow() {
     processPayment: processPayment.mutateAsync,
     validateManagerPin,
     calculateDiscount,
-    isProcessing: isProcessing || processPayment.isPending,
+    isProcessing: processPayment.isPending,
     isValidatingPin,
   };
 }

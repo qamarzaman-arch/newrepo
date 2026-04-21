@@ -10,6 +10,32 @@ import { kitchenService, KotTicket } from '../services/kitchenService';
 import toast from 'react-hot-toast';
 import { useKitchenWebSocket } from '../hooks/useWebSocket';
 
+// Local order status utilities
+const ORDER_STATUS_COLORS: Record<string, string> = {
+  PENDING: 'bg-amber-100 text-amber-700',
+  CONFIRMED: 'bg-blue-100 text-blue-700',
+  PREPARING: 'bg-purple-100 text-purple-700',
+  READY: 'bg-green-100 text-green-700',
+  SERVED: 'bg-teal-100 text-teal-700',
+  COMPLETED: 'bg-gray-100 text-gray-700',
+  CANCELLED: 'bg-red-100 text-red-700',
+};
+
+const getOrderStatusColor = (status: string): string => {
+  return ORDER_STATUS_COLORS[status] || ORDER_STATUS_COLORS.PENDING;
+};
+
+const getOrderTypeLabel = (type: string): string => {
+  const labels: Record<string, string> = {
+    DINE_IN: 'Dine-In',
+    TAKEAWAY: 'Takeaway',
+    WALK_IN: 'Walk-In',
+    DELIVERY: 'Delivery',
+    RESERVATION: 'Reservation',
+  };
+  return labels[type] || type;
+};
+
 interface PrepListItem {
   id: string;
   item: string;
@@ -95,31 +121,10 @@ const AdvancedKitchenScreen: React.FC = () => {
                   (item.currentStock || 0) < (item.minStock || 10) ? 'MEDIUM' : 'LOW',
           completed: false,
         }));
-      } catch {
-        // Fallback: generate from menu items that appear frequently in tickets
-        const itemCounts: Record<string, { count: number; station: string }> = {};
-        ticketsData?.forEach((ticket: any) => {
-          ticket.order?.items?.forEach((item: any) => {
-            const name = item.menuItem?.name;
-            if (name) {
-              if (!itemCounts[name]) {
-                itemCounts[name] = { count: 0, station: item.menuItem?.category?.name || 'Kitchen' };
-              }
-              itemCounts[name].count += item.quantity || 1;
-            }
-          });
-        });
-        
-        return Object.entries(itemCounts)
-          .filter(([_, data]) => data.count > 2)
-          .map(([name, data], index) => ({
-            id: `prep-${index}`,
-            item: name,
-            station: data.station,
-            quantity: `${data.count} needed`,
-            urgency: data.count > 10 ? 'HIGH' : data.count > 5 ? 'MEDIUM' : 'LOW',
-            completed: false,
-          }));
+      } catch (error) {
+        // Re-throw to trigger error UI - never fabricate inventory data
+        console.error('Failed to fetch prep list:', error);
+        throw new Error('Unable to load inventory data. Please check connection and retry.');
       }
     },
     enabled: !!ticketsData,

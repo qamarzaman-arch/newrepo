@@ -25,6 +25,7 @@ import { validationService } from '../../services/validationService';
 import { getOfflineQueueManager } from '../../services/offlineQueueManager';
 import { getPaymentValidationService } from '../../services/paymentValidationService';
 import toast from 'react-hot-toast';
+import SplitBilling from './SplitBilling';
 
 interface CheckoutPaymentProps {
   onBack: () => void;
@@ -57,8 +58,16 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
   const [splitPayment, setSplitPayment] = useState<SplitPayment>({ cash: 0, card: 0 });
   const [showCashCounter, setShowCashCounter] = useState(false);
-  const { currentOrder, getSubtotal, getTotal, getDiscount, getTip, applyDiscount, setTip, setCompletedOrderId, setProcessing } = useOrderStore();
+  const [showSplitBillingModal, setShowSplitBillingModal] = useState(false);
+  const { currentOrder, getSubtotal, getTotal, getDiscount, getTip, applyDiscount, setTip, setCompletedOrderId, setProcessing, fetchBackendRates, backendRates } = useOrderStore();
   const { settings } = useSettingsStore();
+
+  // Fetch backend rates on mount if not loaded
+  useEffect(() => {
+    if (!backendRates) {
+      fetchBackendRates();
+    }
+  }, [backendRates, fetchBackendRates]);
 
   // Guard for empty orders - redirect back if no items
   console.log('[CheckoutPayment] Rendering with', currentOrder.items?.length || 0, 'items');
@@ -79,12 +88,25 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
     );
   }
 
+  // Warn if rates not loaded - don't allow checkout without proper rates
+  if (!backendRates) {
+    return (
+      <div className="flex h-full items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading tax rates...</p>
+          <p className="text-sm text-gray-400 mt-2">Please wait while we load the latest rates</p>
+        </div>
+      </div>
+    );
+  }
+
   const subtotal = getSubtotal();
   const discount = getDiscount();
   const afterDiscount = subtotal - discount;
-  const taxRate = settings.taxRate || 8.5;
+  const taxRate = settings.taxRate || backendRates.taxRate || 0;
   const tax = afterDiscount * (taxRate / 100);
-  const serviceChargeRate = settings.serviceCharge || 0;
+  const serviceChargeRate = settings.serviceCharge || backendRates.serviceChargeRate || 0;
   const serviceCharge = afterDiscount * (serviceChargeRate / 100);
   const total = getTotal();
   const tip = getTip();
@@ -253,7 +275,27 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
 
       // 1. Create the order
       const orderResponse = await orderService.createOrder(orderData);
-      const orderId = orderResponse.data.data.order.id;
+      
+      // Handle offline queue response
+      if (orderResponse.queued || orderResponse.isOfflineQueued) {
+        const queueId = orderResponse.queueId;
+        setCompletedOrderId(queueId);
+        toast.success(orderResponse.error?.message || 'Order queued offline. Will sync when connection is restored.');
+        onComplete(queueId, Math.max(0, change));
+        setIsSubmitting(false);
+        setProcessing(false);
+        return;
+      }
+      
+      // Handle error response
+      if (!orderResponse.success || !orderResponse.data?.order) {
+        toast.error(orderResponse.error?.message || 'Failed to create order');
+        setIsSubmitting(false);
+        setProcessing(false);
+        return;
+      }
+      
+      const orderId = orderResponse.data.order.id;
 
       // Invalidate orders cache to refresh order history
       queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -310,7 +352,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
           })),
           subtotal,
           tax,
-          taxRate: settings.taxRate || 8.5,
+          taxRate: settings.taxRate || 0,
           discount,
           total,
           paymentMethod,
@@ -1294,6 +1336,23 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
           </motion.div>
         </motion.div>
       )}
+
+      {/* Split Billing Modal */}
+      <SplitBilling
+        isOpen={showSplitBillingModal}
+        onClose={() => setShowSplitBillingModal(false)}
+        onConfirm={(splits) => {
+          // Handle split billing confirmation
+          // For now, set the payment method to SPLIT and set the split amounts
+          setPaymentMethod('SPLIT');
+          const cashAmount = splits.filter(s => s.method === 'CASH').reduce((sum, s) => sum + s.amount, 0);
+          const cardAmount = splits.filter(s => s.method === 'CARD').reduce((sum, s) => sum + s.amount, 0);
+          setSplitPayment({ cash: cashAmount, card: cardAmount });
+          setShowSplitBillingModal(false);
+          toast.success(`Split bill: ${formatCurrency(cashAmount, currencyCode)} cash, ${formatCurrency(cardAmount, currencyCode)} card`);
+        }}
+        totalAmount={total}
+      />
     </div>
   );
 };

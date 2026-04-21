@@ -4,7 +4,7 @@ import {
   Search, Filter, Eye, XCircle, Clock, 
   CheckCircle, AlertCircle, Calendar, Users, 
   DollarSign, RefreshCw, MoreVertical,
-  Utensils
+  Utensils, Edit2, Trash2, Plus
 } from 'lucide-react';
 import { useOrders, useAllOrders } from '../hooks/useOrders';
 import { orderService } from '../services/orderService';
@@ -22,12 +22,35 @@ const AdvancedOrdersScreen: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
+  const [showReservationModal, setShowReservationModal] = useState(false);
+  const [showTableModal, setShowTableModal] = useState(false);
   const [refundManagerPin, setRefundManagerPin] = useState('');
   const [refundReason, setRefundReason] = useState('');
   const [isRefunding, setIsRefunding] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  const [reservationForm, setReservationForm] = useState({
+    customerName: '',
+    customerPhone: '',
+    tableId: '',
+    notes: '',
+  });
+  const [tableForm, setTableForm] = useState({
+    number: '',
+    capacity: 4,
+    location: '',
+    shape: 'round',
+  });
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [showSplitModal, setShowSplitModal] = useState(false);
+  const [selectedTablesForMerge, setSelectedTablesForMerge] = useState<string[]>([]);
+  const [selectedTableForSplit, setSelectedTableForSplit] = useState<string | null>(null);
+  const [splitConfig, setSplitConfig] = useState([
+    { number: '', capacity: 2 },
+    { number: '', capacity: 2 },
+  ]);
   const { formatCurrency } = useCurrencyFormatter();
   const { user } = useAuthStore();
+  const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
 
   const { data: ordersData, refetch, isLoading } = useOrders({
     status: statusFilter || undefined,
@@ -43,7 +66,7 @@ const AdvancedOrdersScreen: React.FC = () => {
     : (allOrdersData?.orders || ordersData?.orders || []);
   const pagination = ordersData?.pagination || {};
 
-  const { data: tablesData } = useQuery({
+  const { data: tablesData, refetch: refetchTables } = useQuery({
     queryKey: ['tables-list'],
     queryFn: async () => {
       const response = await tableService.getTables();
@@ -51,20 +74,20 @@ const AdvancedOrdersScreen: React.FC = () => {
     },
   });
 
-  const tables = tablesData ? tablesData.map((t: any) => ({
-    id: t.id,
+  const tables = Array.isArray(tablesData) ? tablesData.map((t: any) => ({
+    id: String(t.id),
     number: `T${t.number}`,
-    capacity: t.capacity || 4,
-    status: t.status || 'AVAILABLE',
-    guests: t.status === 'OCCUPIED' ? (t.currentOrder?.guestCount || t.currentOrder?.items?.length || 2) : 0,
-    duration: t.status === 'OCCUPIED' ? 
-      (t.currentOrder?.orderedAt ? 
-        `${Math.floor((Date.now() - new Date(t.currentOrder.orderedAt).getTime()) / 60000)}m` : 
-        'Active') : 
-      '-'
+    capacity: String(t.capacity || 4),
+    status: String(t.status || 'AVAILABLE'),
+    guests: String(t.status === 'OCCUPIED' ? (t.currentOrder?.guestCount || t.currentOrder?.items?.length || 2) : 0),
+    duration: String(t.status === 'OCCUPIED' ?
+      (t.currentOrder?.orderedAt ?
+        `${Math.floor((Date.now() - new Date(t.currentOrder.orderedAt).getTime()) / 60000)}m` :
+        'Active') :
+      '-')
   })) : [];
 
-  const { data: reservationData } = useQuery({
+  const { data: reservationData, refetch: refetchReservations } = useQuery({
     queryKey: ['reservations'],
     queryFn: async () => {
       const response = await orderService.getReservations();
@@ -72,7 +95,20 @@ const AdvancedOrdersScreen: React.FC = () => {
     },
   });
 
-  const reservations = reservationData || [];
+  const reservations = Array.isArray(reservationData) ? reservationData.map((r: any) => ({
+    id: r.id,
+    name: String(r.customerName || r.name || ''),
+    phone: String(r.customerPhone || r.phone || ''),
+    date: String(r.date || r.reservationDate || ''),
+    time: String(r.time || r.reservationTime || ''),
+    party: String(r.partySize || r.guestCount || r.party || 2),
+    table: String(typeof r.table === 'object' ? (r.table.number || r.tableId || '') : (r.table || r.tableId || '')),
+    tableId: String(typeof r.table === 'object' ? r.table.id : (r.tableId || r.table || '')),
+    status: String(r.status || 'PENDING'),
+    notes: String(r.notes || ''),
+    customerName: String(r.customerName || r.name || ''),
+    customerPhone: String(r.customerPhone || r.phone || ''),
+  })) : [];
 
   const stats = {
     totalOrders: orders.length,
@@ -89,6 +125,112 @@ const AdvancedOrdersScreen: React.FC = () => {
     } catch (error) {
       console.error('Failed to update status:', error);
       toast.error('Failed to update order status');
+    }
+  };
+
+  const handleCreateReservation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await orderService.createReservation(reservationForm);
+      toast.success('Reservation created successfully');
+      setShowReservationModal(false);
+      setReservationForm({ customerName: '', customerPhone: '', tableId: '', notes: '' });
+      refetchReservations();
+    } catch (error) {
+      console.error('Failed to create reservation:', error);
+      toast.error('Failed to create reservation');
+    }
+  };
+
+  const handleDeleteReservation = async (reservationId: string) => {
+    if (!window.confirm('Are you sure you want to delete this reservation?')) {
+      return;
+    }
+    try {
+      await orderService.cancelReservation(reservationId);
+      toast.success('Reservation deleted successfully');
+      refetchReservations();
+    } catch (error) {
+      console.error('Failed to delete reservation:', error);
+      toast.error('Failed to delete reservation');
+    }
+  };
+
+  const handleCreateTable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await tableService.createTable(tableForm);
+      toast.success('Table created successfully');
+      setShowTableModal(false);
+      setTableForm({ number: '', capacity: 4, location: '', shape: 'round' });
+      refetchTables();
+    } catch (error) {
+      console.error('Failed to create table:', error);
+      toast.error('Failed to create table');
+    }
+  };
+
+  const handleMergeTables = async () => {
+    if (selectedTablesForMerge.length < 2) {
+      toast.error('Please select at least 2 tables to merge');
+      return;
+    }
+    try {
+      const mergedTableNumber = prompt('Enter merged table number (optional)');
+      await tableService.mergeTables({
+        tableIds: selectedTablesForMerge,
+        mergedTableNumber: mergedTableNumber || undefined,
+      });
+      toast.success('Tables merged successfully');
+      setShowMergeModal(false);
+      setSelectedTablesForMerge([]);
+      refetchTables();
+    } catch (error: any) {
+      console.error('Failed to merge tables:', error);
+      toast.error(error?.response?.data?.error || 'Failed to merge tables');
+    }
+  };
+
+  const handleSplitTable = async () => {
+    if (!selectedTableForSplit) {
+      toast.error('Please select a table to split');
+      return;
+    }
+    try {
+      await tableService.splitTable({
+        tableId: selectedTableForSplit,
+        splitInto: splitConfig,
+      });
+      toast.success('Table split successfully');
+      setShowSplitModal(false);
+      setSelectedTableForSplit(null);
+      setSplitConfig([
+        { number: '', capacity: 2 },
+        { number: '', capacity: 2 },
+      ]);
+      refetchTables();
+    } catch (error: any) {
+      console.error('Failed to split table:', error);
+      toast.error(error?.response?.data?.error || 'Failed to split table');
+    }
+  };
+
+  const toggleTableSelection = (tableId: string) => {
+    setSelectedTablesForMerge(prev =>
+      prev.includes(tableId)
+        ? prev.filter(id => id !== tableId)
+        : [...prev, tableId]
+    );
+  };
+
+  const handleTableStatusUpdate = async (tableId: string, newStatus: string) => {
+    try {
+      await tableService.updateStatus(tableId, newStatus as any);
+      toast.success('Table status updated successfully');
+      refetchTables();
+    } catch (error) {
+      console.error('Failed to update table status:', error);
+      toast.error('Failed to update table status');
     }
   };
 
@@ -125,7 +267,16 @@ const AdvancedOrdersScreen: React.FC = () => {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => refetch()}
+          onClick={() => {
+            if (activeTab === 'orders') {
+              refetch();
+            } else if (activeTab === 'tables') {
+              refetchTables();
+            } else if (activeTab === 'reservations') {
+              refetchReservations();
+            }
+            toast.success(`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} refreshed!`);
+          }}
           className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors self-start"
         >
           <RefreshCw className="w-5 h-5" />
@@ -232,45 +383,66 @@ const AdvancedOrdersScreen: React.FC = () => {
 
       {/* Filters & Search - Only for Orders tab */}
       {activeTab === 'orders' && (
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search by order number or customer..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none"
-            />
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Orders</h2>
+            <button
+              onClick={() => setShowOrderModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create Order
+            </button>
           </div>
-          
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none bg-white"
-          >
-            <option value="">All Status</option>
-            <option value="PENDING">Pending</option>
-            <option value="CONFIRMED">Confirmed</option>
-            <option value="PREPARING">Preparing</option>
-            <option value="READY">Ready</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search by order number or customer..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none"
+              />
+            </div>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => { refetch(); toast.success('Orders refreshed!'); }}
-            className="px-4 py-3 bg-primary text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
-          >
-            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </motion.button>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none bg-white"
+            >
+              <option value="">All Status</option>
+              <option value="PENDING">Pending</option>
+              <option value="CONFIRMED">Confirmed</option>
+              <option value="PREPARING">Preparing</option>
+              <option value="READY">Ready</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
 
-          <button className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-primary transition-colors">
-            <Filter className="w-5 h-5 text-gray-600" />
-          </button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                if (activeTab === 'orders') {
+                  refetch();
+                } else if (activeTab === 'tables') {
+                  refetchTables();
+                } else if (activeTab === 'reservations') {
+                  refetchReservations();
+                }
+                toast.success(`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} refreshed!`);
+              }}
+              className="px-4 py-3 bg-primary text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+            >
+              <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </motion.button>
+
+            <button className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-primary transition-colors">
+              <Filter className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -447,17 +619,29 @@ const AdvancedOrdersScreen: React.FC = () => {
       {/* TABLES TAB */}
       {activeTab === 'tables' && (
         <div className="space-y-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Tables</h2>
+            {isAdminOrManager && (
+              <button
+                onClick={() => setShowTableModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add Table
+              </button>
+            )}
+          </div>
           {/* Table Actions */}
           <div className="flex gap-3 mb-4">
             <button
-              onClick={() => toast('Select tables to merge', { icon: 'ℹ️' })}
+              onClick={() => setShowMergeModal(true)}
               className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-semibold flex items-center gap-2 hover:bg-blue-100 transition-colors"
             >
               <Users className="w-5 h-5" />
               Merge Tables
             </button>
             <button
-              onClick={() => toast('Select a table to split', { icon: 'ℹ️' })}
+              onClick={() => setShowSplitModal(true)}
               className="px-4 py-2 bg-orange-50 text-orange-700 rounded-xl font-semibold flex items-center gap-2 hover:bg-orange-100 transition-colors"
             >
               <Users className="w-5 h-5" />
@@ -489,17 +673,31 @@ const AdvancedOrdersScreen: React.FC = () => {
                     'text-blue-600'
                   }`} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">{table.number}</h3>
-                <p className="text-xs text-gray-500 mb-2">Capacity: {table.capacity}</p>
-                <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${getTableStatusColor(table.status)}`}>
-                  {table.status}
-                </span>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{String(table.number)}</h3>
+                <p className="text-xs text-gray-500 mb-2">Capacity: {String(table.capacity)}</p>
+                {isAdminOrManager ? (
+                  <select
+                    value={table.status}
+                    onChange={(e) => handleTableStatusUpdate(table.id, e.target.value)}
+                    className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${getTableStatusColor(table.status)} focus:outline-none cursor-pointer`}
+                  >
+                    <option value="AVAILABLE">AVAILABLE</option>
+                    <option value="OCCUPIED">OCCUPIED</option>
+                    <option value="RESERVED">RESERVED</option>
+                    <option value="NEEDS_CLEANING">NEEDS_CLEANING</option>
+                    <option value="OUT_OF_ORDER">OUT_OF_ORDER</option>
+                  </select>
+                ) : (
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${getTableStatusColor(table.status)}`}>
+                    {String(table.status)}
+                  </span>
+                )}
                 {table.status === 'OCCUPIED' && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <p className="text-xs text-gray-600">
-                      <span className="font-semibold">{table.guests}</span> guests
+                      <span className="font-semibold">{String(table.guests)}</span> guests
                     </p>
-                    <p className="text-xs text-gray-500">{table.duration}</p>
+                    <p className="text-xs text-gray-500">{String(table.duration)}</p>
                   </div>
                 )}
               </div>
@@ -512,6 +710,18 @@ const AdvancedOrdersScreen: React.FC = () => {
       {/* RESERVATIONS TAB */}
       {activeTab === 'reservations' && (
         <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900">Reservations</h2>
+            {isAdminOrManager && (
+              <button
+                onClick={() => setShowReservationModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Create Reservation
+              </button>
+            )}
+          </div>
           {reservations.map((reservation: any, index: number) => (
             <motion.div
               key={reservation.id}
@@ -526,36 +736,62 @@ const AdvancedOrdersScreen: React.FC = () => {
                     <Calendar className="w-8 h-8 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">{reservation.name}</h3>
-                    <p className="text-sm text-gray-500">{reservation.phone}</p>
+                    <h3 className="text-lg font-bold text-gray-900">{String(reservation.name)}</h3>
+                    <p className="text-sm text-gray-500">{String(reservation.phone)}</p>
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        {reservation.date}
+                        {String(reservation.date)}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        {reservation.time}
+                        {String(reservation.time)}
                       </span>
                       <span className="flex items-center gap-1">
                         <Users className="w-4 h-4" />
-                        {reservation.party} guests
+                        {String(reservation.party)} guests
                       </span>
                       <span className="flex items-center gap-1">
                         <Utensils className="w-4 h-4" />
-                        Table {reservation.table}
+                        Table {String(reservation.table)}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`px-4 py-2 rounded-full text-sm font-semibold border ${
-                    reservation.status === 'CONFIRMED' 
+                    reservation.status === 'CONFIRMED'
                       ? 'bg-green-100 text-green-700 border-green-300'
                       : 'bg-yellow-100 text-yellow-700 border-yellow-300'
                   }`}>
-                    {reservation.status}
+                    {String(reservation.status)}
                   </span>
+                  {isAdminOrManager && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setReservationForm({
+                            customerName: reservation.customerName || reservation.name || '',
+                            customerPhone: reservation.customerPhone || reservation.phone || '',
+                            tableId: String(typeof reservation.table === 'object' ? reservation.table.id : (reservation.tableId || reservation.table || '')),
+                            notes: reservation.notes || '',
+                          });
+                          setShowReservationModal(true);
+                        }}
+                        className="p-2 hover:bg-green-100 rounded-lg transition-colors"
+                        title="Edit Reservation"
+                      >
+                        <Edit2 className="w-4 h-4 text-green-600" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteReservation(reservation.id)}
+                        className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                        title="Delete Reservation"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </button>
+                    </>
+                  )}
                   <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                     <MoreVertical className="w-5 h-5 text-gray-600" />
                   </button>
@@ -614,6 +850,327 @@ const AdvancedOrdersScreen: React.FC = () => {
                   <span>Total</span>
                   <span className="text-primary">{formatCurrency(selectedOrder.totalAmount)}</span>
                 </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Create Table Modal */}
+      {showTableModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl p-6 max-w-md w-full"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold">Add New Table</h3>
+              <button
+                onClick={() => {
+                  setShowTableModal(false);
+                  setTableForm({ number: '', capacity: 4, location: '', shape: 'round' });
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateTable} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Table Number</label>
+                <input
+                  type="text"
+                  value={tableForm.number}
+                  onChange={(e) => setTableForm({ ...tableForm, number: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="e.g., 1, A1, VIP-1"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
+                <input
+                  type="number"
+                  value={tableForm.capacity}
+                  onChange={(e) => setTableForm({ ...tableForm, capacity: parseInt(e.target.value) || 1 })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  min={1}
+                  max={50}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                <input
+                  type="text"
+                  value={tableForm.location}
+                  onChange={(e) => setTableForm({ ...tableForm, location: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="e.g., Main Hall, Patio, Upstairs"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Shape</label>
+                <select
+                  value={tableForm.shape}
+                  onChange={(e) => setTableForm({ ...tableForm, shape: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="round">Round</option>
+                  <option value="square">Square</option>
+                  <option value="rectangle">Rectangle</option>
+                  <option value="booth">Booth</option>
+                </select>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowTableModal(false);
+                    setTableForm({ number: '', capacity: 4, location: '', shape: 'round' });
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+                >
+                  Create Table
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Create Reservation Modal */}
+      {showReservationModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl p-6 max-w-md w-full"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold">Create Reservation</h3>
+              <button
+                onClick={() => {
+                  setShowReservationModal(false);
+                  setReservationForm({ customerName: '', customerPhone: '', tableId: '', notes: '' });
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateReservation} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
+                <input
+                  type="text"
+                  value={reservationForm.customerName}
+                  onChange={(e) => setReservationForm({ ...reservationForm, customerName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customer Phone</label>
+                <input
+                  type="tel"
+                  value={reservationForm.customerPhone}
+                  onChange={(e) => setReservationForm({ ...reservationForm, customerPhone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Table</label>
+                <select
+                  value={reservationForm.tableId}
+                  onChange={(e) => setReservationForm({ ...reservationForm, tableId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  required
+                >
+                  <option value="">Select a table</option>
+                  {tables.map((table: any) => (
+                    <option key={table.id} value={String(table.id)}>
+                      Table {table.number} ({table.capacity} seats)
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  value={reservationForm.notes}
+                  onChange={(e) => setReservationForm({ ...reservationForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  rows={3}
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReservationModal(false);
+                    setReservationForm({ customerName: '', customerPhone: '', tableId: '', notes: '' });
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+                >
+                  Create Reservation
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Merge Tables Modal */}
+      {showMergeModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Merge Tables</h2>
+              <button onClick={() => setShowMergeModal(false)} className="p-2 hover:bg-gray-100 rounded-full">
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">Select at least 2 tables to merge:</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {tables.filter(t => t.status === 'AVAILABLE').map((table: any) => (
+                  <div
+                    key={table.id}
+                    onClick={() => toggleTableSelection(table.id)}
+                    className={`p-4 border-2 rounded-xl cursor-pointer transition-colors ${
+                      selectedTablesForMerge.includes(table.id)
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="font-bold">{table.number}</div>
+                      <div className="text-sm text-gray-600">{table.capacity} seats</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    setShowMergeModal(false);
+                    setSelectedTablesForMerge([]);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMergeTables}
+                  disabled={selectedTablesForMerge.length < 2}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Merge ({selectedTablesForMerge.length})
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Split Table Modal */}
+      {showSplitModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Split Table</h2>
+              <button onClick={() => setShowSplitModal(false)} className="p-2 hover:bg-gray-100 rounded-full">
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Select Table to Split</label>
+                <select
+                  value={selectedTableForSplit || ''}
+                  onChange={(e) => setSelectedTableForSplit(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none"
+                >
+                  <option value="">Select a table</option>
+                  {tables.filter(t => t.status === 'AVAILABLE').map((table: any) => (
+                    <option key={table.id} value={table.id}>
+                      Table {table.number} ({table.capacity} seats)
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Split Configuration</label>
+                {splitConfig.map((split, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder={`Table ${index + 1} number`}
+                      value={split.number}
+                      onChange={(e) => {
+                        const newConfig = [...splitConfig];
+                        newConfig[index].number = e.target.value;
+                        setSplitConfig(newConfig);
+                      }}
+                      className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Capacity"
+                      value={split.capacity}
+                      onChange={(e) => {
+                        const newConfig = [...splitConfig];
+                        newConfig[index].capacity = parseInt(e.target.value) || 0;
+                        setSplitConfig(newConfig);
+                      }}
+                      className="w-24 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    setShowSplitModal(false);
+                    setSelectedTableForSplit(null);
+                    setSplitConfig([
+                      { number: '', capacity: 2 },
+                      { number: '', capacity: 2 },
+                    ]);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSplitTable}
+                  disabled={!selectedTableForSplit}
+                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Split Table
+                </button>
               </div>
             </div>
           </motion.div>

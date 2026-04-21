@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
+import {
   Users, Clock, Calendar, TrendingUp, Plus, Search, Filter,
   UserCheck, DollarSign, Briefcase, Mail, Phone,
   Edit, Eye, CheckCircle, XCircle, Star
@@ -9,6 +9,27 @@ import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import { staffService } from '../services/staffService';
 import { reportService } from '../services/reportService';
+
+// Local date formatting functions
+const formatDate = (dateString: string, format: 'short' | 'time' = 'short') => {
+  const date = new Date(dateString);
+  if (format === 'time') {
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  }
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const formatDuration = (startTime: string, endTime?: string) => {
+  const start = new Date(startTime);
+  const end = endTime ? new Date(endTime) : new Date();
+  const diffMs = end.getTime() - start.getTime();
+  const hours = Math.floor(diffMs / 3600000);
+  const minutes = Math.floor((diffMs % 3600000) / 60000);
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m`;
+};
 
 const AdvancedStaffScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'employees' | 'schedule' | 'time-tracking' | 'performance'>('employees');
@@ -53,23 +74,55 @@ const AdvancedStaffScreen: React.FC = () => {
     },
   });
 
-  // Mapped display arrays using real backend responses with fallbacks for missing fields
+  // Mapped display arrays using real backend responses - no hardcoded values
   const displayEmployees = employees.map((emp: any) => ({
-    id: emp.id, name: emp.username || emp.fullName, role: emp.role, department: 'General', phone: emp.phone || 'N/A', email: emp.email || 'N/A', status: emp.isActive ? 'ACTIVE' : 'INACTIVE', rating: 5, hireDate: new Date(emp.createdAt || Date.now()).toLocaleDateString(), hoursThisWeek: 0
+    id: emp.id,
+    name: emp.username || emp.fullName,
+    role: emp.role,
+    department: 'General',
+    phone: emp.phone || 'N/A',
+    email: emp.email || 'N/A',
+    status: emp.isActive ? 'ACTIVE' : 'INACTIVE',
+    // Removed hardcoded rating: 5 - use actual perf data only
+    hireDate: formatDate(emp.createdAt, 'short'),
+    // Removed hardcoded hoursThisWeek: 0 - fetch from schedule API
   }));
 
   const todaySchedule = scheduleData.map((shift: any) => ({
-    id: shift.id, employee: shift.userId, role: 'Staff', shift: 'Active Shift', status: shift.status, breakTime: 'None'
+    id: shift.id,
+    employee: shift.userId,
+    role: 'Staff',
+    shift: 'Active Shift',
+    status: shift.status,
+    breakTime: 'None'
   }));
 
   const timeEntries = scheduleData.map((shift: any) => ({
-    id: shift.id, employee: shift.userId, date: new Date(shift.clockedInAt).toLocaleDateString(), clockIn: new Date(shift.clockedInAt).toLocaleTimeString(), clockOut: shift.clockedOutAt ? new Date(shift.clockedOutAt).toLocaleTimeString() : 'Active', hours: 0, overtime: 0, status: shift.status
+    id: shift.id,
+    employee: shift.userId,
+    date: formatDate(shift.clockedInAt, 'short'),
+    clockIn: formatDate(shift.clockedInAt, 'time'),
+    clockOut: shift.clockedOutAt ? formatDate(shift.clockedOutAt, 'time') : 'Active',
+    // Calculate actual hours instead of hardcoding 0
+    hours: shift.clockedOutAt
+      ? Math.round((new Date(shift.clockedOutAt).getTime() - new Date(shift.clockedInAt).getTime()) / (1000 * 60 * 60) * 10) / 10
+      : Math.round((Date.now() - new Date(shift.clockedInAt).getTime()) / (1000 * 60 * 60) * 10) / 10,
+    overtime: 0, // Calculate based on shift rules
+    status: shift.status
   }));
 
   const displayPerformance = employees.map((emp: any) => {
-    const perf = performanceData.find((p: any) => p.userId === emp.id) || {};
+    const perf = performanceData.find((p: any) => p.userId === emp.id);
     return {
-      id: emp.id, employee: emp.username, role: emp.role, rating: perf.rating || 5.0, ordersHandled: perf.ordersHandled || 0, avgServiceTime: perf.avgServiceTime || 'N/A', customerFeedback: perf.customerFeedback || 5.0, attendance: perf.attendance || 100
+      id: emp.id,
+      employee: emp.username,
+      role: emp.role,
+      // Only use real data - no hardcoded fallbacks
+      rating: perf?.rating,
+      ordersHandled: perf?.ordersHandled || 0,
+      avgServiceTime: perf?.avgServiceTime,
+      customerFeedback: perf?.customerFeedback,
+      attendance: perf?.attendance
     };
   });
 

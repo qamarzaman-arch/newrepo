@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Users, ShoppingBag, Truck, UtensilsCrossed } from 'lucide-react';
+import { Users, ShoppingBag, Truck, UtensilsCrossed, Calendar } from 'lucide-react';
 
 // Static Tailwind classes — dynamic strings get purged in production
 const orderTypes = [
@@ -44,6 +44,16 @@ const orderTypes = [
     hoverBorder: 'hover:border-purple-500',
     hoverIconBg: 'group-hover:bg-purple-500',
   },
+  {
+    id: 'RESERVATION',
+    name: 'Reservation',
+    description: 'Table booking',
+    icon: Calendar,
+    iconBg: 'bg-rose-100',
+    iconText: 'text-rose-600',
+    hoverBorder: 'hover:border-rose-500',
+    hoverIconBg: 'group-hover:bg-rose-500',
+  },
 ];
 
 const OrderTypeSelection: React.FC<{
@@ -65,7 +75,7 @@ const OrderTypeSelection: React.FC<{
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
         {orderTypes.map((type, index) => {
           const Icon = type.icon;
           return (

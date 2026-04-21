@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/database';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 
@@ -141,7 +141,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
 });
 
 // Create table
-router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const validatedData = createTableSchema.parse(req.body);
 
@@ -179,7 +179,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
 });
 
 // Update table
-router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = updateTableSchema.parse(req.body);
 
@@ -241,30 +241,35 @@ router.put('/layout', authenticate, async (req: AuthRequest, res: Response, next
 });
 
 // Update table status
-router.patch('/:id/status', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = updateStatusSchema.parse(req.body);
 
     const table = await prisma.table.findUnique({
       where: { id: req.params.id },
+      include: {
+        orders: {
+          where: { status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+          take: 1,
+        },
+      },
     });
 
     if (!table) {
       throw new AppError('Table not found', 404);
     }
 
-    // Validate status transitions
-    if (table.status === 'OCCUPIED' && data.status !== 'NEEDS_CLEANING') {
-      throw new AppError('Occupied table must be set to NEEDS_CLEANING first', 400);
+    // Prevent marking as AVAILABLE if there's an active order
+    if (data.status === 'AVAILABLE' && table.orders.length > 0) {
+      throw new AppError('Cannot mark table as available while there is an active order', 400);
     }
 
     const updatedTable = await prisma.table.update({
       where: { id: req.params.id },
-      data: {
-        status: data.status,
-        ...(data.status === 'AVAILABLE' && { currentOrderId: null }),
-      },
+      data: { status: data.status },
     });
+
+    logger.info(`Table status updated: ${sanitize(table.number)} to ${sanitize(data.status)} by ${sanitize(req.user!.username)}`);
 
     res.json({
       success: true,
@@ -275,19 +280,25 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
-// Delete table (soft delete)
-router.delete('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Delete table
+router.delete('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const table = await prisma.table.findUnique({
       where: { id: req.params.id },
+      include: {
+        orders: {
+          where: { status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+          take: 1,
+        },
+      },
     });
 
     if (!table) {
       throw new AppError('Table not found', 404);
     }
 
-    if (table.status === 'OCCUPIED') {
-      throw new AppError('Cannot delete occupied table', 400);
+    if (table.orders && table.orders.length > 0) {
+      throw new AppError('Cannot delete table with active orders', 400);
     }
 
     await prisma.table.update({
@@ -295,83 +306,143 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response, next
       data: { isActive: false },
     });
 
+    logger.info(`Table deleted: ${sanitize(table.number)} by ${sanitize(req.user!.username)}`);
+
     res.json({
       success: true,
-      message: 'Table deactivated',
+      message: 'Table deleted successfully',
     });
   } catch (error) {
     next(error);
   }
 });
 
-// Merge two tables
-router.post('/:id/merge', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Merge tables
+router.post('/merge', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { targetTableId } = z.object({ targetTableId: z.string() }).parse(req.body);
-    const sourceTableId = req.params.id;
+    const { tableIds, mergedTableNumber } = req.body;
 
-    const sourceTable = await prisma.table.findUnique({
-      where: { id: sourceTableId },
-      include: {
+    if (!tableIds || !Array.isArray(tableIds) || tableIds.length < 2) {
+      throw new AppError('At least 2 tables are required to merge', 400);
+    }
+
+    // Check if all tables exist and are available
+    const tables = await prisma.table.findMany({
+      where: {
+        id: { in: tableIds },
+        isActive: true,
+      },
+    });
+
+    if (tables.length !== tableIds.length) {
+      throw new AppError('One or more tables not found', 404);
+    }
+
+    // Check if any tables have active orders
+    const tablesWithOrders = await prisma.table.findMany({
+      where: {
+        id: { in: tableIds },
         orders: {
-          where: { status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+          some: { status: { notIn: ['COMPLETED', 'CANCELLED'] } },
         },
       },
     });
 
-    const targetTable = await prisma.table.findUnique({
-      where: { id: targetTableId },
-      include: {
-        orders: {
-          where: { status: { notIn: ['COMPLETED', 'CANCELLED'] } },
-        },
-      },
-    });
-
-    if (!sourceTable || !targetTable) {
-      throw new AppError('Table not found', 404);
+    if (tablesWithOrders.length > 0) {
+      throw new AppError('Cannot merge tables with active orders', 400);
     }
 
-    if (sourceTable.status !== 'OCCUPIED' && targetTable.status !== 'OCCUPIED') {
-      throw new AppError('At least one table must be occupied to merge', 400);
-    }
+    // Calculate combined capacity
+    const combinedCapacity = tables.reduce((sum, table) => sum + (table.capacity || 0), 0);
 
-    // Combine capacities
-    const combinedCapacity = sourceTable.capacity + targetTable.capacity;
-
-    // Mark source table as merged (unavailable)
-    await prisma.table.update({
-      where: { id: sourceTableId },
+    // Create merged table
+    const mergedTable = await prisma.table.create({
       data: {
-        status: 'OUT_OF_ORDER',
-      },
-    });
-
-    // Update target table capacity
-    await prisma.table.update({
-      where: { id: targetTableId },
-      data: {
+        number: mergedTableNumber || `M-${Date.now()}`,
         capacity: combinedCapacity,
+        location: tables[0].location,
+        shape: 'rectangular',
+        status: 'AVAILABLE',
       },
     });
 
-    // Move any active orders from source to target
-    if (sourceTable.orders.length > 0) {
-      await prisma.order.updateMany({
-        where: { tableId: sourceTableId, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
-        data: { tableId: targetTableId },
-      });
-    }
+    // Mark original tables as merged (inactive)
+    await prisma.table.updateMany({
+      where: { id: { in: tableIds } },
+      data: { isActive: false, status: 'MERGED' },
+    });
 
-    logger.info(`Tables merged: ${sourceTable.number} into ${targetTable.number} by ${sanitize(req.user!.username)}`);
+    logger.info(`Tables merged: ${tableIds.join(', ')} into ${sanitize(mergedTable.number)} by ${sanitize(req.user!.username)}`);
 
     res.json({
       success: true,
-      data: {
-        mergedTable: targetTable,
-        message: `Tables ${sourceTable.number} and ${targetTable.number} merged successfully`,
-        combinedCapacity,
+      data: { mergedTable },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Split merged table
+router.post('/split', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { tableId, splitInto } = req.body;
+
+    if (!splitInto || !Array.isArray(splitInto) || splitInto.length < 2) {
+      throw new AppError('Must split into at least 2 tables', 400);
+    }
+
+    // Check if table exists
+    const table = await prisma.table.findUnique({
+      where: { id: tableId },
+    });
+
+    if (!table) {
+      throw new AppError('Table not found', 404);
+    }
+
+    // Check if table has active orders
+    const tableWithOrder = await prisma.table.findFirst({
+      where: {
+        id: tableId,
+        orders: {
+          some: { status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+        },
       },
+    });
+
+    if (tableWithOrder) {
+      throw new AppError('Cannot split table with active order', 400);
+    }
+
+    // Create split tables
+    const newTables = await Promise.all(
+      splitInto.map((split: any) =>
+        prisma.table.create({
+          data: {
+            number: split.number,
+            capacity: split.capacity || Math.floor((table.capacity || 0) / splitInto.length),
+            location: table.location,
+            shape: table.shape,
+            posX: table.posX,
+            posY: table.posY,
+            status: 'AVAILABLE',
+          },
+        })
+      )
+    );
+
+    // Mark original table as inactive
+    await prisma.table.update({
+      where: { id: tableId },
+      data: { isActive: false, status: 'SPLIT' },
+    });
+
+    logger.info(`Table split: ${sanitize(table.number)} into ${splitInto.map((s: any) => s.number).join(', ')} by ${sanitize(req.user!.username)}`);
+
+    res.json({
+      success: true,
+      data: { tables: newTables },
     });
   } catch (error) {
     next(error);

@@ -570,18 +570,24 @@ Voided Orders: ${shiftData.voidedOrders}
 
                   setIsEndingShift(true);
                   try {
+                    console.log('[ShiftSummary] Starting shift end process...');
+                    
                     // Validate manager PIN
+                    console.log('[ShiftSummary] Validating manager PIN...');
                     const isValid = await validationService.validateManagerPin(
                       managerPin,
-                      'end-shift'
+                      'shift_management'
                     );
 
                     if (!isValid) {
+                      console.warn('[ShiftSummary] PIN validation failed');
                       setPinError('Invalid manager PIN');
                       setManagerPin('');
                       setIsEndingShift(false);
                       return;
                     }
+
+                    console.log('[ShiftSummary] PIN validated successfully');
 
                     // Save closing balance to localStorage for record
                     localStorage.setItem('pos_closing_balance', closingBalanceInput);
@@ -591,11 +597,25 @@ Voided Orders: ${shiftData.voidedOrders}
                     // Close cash drawer if exists
                     const drawerId = cashDrawer?.id || localStorage.getItem('pos_cash_drawer_id');
                     if (drawerId) {
-                      await cashDrawerService.close(drawerId, {
-                        closingBalance: parseFloat(closingBalanceInput),
-                        closingNotes: closingNotes || undefined,
-                        expectedBalance: expectedDrawer,
-                      });
+                      console.log('[ShiftSummary] Closing cash drawer:', drawerId);
+                      try {
+                        const closeResponse = await cashDrawerService.close(drawerId, {
+                          closingBalance: parseFloat(closingBalanceInput),
+                          closingNotes: closingNotes || undefined,
+                          expectedBalance: expectedDrawer,
+                        });
+                        console.log('[ShiftSummary] Cash drawer close response:', closeResponse.data);
+                        console.log('[ShiftSummary] Cash drawer closed successfully');
+                      } catch (closeError: any) {
+                        console.error('[ShiftSummary] Cash drawer close failed:', closeError);
+                        console.error('[ShiftSummary] Close error details:', closeError.response?.data);
+                        // If it's already closed, that's okay
+                        if (closeError.response?.data?.message === 'Cash drawer is already closed') {
+                          console.warn('[ShiftSummary] Drawer was already closed, continuing...');
+                        } else {
+                          throw closeError; // Re-throw other errors
+                        }
+                      }
                       
                       // Log cash drawer close
                       await logAction('CASH_DRAWER_CLOSE', 'CashDrawer', drawerId, {
@@ -611,18 +631,27 @@ Voided Orders: ${shiftData.voidedOrders}
                     }
 
                     if (user?.id) {
-                      await staffService.clockInOut(user.id, 'clock-out');
-                      // Log shift end
-                      await logAction('SHIFT_END', 'StaffShift', user.id, {
-                        closingBalance: parseFloat(closingBalanceInput),
-                        expectedDrawer,
-                      });
+                      console.log('[ShiftSummary] Clocking out user:', user.id);
+                      try {
+                        await staffService.clockInOut(user.id, 'clock-out');
+                        // Log shift end
+                        await logAction('SHIFT_END', 'StaffShift', user.id, {
+                          closingBalance: parseFloat(closingBalanceInput),
+                          expectedDrawer,
+                        });
+                      } catch (clockOutError) {
+                        console.warn('[ShiftSummary] Clock-out failed, continuing anyway:', clockOutError);
+                        // Don't fail the entire shift end if clock-out fails
+                      }
                     }
+                    
+                    console.log('[ShiftSummary] Shift ended successfully');
                     toast.success('Shift ended successfully!');
                     navigate('/dashboard');
-                  } catch (error) {
-                    console.error('Failed to end shift:', error);
-                    toast.error('Failed to end shift');
+                  } catch (error: any) {
+                    console.error('[ShiftSummary] Failed to end shift:', error);
+                    console.error('[ShiftSummary] Error details:', error.response?.data || error.message);
+                    toast.error(error.response?.data?.message || 'Failed to end shift');
                   } finally {
                     setIsEndingShift(false);
                     setShowClosingModal(false);

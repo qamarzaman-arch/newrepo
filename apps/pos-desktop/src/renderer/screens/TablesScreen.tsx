@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { tableService } from '../services/tableService';
+import { useAuthStore } from '../stores/authStore';
 import { 
   Users, Plus, Settings, RefreshCw, Clock, 
   CheckCircle2, AlertCircle, Sparkles, LayoutGrid, List,
@@ -11,16 +12,25 @@ import toast from 'react-hot-toast';
 
 const TablesScreen: React.FC = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedTable, setSelectedTable] = useState<any>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     number: '',
     capacity: 4,
     location: '',
     shape: 'round',
+    status: 'AVAILABLE',
+    isActive: true,
+    posX: 0,
+    posY: 0,
+    width: 100,
+    height: 100,
   });
 
   const { data: tablesData, isLoading, refetch } = useQuery({
@@ -47,9 +57,45 @@ const TablesScreen: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['tables'] });
       toast.success('Table created successfully');
       setShowAddModal(false);
-      setFormData({ number: '', capacity: 4, location: '', shape: 'round' });
+      setIsEditing(false);
+      setFormData({
+        number: '',
+        capacity: 4,
+        location: '',
+        shape: 'round',
+        status: 'AVAILABLE',
+        isActive: true,
+        posX: 0,
+        posY: 0,
+        width: 100,
+        height: 100,
+      });
     },
     onError: () => toast.error('Failed to create table'),
+  });
+
+  const updateTableMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => tableService.updateTable(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tables'] });
+      toast.success('Table updated successfully');
+      setShowAddModal(false);
+      setIsEditing(false);
+      setSelectedTable(null);
+      setFormData({
+        number: '',
+        capacity: 4,
+        location: '',
+        shape: 'round',
+        status: 'AVAILABLE',
+        isActive: true,
+        posX: 0,
+        posY: 0,
+        width: 100,
+        height: 100,
+      });
+    },
+    onError: () => toast.error('Failed to update table'),
   });
 
   const deleteTableMutation = useMutation({
@@ -133,12 +179,50 @@ const TablesScreen: React.FC = () => {
       toast.error('Table number is required');
       return;
     }
-    createTableMutation.mutate({
-      number: formData.number,
-      capacity: formData.capacity,
-      location: formData.location,
-      shape: formData.shape,
+    if (isEditing && selectedTable) {
+      updateTableMutation.mutate({
+        id: selectedTable.id,
+        data: formData,
+      });
+    } else {
+      createTableMutation.mutate(formData);
+    }
+  };
+
+  const handleEditTable = (table: any) => {
+    setSelectedTable(table);
+    setIsEditing(true);
+    setFormData({
+      number: table.number || '',
+      capacity: table.capacity || 4,
+      location: table.location || '',
+      shape: table.shape || 'round',
+      status: table.status || 'AVAILABLE',
+      isActive: table.isActive !== undefined ? table.isActive : true,
+      posX: table.posX || 0,
+      posY: table.posY || 0,
+      width: table.width || 100,
+      height: table.height || 100,
     });
+    setShowAddModal(true);
+  };
+
+  const handleAddTable = () => {
+    setSelectedTable(null);
+    setIsEditing(false);
+    setFormData({
+      number: '',
+      capacity: 4,
+      location: '',
+      shape: 'round',
+      status: 'AVAILABLE',
+      isActive: true,
+      posX: 0,
+      posY: 0,
+      width: 100,
+      height: 100,
+    });
+    setShowAddModal(true);
   };
 
   if (isLoading) {
@@ -175,19 +259,29 @@ const TablesScreen: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => refetch()}
+            onClick={async () => {
+              try {
+                await refetch();
+                toast.success('Tables refreshed');
+              } catch (error) {
+                console.error('Failed to refresh tables:', error);
+                toast.error('Failed to refresh tables');
+              }
+            }}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             title="Refresh"
           >
             <RefreshCw className="w-5 h-5 text-gray-600" />
           </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Add Table
-          </button>
+          {isAdminOrManager && (
+            <button
+              onClick={handleAddTable}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Table
+            </button>
+          )}
         </div>
       </div>
 
@@ -377,33 +471,39 @@ const TablesScreen: React.FC = () => {
                     <td className="px-4 py-3 text-sm text-gray-600">{table.location || '-'}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <select
-                          value={table.status}
-                          onChange={(e) => handleStatusChange(table.id, e.target.value)}
-                          className="text-sm border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        >
-                          <option value="AVAILABLE">Available</option>
-                          <option value="OCCUPIED">Occupied</option>
-                          <option value="RESERVED">Reserved</option>
-                          <option value="NEEDS_CLEANING">Needs Cleaning</option>
-                          <option value="OUT_OF_ORDER">Out of Order</option>
-                        </select>
-                        <button
-                          onClick={() => setSelectedTable(table)}
-                          className="p-1 hover:bg-gray-100 rounded-lg"
-                        >
-                          <Edit2 className="w-4 h-4 text-gray-600" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (window.confirm('Delete this table?')) {
-                              deleteTableMutation.mutate(table.id);
-                            }
-                          }}
-                          className="p-1 hover:bg-red-100 rounded-lg"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-600" />
-                        </button>
+                        {isAdminOrManager && (
+                          <select
+                            value={table.status}
+                            onChange={(e) => handleStatusChange(table.id, e.target.value)}
+                            className="text-sm border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          >
+                            <option value="AVAILABLE">Available</option>
+                            <option value="OCCUPIED">Occupied</option>
+                            <option value="RESERVED">Reserved</option>
+                            <option value="NEEDS_CLEANING">Needs Cleaning</option>
+                            <option value="OUT_OF_ORDER">Out of Order</option>
+                          </select>
+                        )}
+                        {isAdminOrManager && (
+                          <>
+                            <button
+                              onClick={() => handleEditTable(table)}
+                              className="p-1 hover:bg-gray-100 rounded-lg"
+                            >
+                              <Edit2 className="w-4 h-4 text-gray-600" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (window.confirm('Delete this table?')) {
+                                  deleteTableMutation.mutate(table.id);
+                                }
+                              }}
+                              className="p-1 hover:bg-red-100 rounded-lg"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -422,7 +522,7 @@ const TablesScreen: React.FC = () => {
           <p className="text-gray-500 text-lg">{searchQuery ? 'No tables match your search' : 'No tables configured yet'}</p>
           {!searchQuery && (
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={handleAddTable}
               className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
             >
               Add Your First Table
@@ -446,11 +546,11 @@ const TablesScreen: React.FC = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl p-6 w-full max-w-md"
+              className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
             >
               <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <Plus className="w-6 h-6 text-primary" />
-                Add New Table
+                {isEditing ? 'Edit Table' : 'Add New Table'}
               </h2>
               <form onSubmit={handleCreateTable} className="space-y-4">
                 <div>
@@ -497,6 +597,75 @@ const TablesScreen: React.FC = () => {
                     <option value="rectangle">Rectangle</option>
                     <option value="booth">Booth</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="AVAILABLE">Available</option>
+                    <option value="OCCUPIED">Occupied</option>
+                    <option value="RESERVED">Reserved</option>
+                    <option value="NEEDS_CLEANING">Needs Cleaning</option>
+                    <option value="OUT_OF_ORDER">Out of Order</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Active</label>
+                  <select
+                    value={formData.isActive ? 'true' : 'false'}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Position X</label>
+                    <input
+                      type="number"
+                      value={formData.posX}
+                      onChange={(e) => setFormData({ ...formData, posX: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      min={0}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Position Y</label>
+                    <input
+                      type="number"
+                      value={formData.posY}
+                      onChange={(e) => setFormData({ ...formData, posY: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      min={0}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Width</label>
+                    <input
+                      type="number"
+                      value={formData.width}
+                      onChange={(e) => setFormData({ ...formData, width: parseInt(e.target.value) || 100 })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      min={50}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Height</label>
+                    <input
+                      type="number"
+                      value={formData.height}
+                      onChange={(e) => setFormData({ ...formData, height: parseInt(e.target.value) || 100 })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      min={50}
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button

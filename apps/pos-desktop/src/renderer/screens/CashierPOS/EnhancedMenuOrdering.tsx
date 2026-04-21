@@ -23,15 +23,26 @@ interface Props {
   onCheckout: () => void;
 }
 
-// Static Tailwind classes for category tabs
-const categoryConfig: Record<string, { gradientClass: string }> = {
-  Pizza: { gradientClass: 'bg-gradient-to-r from-red-500 to-red-600' },
-  Pasta: { gradientClass: 'bg-gradient-to-r from-yellow-500 to-yellow-600' },
-  Drinks: { gradientClass: 'bg-gradient-to-r from-blue-500 to-blue-600' },
-  Salads: { gradientClass: 'bg-gradient-to-r from-green-500 to-green-600' },
-  Sandwiches: { gradientClass: 'bg-gradient-to-r from-purple-500 to-purple-600' },
-  Desserts: { gradientClass: 'bg-gradient-to-r from-pink-500 to-pink-600' },
-};
+const GRADIENT_PRESETS = [
+  'from-red-500 to-red-600',
+  'from-yellow-500 to-yellow-600',
+  'from-blue-500 to-blue-600',
+  'from-green-500 to-green-600',
+  'from-purple-500 to-purple-600',
+  'from-pink-500 to-pink-600',
+  'from-indigo-500 to-indigo-600',
+  'from-orange-500 to-orange-600',
+  'from-teal-500 to-teal-600',
+  'from-cyan-500 to-cyan-600',
+];
+
+function getCategoryGradient(categoryName: string): string {
+  const hash = categoryName.split('').reduce((acc, char) => {
+    return char.charCodeAt(0) + ((acc << 5) - acc);
+  }, 0);
+  const index = Math.abs(hash) % GRADIENT_PRESETS.length;
+  return `bg-gradient-to-r ${GRADIENT_PRESETS[index]}`;
+}
 
 const EnhancedMenuOrdering: React.FC<Props> = ({
   orderType,
@@ -241,7 +252,7 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
                   onClick={() => setSelectedCategory(cat.id)}
                   className={`px-6 py-3 rounded-xl font-semibold whitespace-nowrap transition-all ${
                     selectedCategory === cat.id
-                      ? `${categoryConfig[cat.name]?.gradientClass || 'bg-gradient-to-r from-gray-500 to-gray-600'} text-white shadow-lg`
+                      ? `${getCategoryGradient(cat.name)} text-white shadow-lg`
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -361,7 +372,6 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
             </div>
           )}
         </div>
-      </div>
       {/* END menu grid — cart sidebar follows inside the same flex row */}
 
       {/* Cart Sidebar */}
@@ -582,6 +592,7 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       {/* Void Item Modal */}

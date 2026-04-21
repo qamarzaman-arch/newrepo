@@ -7,6 +7,7 @@ import {
 import { Button, Table, TableRow, TableCell, Badge, Modal } from '@poslytic/ui-components';
 import apiClient from '../lib/api';
 import toast from 'react-hot-toast';
+import { formatCurrency } from '../lib/currency';
 
 interface MenuCategory {
   id: string;
@@ -209,7 +210,7 @@ export default function MenuPage() {
                 </div>
               </TableCell>
               <TableCell className="text-gray-600 font-medium">{item.category?.name || '—'}</TableCell>
-              <TableCell className="font-black text-indigo-600">${item.price.toFixed(2)}</TableCell>
+              <TableCell className="font-black text-indigo-600">{formatCurrency(item.price)}</TableCell>
               <TableCell>
                 <Badge variant={item.isAvailable ? 'success' : 'error'}>
                   {item.isAvailable ? 'Available' : 'Hidden'}

@@ -68,7 +68,7 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder, change = 0 }) =
             })),
             subtotal: receiptData.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
             tax: 0,
-            taxRate: settings.taxRate || 8.5,
+            taxRate: settings.taxRate || 0,
             discount: 0,
             total: receiptData.total,
             paymentMethod: 'CASH',
@@ -270,7 +270,7 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder, change = 0 }) =
                       })),
                       subtotal: receiptData.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
                       tax: 0, // Tax is already included in total
-                      taxRate: settings.taxRate || 8.5,
+                      taxRate: settings.taxRate || 0,
                       discount: 0,
                       total: receiptData.total,
                       paymentMethod: 'CASH', // Default since we don't track payment method here

@@ -7,10 +7,14 @@ import {
   Edit, Trash2, Eye, MoreVertical, FileText
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { inventoryService } from '../services/inventoryService';
+import { inventoryService, InventoryItem } from '../services/inventoryService';
+import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
 
 const AdvancedInventoryScreen: React.FC = () => {
+  const { user } = useAuthStore();
+  const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+
   const [activeTab, setActiveTab] = useState<'inventory' | 'purchase-orders' | 'recipes' | 'vendors'>('inventory');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -19,11 +23,19 @@ const AdvancedInventoryScreen: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
+    barcode: '',
     category: '',
+    unit: 'pcs',
     currentStock: '',
     minStock: '',
+    maxStock: '',
+    reservedStock: '',
     costPerUnit: '',
-    unit: ' pcs',
+    sellingPrice: '',
+    supplierId: '',
+    status: 'IN_STOCK',
+    isActive: true,
+    warehouseId: '',
   });
 
   const { data: inventoryData } = useQuery({
@@ -109,11 +121,19 @@ const AdvancedInventoryScreen: React.FC = () => {
     setFormData({
       name: item.name || '',
       sku: item.sku || '',
+      barcode: item.barcode || '',
       category: item.category || '',
+      unit: item.unit || 'pcs',
       currentStock: String(item.currentStock || 0),
       minStock: String(item.minStock || 0),
+      maxStock: String(item.maxStock || 0),
+      reservedStock: String(item.reservedStock || 0),
       costPerUnit: String(item.costPerUnit || 0),
-      unit: item.unit || 'pcs',
+      sellingPrice: String(item.sellingPrice || 0),
+      supplierId: item.supplierId || '',
+      status: item.status || 'IN_STOCK',
+      isActive: item.isActive ?? true,
+      warehouseId: item.warehouseId || '',
     });
     setShowItemModal(true);
   };
@@ -127,10 +147,19 @@ const AdvancedInventoryScreen: React.FC = () => {
       await inventoryService.updateItem(selectedItem.id, {
         name: formData.name,
         sku: formData.sku,
+        barcode: formData.barcode,
         category: formData.category,
-        currentStock: parseInt(formData.currentStock) || 0,
-        minStock: parseInt(formData.minStock) || 0,
+        unit: formData.unit,
+        currentStock: parseFloat(formData.currentStock) || 0,
+        minStock: parseFloat(formData.minStock) || 0,
+        maxStock: parseFloat(formData.maxStock) || 0,
+        reservedStock: parseFloat(formData.reservedStock) || 0,
         costPerUnit: parseFloat(formData.costPerUnit) || 0,
+        sellingPrice: formData.sellingPrice ? parseFloat(formData.sellingPrice) : undefined,
+        supplierId: formData.supplierId || undefined,
+        status: formData.status as 'IN_STOCK' | 'OUT_OF_STOCK' | 'LOW_STOCK',
+        isActive: formData.isActive,
+        warehouseId: formData.warehouseId || undefined,
       });
       toast.success('Item updated successfully');
       setShowItemModal(false);
@@ -149,10 +178,19 @@ const AdvancedInventoryScreen: React.FC = () => {
       await inventoryService.createItem({
         name: formData.name,
         sku: formData.sku,
+        barcode: formData.barcode,
         category: formData.category,
-        currentStock: parseInt(formData.currentStock) || 0,
-        minStock: parseInt(formData.minStock) || 0,
+        unit: formData.unit,
+        currentStock: parseFloat(formData.currentStock) || 0,
+        minStock: parseFloat(formData.minStock) || 0,
+        maxStock: parseFloat(formData.maxStock) || 0,
+        reservedStock: parseFloat(formData.reservedStock) || 0,
         costPerUnit: parseFloat(formData.costPerUnit) || 0,
+        sellingPrice: formData.sellingPrice ? parseFloat(formData.sellingPrice) : undefined,
+        supplierId: formData.supplierId || undefined,
+        status: formData.status as 'IN_STOCK' | 'OUT_OF_STOCK' | 'LOW_STOCK',
+        isActive: formData.isActive,
+        warehouseId: formData.warehouseId || undefined,
       });
       toast.success('Item added successfully');
       setShowItemModal(false);
@@ -188,15 +226,54 @@ const AdvancedInventoryScreen: React.FC = () => {
             <Upload className="w-5 h-5" />
             Import
           </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => { setSelectedItem(null); setFormData({ name: '', sku: '', category: '', currentStock: '', minStock: '', costPerUnit: '', unit: 'pcs' }); setShowItemModal(true); }}
-            className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
-          >
-            <Plus className="w-5 h-5" />
-            Add Item
-          </motion.button>
+          {isAdminOrManager && (
+            <>
+              {activeTab === 'inventory' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => { setSelectedItem(null); setFormData({ name: '', sku: '', barcode: '', category: '', unit: 'pcs', currentStock: '', minStock: '', maxStock: '', reservedStock: '', costPerUnit: '', sellingPrice: '', supplierId: '', status: 'IN_STOCK', isActive: true, warehouseId: '' }); setShowItemModal(true); }}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Item
+                </motion.button>
+              )}
+              {activeTab === 'purchase-orders' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => toast.success('Add Purchase Order functionality coming soon')}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add PO
+                </motion.button>
+              )}
+              {activeTab === 'recipes' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => toast.success('Add Recipe functionality coming soon')}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Recipe
+                </motion.button>
+              )}
+              {activeTab === 'vendors' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => toast.success('Add Vendor functionality coming soon')}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Vendor
+                </motion.button>
+              )}
+            </>
+          )}
         </div>
       </div>
 

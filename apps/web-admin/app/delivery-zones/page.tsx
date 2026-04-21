@@ -294,38 +294,33 @@ export default function DeliveryZonesPage() {
         </Table>
       )}
 
-      {/* Fee Calculator Preview */}
+      {/* Zone Details Cards - Shows actual zone configuration */}
       {zones.length > 0 && (
         <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-6 border border-indigo-100">
           <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
             <CalculatorIcon />
-            Delivery Fee Calculator Preview
+            Active Delivery Zones
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {zones.slice(0, 3).map(zone => {
-              const sampleDistance = zone.radius * 0.6; // 60% of max radius
-              const fee = calculateDeliveryFee(zone, sampleDistance);
-              
-              return (
-                <div key={zone.id} className="bg-white rounded-2xl p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-sm text-gray-900">{zone.name}</span>
-                    <Badge variant="success" className="text-xs">Sample</Badge>
-                  </div>
-                  <div className="space-y-1 text-xs text-gray-600">
-                    <p>Distance: {sampleDistance.toFixed(1)} km</p>
-                    <p>Base Fee: ${zone.baseFee.toFixed(2)}</p>
-                    <p>Distance Fee: ${(sampleDistance * zone.perKmFee).toFixed(2)}</p>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <p className="text-xs text-gray-500">Total Delivery Fee:</p>
-                    <p className="text-xl font-black text-indigo-600">
-                      ${fee?.toFixed(2) || 'N/A'}
-                    </p>
-                  </div>
+            {zones.slice(0, 3).map(zone => (
+              <div key={zone.id} className="bg-white rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-sm text-gray-900">{zone.name}</span>
+                  <Badge variant="success" className="text-xs">Active</Badge>
                 </div>
-              );
-            })}
+                <div className="space-y-1 text-xs text-gray-600">
+                  <p>Max Radius: {zone.radius.toFixed(1)} km</p>
+                  <p>Base Fee: ${zone.baseFee.toFixed(2)}</p>
+                  <p>Per km: ${zone.perKmFee.toFixed(2)}</p>
+                </div>
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <p className="text-xs text-gray-500">Zone Coverage:</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {zone.radius}km radius
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

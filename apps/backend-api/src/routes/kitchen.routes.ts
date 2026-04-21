@@ -10,7 +10,7 @@ const router = Router();
 
 // Validation schemas
 const updateTicketStatusSchema = z.object({
-  status: z.enum(['NEW', 'IN_PROGRESS', 'COMPLETED', 'DELAYED']),
+  status: z.enum(['NEW', 'RECEIVED', 'PREPARING', 'READY', 'SERVED', 'DISPATCHED', 'COMPLETED', 'DELAYED']),
 });
 
 const assignTicketSchema = z.object({
@@ -90,7 +90,7 @@ router.get('/tickets/active', authenticate, async (req: AuthRequest, res: Respon
         OR: [
           {
             status: {
-              in: ['NEW', 'IN_PROGRESS'],
+              in: ['NEW', 'RECEIVED', 'PREPARING', 'READY'],
             },
           },
           {
@@ -129,6 +129,88 @@ router.get('/tickets/active', authenticate, async (req: AuthRequest, res: Respon
   }
 });
 
+// Reprint KOT ticket
+router.post('/tickets/:id/reprint', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const ticket = await prisma.kotTicket.findUnique({
+      where: { id: req.params.id },
+      include: {
+        order: {
+          include: {
+            items: {
+              include: {
+                menuItem: true,
+              },
+            },
+            table: true,
+            customer: true,
+          },
+        },
+      },
+    });
+
+    if (!ticket) {
+      throw new AppError('KOT ticket not found', 404);
+    }
+
+    // Log reprint action
+    logger.info(`KOT ticket ${sanitize(ticket.ticketNumber)} reprinted by ${sanitize(req.user!.username)}`);
+
+    res.json({
+      success: true,
+      data: { ticket },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get delayed orders
+router.get('/tickets/delayed', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const DELAY_THRESHOLD_MINUTES = 15;
+    const thresholdDate = new Date(Date.now() - DELAY_THRESHOLD_MINUTES * 60 * 1000);
+
+    const delayedTickets = await prisma.kotTicket.findMany({
+      where: {
+        status: {
+          in: ['NEW', 'RECEIVED', 'PREPARING'],
+        },
+        orderedAt: {
+          lt: thresholdDate,
+        },
+      },
+      include: {
+        order: {
+          include: {
+            items: {
+              include: {
+                menuItem: true,
+              },
+            },
+            table: true,
+            customer: true,
+          },
+        },
+      },
+      orderBy: {
+        orderedAt: 'asc',
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        delayedTickets,
+        count: delayedTickets.length,
+        thresholdMinutes: DELAY_THRESHOLD_MINUTES,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get kitchen stats
 router.get('/stats', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
@@ -140,7 +222,7 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response, next:
         where: { status: 'NEW' },
       }),
       prisma.kotTicket.count({
-        where: { status: 'IN_PROGRESS' },
+        where: { status: 'PREPARING' },
       }),
       prisma.kotTicket.count({
         where: {
@@ -247,7 +329,7 @@ router.patch('/tickets/:id/status', authenticate, async (req: AuthRequest, res: 
       where: { id: req.params.id },
       data: {
         status: data.status,
-        ...(data.status === 'IN_PROGRESS' && { startedAt: new Date() }),
+        ...(data.status === 'PREPARING' && { startedAt: new Date() }),
         ...(data.status === 'COMPLETED' && { completedAt: new Date() }),
       },
       include: {
@@ -382,7 +464,7 @@ router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
         OR: [
           {
             status: {
-              in: ['NEW', 'IN_PROGRESS'],
+              in: ['NEW', 'RECEIVED', 'PREPARING'],
             },
           },
           {

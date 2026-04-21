@@ -4,12 +4,18 @@ import {
   Plus, Trash2, Search, Filter, Download, Upload, Edit,
   Package, Tag, Star, Eye, EyeOff, BarChart3, Image, X
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMenuCategories, useMenuItems } from '../hooks/useMenu';
 import { menuService } from '../services/menuService';
+import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
+import { RefreshCw } from 'lucide-react';
 
 const AdvancedMenuScreen: React.FC = () => {
+  const { user } = useAuthStore();
+  const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const queryClient = useQueryClient();
+
   const [activeTab, setActiveTab] = useState<'items' | 'categories' | 'modifiers' | 'combos'>('items');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -28,6 +34,43 @@ const AdvancedMenuScreen: React.FC = () => {
   });
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Category modal state
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [categoryFormData, setCategoryFormData] = useState({
+    name: '',
+    description: '',
+    displayOrder: 0,
+    isActive: true,
+    image: '',
+  });
+  
+  // Modifier modal state
+  const [showModifierModal, setShowModifierModal] = useState(false);
+  const [editingModifier, setEditingModifier] = useState<any>(null);
+  const [modifierFormData, setModifierFormData] = useState({
+    menuItemId: '',
+    name: '',
+    type: 'single',
+    isRequired: false,
+    displayOrder: 0,
+    options: [] as any[],
+  });
+  
+  // Combo modal state
+  const [showComboModal, setShowComboModal] = useState(false);
+  const [editingCombo, setEditingCombo] = useState<any>(null);
+  const [comboFormData, setComboFormData] = useState({
+    name: '',
+    description: '',
+    price: 0,
+    isAvailable: true,
+    startDate: '',
+    endDate: '',
+    isActive: true,
+    items: [] as any[],
+  });
 
   const { data: categories } = useMenuCategories();
   const { data: items } = useMenuItems({ 
@@ -262,6 +305,253 @@ const AdvancedMenuScreen: React.FC = () => {
     toast.success('Menu items exported successfully');
   };
 
+  const handleRefresh = async () => {
+    try {
+      if (activeTab === 'items') {
+        queryClient.invalidateQueries({ queryKey: ['menu-items'] });
+      } else if (activeTab === 'categories') {
+        queryClient.invalidateQueries({ queryKey: ['menu-categories'] });
+      } else if (activeTab === 'modifiers') {
+        queryClient.invalidateQueries({ queryKey: ['menu-modifiers'] });
+      } else if (activeTab === 'combos') {
+        queryClient.invalidateQueries({ queryKey: ['menu-combos'] });
+      }
+      toast.success('Data refreshed successfully');
+    } catch (error) {
+      console.error('Failed to refresh:', error);
+      toast.error('Failed to refresh data');
+    }
+  };
+
+  // Category handlers
+  const handleAddCategory = () => {
+    setEditingCategory(null);
+    setCategoryFormData({
+      name: '',
+      description: '',
+      displayOrder: 0,
+      isActive: true,
+      image: '',
+    });
+    setShowCategoryModal(true);
+  };
+
+  const handleEditCategory = (category: any) => {
+    setEditingCategory(category);
+    setCategoryFormData({
+      name: category.name,
+      description: category.description || '',
+      displayOrder: category.displayOrder || 0,
+      isActive: category.isActive,
+      image: category.image || '',
+    });
+    setShowCategoryModal(true);
+  };
+
+  const handleSaveCategory = async () => {
+    try {
+      if (editingCategory) {
+        await menuService.updateCategory(editingCategory.id, categoryFormData);
+        toast.success('Category updated successfully');
+      } else {
+        await menuService.createCategory(categoryFormData);
+        toast.success('Category created successfully');
+      }
+      setShowCategoryModal(false);
+      queryClient.invalidateQueries({ queryKey: ['menu-categories'] });
+    } catch (error) {
+      console.error('Failed to save category:', error);
+      toast.error('Failed to save category');
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (confirm('Are you sure you want to delete this category?')) {
+      try {
+        await menuService.deleteCategory(categoryId);
+        toast.success('Category deleted successfully');
+        queryClient.invalidateQueries({ queryKey: ['menu-categories'] });
+      } catch (error) {
+        console.error('Failed to delete category:', error);
+        toast.error('Failed to delete category');
+      }
+    }
+  };
+
+  // Modifier handlers
+  const handleAddModifier = () => {
+    setEditingModifier(null);
+    setModifierFormData({
+      menuItemId: '',
+      name: '',
+      type: 'single',
+      isRequired: false,
+      displayOrder: 0,
+      options: [{ name: '', priceAdjustment: 0, isDefault: true, displayOrder: 0 }],
+    });
+    setShowModifierModal(true);
+  };
+
+  const handleEditModifier = (modifier: any) => {
+    setEditingModifier(modifier);
+    setModifierFormData({
+      menuItemId: modifier.menuItemId,
+      name: modifier.name,
+      type: modifier.type,
+      isRequired: modifier.isRequired,
+      displayOrder: modifier.displayOrder || 0,
+      options: modifier.options?.length > 0 ? modifier.options : [{ name: '', priceAdjustment: 0, isDefault: true, displayOrder: 0 }],
+    });
+    setShowModifierModal(true);
+  };
+
+  const addModifierOption = () => {
+    setModifierFormData({
+      ...modifierFormData,
+      options: [...modifierFormData.options, { name: '', priceAdjustment: 0, isDefault: false, displayOrder: modifierFormData.options.length }],
+    });
+  };
+
+  const removeModifierOption = (index: number) => {
+    if (modifierFormData.options.length > 1) {
+      setModifierFormData({
+        ...modifierFormData,
+        options: modifierFormData.options.filter((_, i) => i !== index),
+      });
+    } else {
+      toast.error('At least one option is required');
+    }
+  };
+
+  const updateModifierOption = (index: number, field: string, value: any) => {
+    const updatedOptions = [...modifierFormData.options];
+    updatedOptions[index] = { ...updatedOptions[index], [field]: value };
+    setModifierFormData({ ...modifierFormData, options: updatedOptions });
+  };
+
+  const handleSaveModifier = async () => {
+    if (modifierFormData.options.length === 0) {
+      toast.error('At least one option is required');
+      return;
+    }
+    try {
+      if (editingModifier) {
+        await menuService.updateModifier(editingModifier.id, modifierFormData);
+        toast.success('Modifier updated successfully');
+      } else {
+        await menuService.createModifier(modifierFormData);
+        toast.success('Modifier created successfully');
+      }
+      setShowModifierModal(false);
+      queryClient.invalidateQueries({ queryKey: ['menu-modifiers'] });
+    } catch (error) {
+      console.error('Failed to save modifier:', error);
+      toast.error('Failed to save modifier');
+    }
+  };
+
+  const handleDeleteModifier = async (modifierId: string) => {
+    if (confirm('Are you sure you want to delete this modifier?')) {
+      try {
+        await menuService.deleteModifier(modifierId);
+        toast.success('Modifier deleted successfully');
+        queryClient.invalidateQueries({ queryKey: ['menu-modifiers'] });
+      } catch (error) {
+        console.error('Failed to delete modifier:', error);
+        toast.error('Failed to delete modifier');
+      }
+    }
+  };
+
+  // Combo handlers
+  const handleAddCombo = () => {
+    setEditingCombo(null);
+    setComboFormData({
+      name: '',
+      description: '',
+      price: 0,
+      isAvailable: true,
+      startDate: '',
+      endDate: '',
+      isActive: true,
+      items: [{ menuItemId: '', quantity: 1, price: 0 }],
+    });
+    setShowComboModal(true);
+  };
+
+  const handleEditCombo = (combo: any) => {
+    setEditingCombo(combo);
+    setComboFormData({
+      name: combo.name,
+      description: combo.description || '',
+      price: combo.price,
+      isAvailable: combo.isAvailable,
+      startDate: combo.startDate || '',
+      endDate: combo.endDate || '',
+      isActive: combo.isActive,
+      items: combo.items?.length > 0 ? combo.items : [{ menuItemId: '', quantity: 1, price: 0 }],
+    });
+    setShowComboModal(true);
+  };
+
+  const addComboItem = () => {
+    setComboFormData({
+      ...comboFormData,
+      items: [...comboFormData.items, { menuItemId: '', quantity: 1, price: 0 }],
+    });
+  };
+
+  const removeComboItem = (index: number) => {
+    if (comboFormData.items.length > 1) {
+      setComboFormData({
+        ...comboFormData,
+        items: comboFormData.items.filter((_, i) => i !== index),
+      });
+    } else {
+      toast.error('At least one item is required');
+    }
+  };
+
+  const updateComboItem = (index: number, field: string, value: any) => {
+    const updatedItems = [...comboFormData.items];
+    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    setComboFormData({ ...comboFormData, items: updatedItems });
+  };
+
+  const handleSaveCombo = async () => {
+    if (comboFormData.items.length === 0) {
+      toast.error('At least one item is required');
+      return;
+    }
+    try {
+      if (editingCombo) {
+        await menuService.updateCombo(editingCombo.id, comboFormData);
+        toast.success('Combo updated successfully');
+      } else {
+        await menuService.createCombo(comboFormData);
+        toast.success('Combo created successfully');
+      }
+      setShowComboModal(false);
+      queryClient.invalidateQueries({ queryKey: ['menu-combos'] });
+    } catch (error) {
+      console.error('Failed to save combo:', error);
+      toast.error('Failed to save combo');
+    }
+  };
+
+  const handleDeleteCombo = async (comboId: string) => {
+    if (confirm('Are you sure you want to delete this combo?')) {
+      try {
+        await menuService.deleteCombo(comboId);
+        toast.success('Combo deleted successfully');
+        queryClient.invalidateQueries({ queryKey: ['menu-combos'] });
+      } catch (error) {
+        console.error('Failed to delete combo:', error);
+        toast.error('Failed to delete combo');
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -292,12 +582,60 @@ const AdvancedMenuScreen: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => { setEditingItem(null); setFormData({ name: '', price: '', categoryId: '', description: '', isAvailable: true, image: '', allergens: '', prepTime: '' }); setPreviewImage(null); setShowAddModal(true); }}
-            className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+            onClick={handleRefresh}
+            className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
+            title="Refresh"
           >
-            <Plus className="w-5 h-5" />
-            Add Item
+            <RefreshCw className="w-5 h-5" />
           </motion.button>
+          {isAdminOrManager && (
+            <>
+              {activeTab === 'items' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => { setEditingItem(null); setFormData({ name: '', price: '', categoryId: '', description: '', isAvailable: true, image: '', allergens: '', prepTime: '' }); setPreviewImage(null); setShowAddModal(true); }}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Item
+                </motion.button>
+              )}
+              {activeTab === 'categories' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleAddCategory}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Category
+                </motion.button>
+              )}
+              {activeTab === 'modifiers' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleAddModifier}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Modifier
+                </motion.button>
+              )}
+              {activeTab === 'combos' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleAddCombo}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Combo
+                </motion.button>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -553,10 +891,10 @@ const AdvancedMenuScreen: React.FC = () => {
                 <span>{/* Would show item count */}0 items</span>
               </div>
               <div className="flex gap-2">
-                <button className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
+                <button onClick={() => handleEditCategory(category)} className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
                   Edit
                 </button>
-                <button className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors">
+                <button onClick={() => handleDeleteCategory(category.id)} className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -590,13 +928,13 @@ const AdvancedMenuScreen: React.FC = () => {
                 </div>
               </div>
               <div className="flex gap-2">
-                <button className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
+                <button onClick={() => handleEditModifier(modifier)} className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
                   Edit Options
                 </button>
                 <button className="px-4 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-100 transition-colors">
                   Duplicate
                 </button>
-                <button className="ml-auto p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors">
+                <button onClick={() => handleDeleteModifier(modifier.id)} className="ml-auto p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -626,10 +964,10 @@ const AdvancedMenuScreen: React.FC = () => {
                 </div>
               </div>
               <div className="flex gap-2">
-                <button className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
-                  Edit Combo
+                <button onClick={() => handleEditCombo(combo)} className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
+                  Edit
                 </button>
-                <button className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors">
+                <button onClick={() => handleDeleteCombo(combo.id)} className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -701,6 +1039,234 @@ const AdvancedMenuScreen: React.FC = () => {
             <div className="flex gap-3 mt-6">
               <button onClick={() => { setShowAddModal(false); setEditingItem(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={editingItem ? handleUpdateItem : handleAddItem} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{editingItem ? 'Update' : 'Add Item'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-2xl font-bold mb-4">{editingCategory ? 'Edit Category' : 'Add New Category'}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Name *</label>
+                <input type="text" value={categoryFormData.name} onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Category name" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+                <textarea value={categoryFormData.description} onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={3} placeholder="Category description" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Display Order</label>
+                <input type="number" value={categoryFormData.displayOrder} onChange={(e) => setCategoryFormData({ ...categoryFormData, displayOrder: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Image URL</label>
+                <input type="text" value={categoryFormData.image} onChange={(e) => setCategoryFormData({ ...categoryFormData, image: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="https://..." />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="categoryActive" checked={categoryFormData.isActive} onChange={(e) => setCategoryFormData({ ...categoryFormData, isActive: e.target.checked })} className="w-4 h-4" />
+                <label htmlFor="categoryActive" className="text-sm text-gray-700">Active</label>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => { setShowCategoryModal(false); setEditingCategory(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleSaveCategory} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{editingCategory ? 'Update' : 'Create'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modifier Modal */}
+      {showModifierModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-4">{editingModifier ? 'Edit Modifier' : 'Add New Modifier'}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Menu Item *</label>
+                <select value={modifierFormData.menuItemId} onChange={(e) => setModifierFormData({ ...modifierFormData, menuItemId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                  <option value="">Select menu item</option>
+                  {items?.map((item: any) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Name *</label>
+                <input type="text" value={modifierFormData.name} onChange={(e) => setModifierFormData({ ...modifierFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Modifier name" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Type *</label>
+                <select value={modifierFormData.type} onChange={(e) => setModifierFormData({ ...modifierFormData, type: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                  <option value="single">Single Selection</option>
+                  <option value="multiple">Multiple Selection</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Display Order</label>
+                <input type="number" value={modifierFormData.displayOrder} onChange={(e) => setModifierFormData({ ...modifierFormData, displayOrder: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="modifierRequired" checked={modifierFormData.isRequired} onChange={(e) => setModifierFormData({ ...modifierFormData, isRequired: e.target.checked })} className="w-4 h-4" />
+                <label htmlFor="modifierRequired" className="text-sm text-gray-700">Required</label>
+              </div>
+
+              {/* Options Section */}
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-semibold text-gray-700">Options *</label>
+                  <button onClick={addModifierOption} className="text-sm text-blue-600 hover:text-blue-700 font-semibold">+ Add Option</button>
+                </div>
+                {modifierFormData.options.map((option, index) => (
+                  <div key={index} className="bg-gray-50 rounded-lg p-3 mb-2">
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={option.name}
+                        onChange={(e) => updateModifierOption(index, 'name', e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                        placeholder="Option name"
+                      />
+                      {modifierFormData.options.length > 1 && (
+                        <button onClick={() => removeModifierOption(index)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Price Adjustment</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={option.priceAdjustment}
+                          onChange={(e) => updateModifierOption(index, 'priceAdjustment', parseFloat(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Display Order</label>
+                        <input
+                          type="number"
+                          value={option.displayOrder}
+                          onChange={(e) => updateModifierOption(index, 'displayOrder', parseInt(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <input
+                        type="checkbox"
+                        checked={option.isDefault}
+                        onChange={(e) => updateModifierOption(index, 'isDefault', e.target.checked)}
+                        className="w-4 h-4"
+                      />
+                      <label className="text-xs text-gray-600">Default Option</label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => { setShowModifierModal(false); setEditingModifier(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleSaveModifier} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{editingModifier ? 'Update' : 'Create'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Combo Modal */}
+      {showComboModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-4">{editingCombo ? 'Edit Combo' : 'Add New Combo'}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Name *</label>
+                <input type="text" value={comboFormData.name} onChange={(e) => setComboFormData({ ...comboFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Combo name" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+                <textarea value={comboFormData.description} onChange={(e) => setComboFormData({ ...comboFormData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={3} placeholder="Combo description" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Price *</label>
+                <input type="number" step="0.01" value={comboFormData.price} onChange={(e) => setComboFormData({ ...comboFormData, price: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0.00" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Start Date</label>
+                <input type="datetime-local" value={comboFormData.startDate} onChange={(e) => setComboFormData({ ...comboFormData, startDate: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">End Date</label>
+                <input type="datetime-local" value={comboFormData.endDate} onChange={(e) => setComboFormData({ ...comboFormData, endDate: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="comboAvailable" checked={comboFormData.isAvailable} onChange={(e) => setComboFormData({ ...comboFormData, isAvailable: e.target.checked })} className="w-4 h-4" />
+                <label htmlFor="comboAvailable" className="text-sm text-gray-700">Available</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="comboActive" checked={comboFormData.isActive} onChange={(e) => setComboFormData({ ...comboFormData, isActive: e.target.checked })} className="w-4 h-4" />
+                <label htmlFor="comboActive" className="text-sm text-gray-700">Active</label>
+              </div>
+
+              {/* Items Section */}
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-semibold text-gray-700">Items *</label>
+                  <button onClick={addComboItem} className="text-sm text-blue-600 hover:text-blue-700 font-semibold">+ Add Item</button>
+                </div>
+                {comboFormData.items.map((item, index) => (
+                  <div key={index} className="bg-gray-50 rounded-lg p-3 mb-2">
+                    <div className="flex gap-2 mb-2">
+                      <select
+                        value={item.menuItemId}
+                        onChange={(e) => updateComboItem(index, 'menuItemId', e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      >
+                        <option value="">Select menu item</option>
+                        {items?.map((menuItem: any) => <option key={menuItem.id} value={menuItem.id}>{menuItem.name}</option>)}
+                      </select>
+                      {comboFormData.items.length > 1 && (
+                        <button onClick={() => removeComboItem(index)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Quantity</label>
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => updateComboItem(index, 'quantity', parseInt(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                          placeholder="1"
+                          min="1"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Price</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item.price}
+                          onChange={(e) => updateComboItem(index, 'price', parseFloat(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => { setShowComboModal(false); setEditingCombo(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleSaveCombo} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{editingCombo ? 'Update' : 'Create'}</button>
             </div>
           </div>
         </div>

@@ -23,12 +23,39 @@ export interface CreateOrderData {
   kitchenNotes?: string;
 }
 
+export interface CreateOrderResponse {
+  success: boolean;
+  data?: {
+    order?: any;
+    queued?: boolean;
+    queueId?: string;
+    message?: string;
+  };
+  queued?: boolean;
+  queueId?: string;
+  error?: {
+    message?: string;
+    code?: string;
+  };
+  isOfflineQueued?: boolean;
+}
+
+function isRetryableError(error: any): boolean {
+  if (error?.code === 'NETWORK_ERROR' || error?.code === 'ECONNABORTED') {
+    return true;
+  }
+  if (error?.response?.status) {
+    const status = error.response.status;
+    return status >= 500 || status === 429;
+  }
+  return true;
+}
+
 export const orderService = {
   getOrders: (params?: { status?: string; orderType?: string; page?: number; limit?: number }) =>
     api.get('/orders', { params }),
   getOrder: (id: string) => api.get(`/orders/${id}`),
   
-  // Enhanced createOrder with offline support
   createOrder: async (data: CreateOrderData, paymentData?: {
     method: string;
     amount: number;
@@ -37,43 +64,32 @@ export const orderService = {
     transferReference?: string;
     splitPayments?: Array<{ method: string; amount: number }>;
     notes?: string;
-  }) => {
+  }): Promise<CreateOrderResponse> => {
     const offlineManager = getOfflineQueueManager();
     const queueStatus = offlineManager.getQueueStatus();
     
-    // If offline or queue has pending items, add to queue
-    if (!queueStatus.isOnline || queueStatus.pending > 0) {
-      console.log('Adding order to offline queue');
+    if (!queueStatus.isOnline) {
+      console.log('[OrderService] Offline - queueing order');
       const queueId = offlineManager.addToQueue(data, paymentData ? {
-        method: paymentData.method as any,
+        method: paymentData.method as 'CASH' | 'CARD' | 'SPLIT',
         amount: paymentData.amount,
         cashReceived: paymentData.cashReceived,
         splitPayments: paymentData.splitPayments,
         notes: paymentData.notes,
       } : undefined);
       
-      // Return a mock response for offline mode
       return {
-        data: {
-          success: true,
-          data: {
-            order: {
-              id: queueId,
-              status: 'OFFLINE_QUEUED',
-              ...data,
-            },
-            queued: true,
-            queueId,
-          },
-        },
+        success: true,
+        queued: true,
+        queueId,
+        isOfflineQueued: true,
+        error: undefined,
       };
     }
     
-    // Online mode - direct API call
     try {
       const orderResponse = await api.post('/orders', data);
       
-      // If payment data provided, process payment immediately
       if (paymentData && orderResponse.data.data?.order?.id) {
         const orderId = orderResponse.data.data.order.id;
         await api.post(`/orders/${orderId}/payment`, {
@@ -86,36 +102,49 @@ export const orderService = {
         });
       }
       
-      return orderResponse;
-    } catch (error) {
-      // If API fails, add to offline queue
-      console.log('API call failed, adding to offline queue');
-      const queueId = offlineManager.addToQueue(data, paymentData ? {
-        method: paymentData.method as any,
-        amount: paymentData.amount,
-        cashReceived: paymentData.cashReceived,
-        splitPayments: paymentData.splitPayments,
-        notes: paymentData.notes,
-      } : undefined);
+      return {
+        success: true,
+        data: orderResponse.data.data,
+        queued: false,
+        isOfflineQueued: false,
+      };
+    } catch (error: any) {
+      if (isRetryableError(error)) {
+        console.log('[OrderService] Retryable error - queueing order for later');
+        const queueId = offlineManager.addToQueue(data, paymentData ? {
+          method: paymentData.method as 'CASH' | 'CARD' | 'SPLIT',
+          amount: paymentData.amount,
+          cashReceived: paymentData.cashReceived,
+          splitPayments: paymentData.splitPayments,
+          notes: paymentData.notes,
+        } : undefined);
+        
+        return {
+          success: true,
+          queued: true,
+          queueId,
+          isOfflineQueued: true,
+          error: {
+            message: 'Order queued for sync when connection is restored',
+            code: error?.code || 'RETRYABLE_ERROR',
+          },
+        };
+      }
       
       return {
-        data: {
-          success: true,
-          data: {
-            order: {
-              id: queueId,
-              status: 'OFFLINE_QUEUED',
-              ...data,
-            },
-            queued: true,
-            queueId,
-          },
+        success: false,
+        queued: false,
+        isOfflineQueued: false,
+        error: {
+          message: error?.response?.data?.message || error?.message || 'Failed to create order',
+          code: error?.code || 'UNKNOWN_ERROR',
         },
       };
     }
   },
   
   updateOrder: (id: string, data: Partial<CreateOrderData>) => api.put(`/orders/${id}`, data),
+  deleteOrder: (id: string) => api.delete(`/orders/${id}`),
   updateStatus: (id: string, status: string, cancelReason?: string) =>
     api.patch(`/orders/${id}/status`, { status, cancelReason }),
   processPayment: (id: string, paymentData: { 

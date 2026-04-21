@@ -429,6 +429,33 @@ router.delete('/items/:id', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
+// Get all modifiers (for admin management)
+router.get('/modifiers', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const modifiers = await prisma.itemModifier.findMany({
+      include: {
+        menuItem: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        options: {
+          orderBy: { displayOrder: 'asc' },
+        },
+      },
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    res.json({
+      success: true,
+      data: { modifiers },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Add modifier to menu item
 router.post('/items/:id/modifiers', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {

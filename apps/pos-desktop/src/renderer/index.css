@@ -4,104 +4,430 @@
 
 @layer base {
   * {
-    @apply border-gray-200;
+    @apply border-neutral-300;
+  }
+
+  html {
+    @apply antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   body {
-    @apply bg-surface text-gray-900 font-sans antialiased;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    @apply bg-neutral-0 text-neutral-900 font-sans;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
-  /* Custom scrollbar */
+  /* Focus visible styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+
+  /* Custom scrollbar - Red theme */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-surface-container;
+    @apply bg-neutral-100 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-primary/30 rounded-full;
+    @apply bg-neutral-400 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-primary/50;
+    @apply bg-primary-400;
+  }
+
+  /* Selection color */
+  ::selection {
+    @apply bg-primary-100 text-primary-900;
   }
 }
 
 @layer components {
-  /* Touch-friendly button sizes */
-  .btn-touch {
-    @apply min-h-[56px] min-w-[56px] px-6 py-4 text-lg font-semibold rounded-xl transition-all duration-200 active:scale-95;
+  /* ============================================
+     BUTTON SYSTEM - Red Theme
+     ============================================ */
+  
+  /* Primary Button - Red */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 
+           bg-primary-500 text-white font-semibold text-body-md
+           rounded-lg shadow-button
+           transition-all duration-fast ease-snappy
+           hover:bg-primary-600 hover:shadow-button-hover
+           active:scale-[0.98] active:bg-primary-700
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none
+           touch-target-lg;
   }
 
-  /* Card styles */
+  /* Secondary Button - White with Red border */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           bg-neutral-0 text-primary-600 font-semibold text-body-md
+           border-2 border-primary-200 rounded-lg
+           transition-all duration-fast ease-snappy
+           hover:bg-primary-50 hover:border-primary-300
+           active:scale-[0.98] active:bg-primary-100
+           disabled:opacity-50 disabled:cursor-not-allowed
+           touch-target-lg;
+  }
+
+  /* Ghost Button - Transparent */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2
+           bg-transparent text-neutral-700 font-medium text-body-md
+           rounded-lg
+           transition-all duration-fast ease-snappy
+           hover:bg-neutral-100 hover:text-neutral-900
+           active:scale-[0.98] active:bg-neutral-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           touch-target;
+  }
+
+  /* Danger Button */
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           bg-error-500 text-white font-semibold text-body-md
+           rounded-lg shadow-sm
+           transition-all duration-fast ease-snappy
+           hover:bg-error-600 hover:shadow-md
+           active:scale-[0.98] active:bg-error-700
+           disabled:opacity-50 disabled:cursor-not-allowed
+           touch-target-lg;
+  }
+
+  /* Large Button - For Cashier Primary Actions */
+  .btn-xl {
+    @apply px-8 py-4 text-headline-sm rounded-xl shadow-lg
+           touch-target-xl;
+  }
+
+  /* Icon Button */
+  .btn-icon {
+    @apply inline-flex items-center justify-center p-2
+           rounded-lg transition-all duration-fast ease-snappy
+           hover:bg-neutral-100
+           active:scale-95 active:bg-neutral-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           touch-target;
+  }
+
+  /* ============================================
+     CARD SYSTEM
+     ============================================ */
+  
   .card {
-    @apply bg-surface-lowest rounded-2xl shadow-soft p-6 transition-shadow hover:shadow-medium;
+    @apply bg-neutral-0 rounded-xl shadow-card p-5
+           border border-neutral-200
+           transition-all duration-normal ease-smooth
+           hover:shadow-card-hover hover:border-neutral-300;
   }
 
-  /* Input styles */
-  .input-field {
-    @apply w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none transition-colors;
+  .card-flat {
+    @apply bg-neutral-50 rounded-xl p-5
+           border border-neutral-200;
   }
 
-  /* Badge styles */
+  .card-highlight {
+    @apply bg-primary-50 rounded-xl p-5
+           border-2 border-primary-200;
+  }
+
+  /* ============================================
+     INPUT SYSTEM
+     ============================================ */
+  
+  .input {
+    @apply w-full px-4 py-3 
+           bg-neutral-0 text-neutral-900 text-body-md
+           border-2 border-neutral-300 rounded-lg
+           placeholder:text-neutral-500
+           transition-all duration-fast ease-snappy
+           focus:border-primary-500 focus:outline-none focus:ring-0
+           hover:border-neutral-400
+           disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed;
+  }
+
+  .input-error {
+    @apply border-error-500 focus:border-error-500
+           bg-error-50;
+  }
+
+  .input-success {
+    @apply border-success-500 focus:border-success-500
+           bg-success-50;
+  }
+
+  /* Input with icon */
+  .input-with-icon {
+    @apply relative;
+  }
+
+  .input-with-icon .icon {
+    @apply absolute left-3 top-1/2 -translate-y-1/2 
+           text-neutral-500 pointer-events-none;
+  }
+
+  .input-with-icon input {
+    @apply pl-11;
+  }
+
+  /* ============================================
+     BADGE SYSTEM
+     ============================================ */
+  
   .badge {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 
+           rounded-full text-label-md font-medium;
+  }
+
+  .badge-primary {
+    @apply bg-primary-100 text-primary-700;
   }
 
   .badge-success {
-    @apply bg-green-100 text-green-800;
+    @apply bg-success-100 text-success-700;
   }
 
   .badge-warning {
-    @apply bg-yellow-100 text-yellow-800;
+    @apply bg-warning-100 text-warning-700;
   }
 
   .badge-error {
-    @apply bg-red-100 text-red-800;
+    @apply bg-error-100 text-error-700;
   }
 
-  .badge-info {
-    @apply bg-blue-100 text-blue-800;
+  .badge-neutral {
+    @apply bg-neutral-200 text-neutral-700;
+  }
+
+  .badge-outline {
+    @apply bg-transparent border-2 border-current;
+  }
+
+  /* ============================================
+     STATUS INDICATORS
+     ============================================ */
+  
+  .status-dot {
+    @apply w-2.5 h-2.5 rounded-full;
+  }
+
+  .status-dot-success { @apply bg-success-500; }
+  .status-dot-warning { @apply bg-warning-500; }
+  .status-dot-error { @apply bg-error-500; }
+  .status-dot-neutral { @apply bg-neutral-400; }
+
+  /* ============================================
+     TABLE STYLES
+     ============================================ */
+  
+  .table-container {
+    @apply overflow-hidden rounded-xl border border-neutral-200 bg-neutral-0;
+  }
+
+  .table {
+    @apply w-full text-left border-collapse;
+  }
+
+  .table th {
+    @apply px-4 py-3 bg-neutral-50 text-label-md font-semibold 
+           text-neutral-700 uppercase tracking-wider
+           border-b border-neutral-200;
+  }
+
+  .table td {
+    @apply px-4 py-3 text-body-md text-neutral-900
+           border-b border-neutral-200;
+  }
+
+  .table tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .table tr:hover td {
+    @apply bg-neutral-50;
+  }
+
+  /* ============================================
+     MODAL/OVERLAY SYSTEM
+     ============================================ */
+  
+  .modal-overlay {
+    @apply fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50
+           flex items-center justify-center p-4;
+  }
+
+  .modal {
+    @apply bg-neutral-0 rounded-2xl shadow-2xl 
+           w-full max-w-lg overflow-hidden
+           animate-scale-in;
+  }
+
+  .modal-header {
+    @apply px-6 py-4 border-b border-neutral-200
+           flex items-center justify-between;
+  }
+
+  .modal-body {
+    @apply px-6 py-4;
+  }
+
+  .modal-footer {
+    @apply px-6 py-4 border-t border-neutral-200
+           flex items-center justify-end gap-3;
+  }
+
+  /* ============================================
+     CASHIER-SPECIFIC COMPONENTS
+     ============================================ */
+  
+  /* Large touch-friendly action button */
+  .cashier-btn {
+    @apply btn-primary btn-xl
+           min-h-[72px] text-headline-sm;
+  }
+
+  .cashier-btn-secondary {
+    @apply btn-secondary btn-xl
+           min-h-[72px] text-headline-sm;
+  }
+
+  /* Order item card */
+  .order-item-card {
+    @apply card p-4 flex items-center gap-4
+           transition-all duration-fast;
+  }
+
+  .order-item-card:hover {
+    @apply bg-neutral-50;
+  }
+
+  /* Price display - Large */
+  .price-lg {
+    @apply text-price-lg text-neutral-900 font-bold;
+  }
+
+  .price-xl {
+    @apply text-display-sm text-primary-600 font-bold;
+  }
+
+  /* Quantity stepper */
+  .quantity-stepper {
+    @apply inline-flex items-center bg-neutral-100 rounded-lg p-1;
+  }
+
+  .quantity-stepper button {
+    @apply w-10 h-10 flex items-center justify-center
+           rounded-md text-neutral-700 font-bold
+           transition-colors hover:bg-neutral-200
+           active:bg-neutral-300 disabled:opacity-40;
+  }
+
+  .quantity-stepper span {
+    @apply w-12 text-center text-body-lg font-semibold text-neutral-900;
+  }
+
+  /* ============================================
+     NAVIGATION & LAYOUT
+     ============================================ */
+  
+  .sidebar {
+    @apply w-64 h-full bg-neutral-0 border-r border-neutral-200
+           flex flex-col;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-3
+           text-body-md text-neutral-700 font-medium
+           rounded-lg mx-2
+           transition-all duration-fast
+           hover:bg-neutral-100 hover:text-neutral-900
+           active:scale-[0.98];
+  }
+
+  .nav-item-active {
+    @apply bg-primary-50 text-primary-700 font-semibold
+           hover:bg-primary-100;
+  }
+
+  /* Header */
+  .app-header {
+    @apply h-16 bg-neutral-0 border-b border-neutral-200
+           flex items-center px-6 gap-4;
+  }
+
+  /* Page container */
+  .page-container {
+    @apply flex-1 overflow-auto p-6 bg-neutral-50;
   }
 }
 
 @layer utilities {
-  /* Glassmorphism effect */
+  /* ============================================
+     UTILITY CLASSES
+     ============================================ */
+  
+  /* Text truncation */
+  .text-truncate {
+    @apply overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+
+  .text-truncate-2 {
+    @apply overflow-hidden text-ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  /* Visual feedback */
+  .pressable {
+    @apply transition-transform duration-fast active:scale-[0.98];
+  }
+
+  .hover-lift {
+    @apply transition-all duration-normal hover:-translate-y-0.5;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply bg-neutral-200 rounded-lg animate-pulse;
+  }
+
+  /* Glassmorphism - Subtle */
   .glass {
-    @apply bg-white/80 backdrop-blur-lg border border-white/20;
+    @apply bg-neutral-0/90 backdrop-blur-lg border border-neutral-200/50;
   }
 
-  /* Gradient button */
-  .gradient-btn {
-    @apply bg-gradient-to-br from-primary to-primary-container text-white;
+  /* Focus ring utility */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
   }
 
-  /* No-line rule - depth via tonal shifts */
-  .tonal-card {
-    @apply bg-surface-container-lowest hover:bg-surface-container transition-colors;
+  /* Screen reader only */
+  .sr-only {
+    @apply absolute w-px h-px p-0 -m-px 
+           overflow-hidden whitespace-nowrap 
+           border-0;
+    clip: rect(0, 0, 0, 0);
   }
 
-  /* Bento grid */
-  .bento-grid {
-    @apply grid gap-4 md:grid-cols-2 lg:grid-cols-3;
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fade-in 0.2s ease-out;
   }
 
-  /* Slide-over animation */
-  @keyframes slide-in-right {
-    from {
-      transform: translateX(100%);
-    }
-    to {
-      transform: translateX(0);
-    }
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out;
   }
 
-  .slide-in-right {
-    animation: slide-in-right 0.3s ease-out;
+  /* Touch action optimization */
+  .touch-manipulation {
+    touch-action: manipulation;
   }
 }

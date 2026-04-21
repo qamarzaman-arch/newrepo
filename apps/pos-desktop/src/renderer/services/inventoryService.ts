@@ -2,17 +2,22 @@ import api from './api';
 
 export interface InventoryItem {
   id: string;
+  menuItemId?: string;
   name: string;
   sku?: string;
+  barcode?: string;
   category?: string;
   unit: string;
   currentStock: number;
   minStock: number;
   maxStock?: number;
+  reservedStock?: number;
   costPerUnit: number;
   sellingPrice?: number;
+  supplierId?: string;
   status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
   isActive: boolean;
+  warehouseId?: string;
   supplier?: any;
   warehouse?: any;
 }

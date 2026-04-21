@@ -15,12 +15,13 @@ import OfflineQueueStatus from '../../components/OfflineQueueStatus';
 
 import OrderTypeSelection from './OrderTypeSelection';
 import TableCustomerSelection from './TableCustomerSelection';
+import ReservationDetails from './ReservationDetails';
 import EnhancedMenuOrdering from './EnhancedMenuOrdering';
 import KitchenDispatchConfirmation from './KitchenDispatchConfirmation';
 import CheckoutPayment from './CheckoutPayment';
 import OrderSuccess from './OrderSuccess';
 
-type POSStep = 'ORDER_TYPE' | 'TABLE_CUSTOMER' | 'MENU_ORDERING' | 'CHECKOUT' | 'SUCCESS';
+type POSStep = 'ORDER_TYPE' | 'TABLE_CUSTOMER' | 'RESERVATION_DETAILS' | 'MENU_ORDERING' | 'CHECKOUT' | 'SUCCESS';
 
 const AdvancedCashierPOS: React.FC = () => {
   const navigate = useNavigate();
@@ -211,6 +212,8 @@ const AdvancedCashierPOS: React.FC = () => {
     setOrderType(type as any);
     if (type === 'WALK_IN' || type === 'TAKEAWAY') {
       setCurrentStep('MENU_ORDERING');
+    } else if (type === 'RESERVATION') {
+      setCurrentStep('RESERVATION_DETAILS');
     } else {
       setCurrentStep('TABLE_CUSTOMER');
     }
@@ -226,6 +229,30 @@ const AdvancedCashierPOS: React.FC = () => {
     setCurrentStep('MENU_ORDERING');
   };
 
+  const handleReservationSelect = async (data: {
+    customerName?: string; customerPhone?: string; tableId?: string;
+    tableNumber?: string; guestCount?: number; reservationDate?: string;
+    reservationTime?: string; notes?: string;
+  }) => {
+    try {
+      // Create reservation directly via API
+      const response = await orderService.createReservation({
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        tableId: data.tableId,
+        notes: data.notes,
+      });
+      
+      if (response.data.success) {
+        toast.success(`Reservation created for ${data.customerName} on ${data.reservationDate} at ${data.reservationTime}`);
+        setCurrentStep('SUCCESS');
+      }
+    } catch (error: any) {
+      console.error('Failed to create reservation:', error);
+      toast.error(error.response?.data?.error?.message || 'Failed to create reservation');
+    }
+  };
+
   const handleSendToKitchen = () => {
     const { currentOrder } = useOrderStore.getState();
     if (currentOrder.items.length === 0) { toast.error('No items to send'); return; }
@@ -233,7 +260,7 @@ const AdvancedCashierPOS: React.FC = () => {
   };
 
   const handleBack = () => {
-    if (currentStep === 'TABLE_CUSTOMER') setCurrentStep('ORDER_TYPE');
+    if (currentStep === 'TABLE_CUSTOMER' || currentStep === 'RESERVATION_DETAILS') setCurrentStep('ORDER_TYPE');
     else if (currentStep === 'MENU_ORDERING') setCurrentStep(orderType === 'DINE_IN' || orderType === 'DELIVERY' ? 'TABLE_CUSTOMER' : 'ORDER_TYPE');
     else if (currentStep === 'CHECKOUT') setCurrentStep('MENU_ORDERING');
   };
@@ -365,16 +392,20 @@ const AdvancedCashierPOS: React.FC = () => {
 
       {/* ── Step Progress Bar ── */}
       <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-2 flex-shrink-0">
-        {(['ORDER_TYPE', 'TABLE_CUSTOMER', 'MENU_ORDERING', 'CHECKOUT', 'SUCCESS'] as POSStep[]).map((step, i) => {
+        {(['ORDER_TYPE', 'TABLE_CUSTOMER', 'RESERVATION_DETAILS', 'MENU_ORDERING', 'CHECKOUT', 'SUCCESS'] as POSStep[]).map((step, i) => {
           const labels: Record<POSStep, string> = {
             ORDER_TYPE: 'Order Type', TABLE_CUSTOMER: 'Table / Customer',
-            MENU_ORDERING: 'Menu', CHECKOUT: 'Payment', SUCCESS: 'Complete',
+            RESERVATION_DETAILS: 'Reservation', MENU_ORDERING: 'Menu', CHECKOUT: 'Payment', SUCCESS: 'Complete',
           };
-          const stepIndex = ['ORDER_TYPE', 'TABLE_CUSTOMER', 'MENU_ORDERING', 'CHECKOUT', 'SUCCESS'].indexOf(currentStep);
+          const stepIndex = ['ORDER_TYPE', 'TABLE_CUSTOMER', 'RESERVATION_DETAILS', 'MENU_ORDERING', 'CHECKOUT', 'SUCCESS'].indexOf(currentStep);
           const isActive = step === currentStep;
           const isDone = i < stepIndex;
           // Skip TABLE_CUSTOMER step indicator for walk-in/takeaway
           if (step === 'TABLE_CUSTOMER' && (orderType === 'WALK_IN' || orderType === 'TAKEAWAY')) return null;
+          // Skip RESERVATION_DETAILS for non-reservation orders
+          if (step === 'RESERVATION_DETAILS' && orderType !== 'RESERVATION') return null;
+          // Skip MENU_ORDERING and CHECKOUT for reservation (it goes straight to success)
+          if (orderType === 'RESERVATION' && (step === 'MENU_ORDERING' || step === 'CHECKOUT')) return null;
           return (
             <React.Fragment key={step}>
               {i > 0 && <div className={`flex-1 h-0.5 ${isDone || isActive ? 'bg-primary' : 'bg-gray-200'}`} />}
@@ -400,6 +431,11 @@ const AdvancedCashierPOS: React.FC = () => {
           {currentStep === 'TABLE_CUSTOMER' && (
             <motion.div key="table-customer" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="h-full">
               <TableCustomerSelection orderType={orderType} onBack={handleBack} onSelect={handleTableCustomerSelect} />
+            </motion.div>
+          )}
+          {currentStep === 'RESERVATION_DETAILS' && (
+            <motion.div key="reservation-details" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="h-full">
+              <ReservationDetails onBack={handleBack} onSelect={handleReservationSelect} />
             </motion.div>
           )}
           {currentStep === 'MENU_ORDERING' && (

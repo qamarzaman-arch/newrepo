@@ -248,6 +248,8 @@ model OrderItem {
   @@index([orderId])
   @@index([menuItemId])
   @@index([status])
+  @@index([status, sentToKitchenAt]) // Kitchen display queries
+  @@index([status, preparedAt])      // Kitchen performance queries
 }
 
 model Payment {
@@ -264,6 +266,8 @@ model Payment {
 
   @@index([orderId])
   @@index([paidAt])
+  @@index([status, paidAt])          // Financial reporting queries
+  @@index([method, paidAt])          // Payment method reporting
 }
 
 model Table {
@@ -375,6 +379,8 @@ model InventoryItem {
   @@index([status])
   @@index([warehouseId])
   @@index([currentStock])
+  @@index([menuItemId, status])      // Stock availability checks
+  @@index([status, currentStock])     // Low stock reporting
 }
 
 model StockMovement {
@@ -722,6 +728,43 @@ model Device {
 
   @@index([type])
   @@index([isActive])
+}
+
+model OrderCounter {
+  id          String   @id @default("global")
+  count       Int    @default(0)
+  date        String   // YYYY-MM-DD format
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+}
+
+model TableLock {
+  id          String   @id @default(uuid())
+  tableId     String   @unique
+  userId      String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  table       Table    @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model IdempotencyKey {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  requestPath String
+  requestBody String   @db.LongText
+  responseBody String  @db.LongText
+  orderId     String?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime // TTL for cleanup
+
+  @@index([key])
+  @@index([expiresAt])
 }
 
 model SyncQueue {
