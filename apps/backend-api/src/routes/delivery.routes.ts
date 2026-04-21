@@ -4,6 +4,7 @@ import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { AuditLogService } from '../services/auditLog.service';
 
 const router = Router();
 
@@ -142,6 +143,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
     });
 
     logger.info(`Delivery created: ${sanitize(deliveryNumber)} by ${sanitize(req.user!.username)}`);
+    await AuditLogService.log(req.user!.userId, 'CREATE', 'Delivery', delivery.id);
     res.status(201).json({ success: true, data: { delivery } });
   } catch (error) {
     next(error);

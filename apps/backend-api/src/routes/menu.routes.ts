@@ -1,9 +1,10 @@
-import { Router, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { AuditLogService } from '../services/auditLog.service';
 
 const router = Router();
 
@@ -19,45 +20,45 @@ const updateCategorySchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional(),
   displayOrder: z.number().optional(),
-  isActive: z.boolean().optional(),
   image: z.string().optional(),
+  isActive: z.boolean().optional(),
 });
 
 const createMenuItemSchema = z.object({
-  categoryId: z.string().uuid(),
+  categoryId: z.string(),
   name: z.string().min(1),
   description: z.string().optional(),
-  price: z.number().positive(),
-  cost: z.number().positive().optional(),
+  price: z.number().min(0),
+  cost: z.number().min(0).optional(),
   sku: z.string().optional(),
   barcode: z.string().optional(),
-  prepTimeMinutes: z.number().positive().default(15),
-  taxRate: z.number().min(0).max(100).default(0),
+  prepTimeMinutes: z.number().min(0).default(10),
+  taxRate: z.number().min(0).default(0),
   displayOrder: z.number().default(0),
   image: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
 
 const updateMenuItemSchema = z.object({
-  categoryId: z.string().uuid().optional(),
+  categoryId: z.string().optional(),
   name: z.string().min(1).optional(),
   description: z.string().optional(),
-  price: z.number().positive().optional(),
-  cost: z.number().positive().optional(),
+  price: z.number().min(0).optional(),
+  cost: z.number().min(0).optional(),
   sku: z.string().optional(),
   barcode: z.string().optional(),
-  isActive: z.boolean().optional(),
-  isAvailable: z.boolean().optional(),
-  prepTimeMinutes: z.number().positive().optional(),
-  taxRate: z.number().min(0).max(100).optional(),
+  prepTimeMinutes: z.number().min(0).optional(),
+  taxRate: z.number().min(0).optional(),
   displayOrder: z.number().optional(),
   image: z.string().optional(),
+  isAvailable: z.boolean().optional(),
+  isActive: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
 });
 
 const createModifierSchema = z.object({
   name: z.string().min(1),
-  type: z.string().min(1),
+  type: z.enum(['SINGLE', 'MULTIPLE']),
   isRequired: z.boolean().default(false),
   displayOrder: z.number().default(0),
   options: z.array(z.object({
@@ -69,7 +70,7 @@ const createModifierSchema = z.object({
 });
 
 // Get all categories with items (public endpoint for cashier)
-router.get('/categories', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/categories', (async (req: Request, res: Response, next: NextFunction) => {
   try {
     const categories = await prisma.menuCategory.findMany({
       where: { isActive: true },
@@ -89,10 +90,10 @@ router.get('/categories', async (req: Request, res: Response, next: NextFunction
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
 // Create category
-router.post('/categories', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/categories', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createCategorySchema.parse(req.body);
 
@@ -114,10 +115,10 @@ router.post('/categories', authenticate, async (req: AuthRequest, res: Response,
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
 // Update category
-router.put('/categories/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/categories/:id', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = updateCategorySchema.parse(req.body);
 
@@ -133,10 +134,10 @@ router.put('/categories/:id', authenticate, async (req: AuthRequest, res: Respon
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
 // Delete category (soft delete - deactivate)
-router.delete('/categories/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.delete('/categories/:id', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.menuCategory.update({
       where: { id: req.params.id },
@@ -150,12 +151,12 @@ router.delete('/categories/:id', authenticate, async (req: AuthRequest, res: Res
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
 // Get menu items with filters (public endpoint for cashier)
-router.get('/items', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/items', (async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { categoryId, search, available } = req.query;
+    const { categoryId, search, available } = req.query as any;
 
     const where: any = { isActive: true };
 
@@ -189,10 +190,10 @@ router.get('/items', async (req: Request, res: Response, next: NextFunction) => 
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
 // Get single menu item
-router.get('/items/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/items/:id', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const item = await prisma.menuItem.findUnique({
       where: { id: req.params.id },
@@ -211,6 +212,7 @@ router.get('/items/:id', authenticate, async (req: AuthRequest, res: Response, n
       throw new AppError('Menu item not found', 404);
     }
 
+    await AuditLogService.log(req.user!.userId, 'READ', 'MenuItem', item.id, { name: item.name });
     res.json({
       success: true,
       data: { item },
@@ -218,10 +220,10 @@ router.get('/items/:id', authenticate, async (req: AuthRequest, res: Response, n
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
 // Create menu item
-router.post('/items', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/items', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createMenuItemSchema.parse(req.body);
 
@@ -279,6 +281,7 @@ router.post('/items', authenticate, async (req: AuthRequest, res: Response, next
     });
 
     logger.info(`Menu item created: ${sanitize(item.name)} by ${sanitize(req.user!.username)}`);
+      await AuditLogService.log(req.user!.userId, 'CREATE', 'MenuItem', item.id, { name: item.name });
 
     res.status(201).json({
       success: true,
@@ -287,10 +290,10 @@ router.post('/items', authenticate, async (req: AuthRequest, res: Response, next
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
 // Update menu item
-router.put('/items/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/items/:id', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = updateMenuItemSchema.parse(req.body);
     const { tags, ...itemData } = data;
@@ -332,6 +335,7 @@ router.put('/items/:id', authenticate, async (req: AuthRequest, res: Response, n
       return updatedItem;
     });
 
+    await AuditLogService.log(req.user!.userId, 'UPDATE', 'MenuItem', item.id, { name: item.name });
     res.json({
       success: true,
       data: { item },
@@ -339,10 +343,10 @@ router.put('/items/:id', authenticate, async (req: AuthRequest, res: Response, n
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
 // Delete menu item (soft delete)
-router.delete('/items/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.delete('/items/:id', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.menuItem.update({
       where: { id: req.params.id },
@@ -356,10 +360,10 @@ router.delete('/items/:id', authenticate, async (req: AuthRequest, res: Response
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
 // Add modifier to menu item
-router.post('/items/:id/modifiers', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/items/:id/modifiers', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createModifierSchema.parse(req.body);
 
@@ -418,10 +422,10 @@ router.post('/items/:id/modifiers', authenticate, async (req: AuthRequest, res: 
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
 // Update modifier
-router.put('/modifiers/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/modifiers/:id', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { name, type, isRequired, displayOrder } = req.body;
 
@@ -445,10 +449,10 @@ router.put('/modifiers/:id', authenticate, async (req: AuthRequest, res: Respons
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
 // Delete modifier
-router.delete('/modifiers/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.delete('/modifiers/:id', authenticate, (async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.itemModifier.delete({
       where: { id: req.params.id },
@@ -461,6 +465,6 @@ router.delete('/modifiers/:id', authenticate, async (req: AuthRequest, res: Resp
   } catch (error) {
     next(error);
   }
-});
+}) as any);
 
 export default router;

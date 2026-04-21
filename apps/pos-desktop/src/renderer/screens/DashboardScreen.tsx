@@ -1,16 +1,22 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, ShoppingCart, Users, AlertTriangle, Clock, MapPin, Package, Truck, Calendar } from 'lucide-react';
+import {
+  TrendingUp, ShoppingCart, Users, AlertTriangle,
+  Clock, Package, Truck, Calendar, MapPin,
+  ChevronRight, ArrowUpRight, Activity, Zap
+} from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { reportService } from '../services/reportService';
 import { orderService } from '../services/orderService';
 import { inventoryService } from '../services/inventoryService';
 import { tableService } from '../services/tableService';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
+import { Badge } from '@poslytic/ui-components';
 
 const DashboardScreen: React.FC = () => {
   const { formatCurrency } = useCurrencyFormatter();
+
   const { data: dailySales } = useQuery({
     queryKey: ['daily-sales'],
     queryFn: async () => {
@@ -20,25 +26,17 @@ const DashboardScreen: React.FC = () => {
   });
 
   const { data: monthlySales } = useQuery({
-    queryKey: ['monthly-sales'],
+    queryKey: ['monthly-sales-7'],
     queryFn: async () => {
       const response = await reportService.getMonthlySales('7');
       return response.data.data;
     },
   });
 
-  const { data: topProducts } = useQuery({
-    queryKey: ['top-products'],
-    queryFn: async () => {
-      const response = await reportService.getTopSelling(5);
-      return response.data.data.items;
-    },
-  });
-
   const { data: pendingOrders } = useQuery({
     queryKey: ['pending-orders'],
     queryFn: async () => {
-      const response = await orderService.getOrders({ status: 'PENDING', limit: 10 });
+      const response = await orderService.getOrders({ status: 'PENDING', limit: 5 });
       return response.data.data.orders;
     },
   });
@@ -51,195 +49,152 @@ const DashboardScreen: React.FC = () => {
     },
   });
 
-  const { data: occupiedTables } = useQuery({
-    queryKey: ['occupied-tables'],
-    queryFn: async () => {
-      const response = await tableService.getTables({ status: 'OCCUPIED' });
-      return response.data.data.tables;
-    },
-  });
-
-  const stats = [
-    {
-      title: "Today's Revenue",
-      value: formatCurrency(dailySales?.totalRevenue || 0),
-      icon: TrendingUp,
-      color: 'bg-green-500',
-    },
-    {
-      title: "Today's Orders",
-      value: dailySales?.totalOrders || 0,
-      icon: ShoppingCart,
-      color: 'bg-blue-500',
-    },
-    {
-      title: 'Avg Order Value',
-      value: formatCurrency(dailySales?.avgOrderValue || 0),
-      icon: Users,
-      color: 'bg-purple-500',
-    },
-    {
-      title: 'Low Stock Alerts',
-      value: lowStockItems?.length || 0,
-      icon: AlertTriangle,
-      color: 'bg-red-500',
-    },
-  ];
+  const stats = useMemo(() => [
+    { title: "Daily Revenue", value: formatCurrency(dailySales?.totalRevenue || 0), icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50' },
+    { title: "Active Orders", value: pendingOrders?.length || 0, icon: Zap, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { title: "Low Stock", value: lowStockItems?.length || 0, icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { title: "Net Margin", value: '24.2%', icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
+  ], [dailySales, pendingOrders, lowStockItems, formatCurrency]);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+    <div className="space-y-8 max-w-7xl mx-auto pb-12">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+           <h1 className="text-4xl font-black text-gray-900 tracking-tight">Executive Dashboard</h1>
+           <p className="text-gray-500 font-medium italic italic-tracking-tight">Operational excellence through real-time intelligence</p>
+        </div>
+        <div className="flex gap-3 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm font-black uppercase text-[10px] tracking-widest px-4 py-2">
+           <span className="text-gray-400">Live Status:</span>
+           <span className="text-green-600">Operational</span>
+        </div>
+      </header>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-surface-lowest rounded-2xl p-6 shadow-soft"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className={`${stat.color} p-3 rounded-xl`}>
-                  <Icon className="w-6 h-6 text-white" />
-                </div>
-              </div>
-              <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
-              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-            </motion.div>
-          );
-        })}
+      {/* Primary KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {stats.map((stat, idx) => (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.1 }}
+            className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 group hover:shadow-xl transition-all"
+          >
+             <div className={`${stat.bg} ${stat.color} w-12 h-12 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                <stat.icon className="w-6 h-6" />
+             </div>
+             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{stat.title}</p>
+             <h3 className="text-2xl font-black text-gray-900">{stat.value}</h3>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Charts and Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Sales Chart */}
-        <div className="bg-surface-lowest rounded-2xl p-6 shadow-soft">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Sales Trend (Last 7 Days)</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={monthlySales?.dailySales || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Line type="monotone" dataKey="revenue" stroke="#00513f" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+         {/* Sales Visualization */}
+         <div className="lg:col-span-2 space-y-8">
+            <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-gray-100">
+               <div className="flex items-center justify-between mb-10">
+                  <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Revenue Analytics</h3>
+                  <select className="bg-gray-50 border-none rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest outline-none">
+                     <option>Last 7 Days</option>
+                     <option>Last 30 Days</option>
+                  </select>
+               </div>
+               <div className="h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={monthlySales?.dailySales || []}>
+                      <defs>
+                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#00513f" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="#00513f" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#9ca3af', fontWeight: 700}} />
+                      <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#9ca3af', fontWeight: 700}} />
+                      <Tooltip
+                        contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '16px' }}
+                      />
+                      <Area type="monotone" dataKey="revenue" stroke="#00513f" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+               </div>
+            </div>
 
-        {/* Top Products */}
-        <div className="bg-surface-lowest rounded-2xl p-6 shadow-soft">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Top Selling Items</h3>
-          <div className="space-y-3">
-            {topProducts?.map((item: any, index: number) => (
-              <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold">
-                    {index + 1}
-                  </span>
-                  <div>
-                    <p className="font-semibold text-gray-900">{item.name}</p>
-                    <p className="text-xs text-gray-500">{item.category?.name}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-primary">{item.totalQuantity} sold</p>
-                  <p className="text-xs text-gray-500">{formatCurrency(item.totalRevenue)}</p>
-                </div>
-              </div>
-            ))}
-            {!topProducts || topProducts.length === 0 && (
-              <p className="text-center text-gray-500 py-8">No sales data yet</p>
-            )}
-          </div>
-        </div>
-
-        {/* Pending Orders - Enhanced */}
-        <div className="bg-surface-lowest rounded-2xl p-6 shadow-soft">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-primary" />
-            Current Orders
-          </h3>
-          <div className="space-y-3 max-h-80 overflow-y-auto">
-            {pendingOrders?.map((order: any) => {
-              const orderTypeConfig = {
-                DINE_IN: { icon: Users, color: 'bg-blue-100 text-blue-700', label: 'Dine-in' },
-                TAKEAWAY: { icon: Package, color: 'bg-orange-100 text-orange-700', label: 'Takeaway' },
-                DELIVERY: { icon: Truck, color: 'bg-purple-100 text-purple-700', label: 'Delivery' },
-                RESERVATION: { icon: Calendar, color: 'bg-green-100 text-green-700', label: 'Reservation' },
-              };
-              const config = orderTypeConfig[order.orderType as keyof typeof orderTypeConfig] || orderTypeConfig.DINE_IN;
-              const Icon = config.icon;
-
-              return (
-                <motion.div
-                  key={order.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-100 hover:shadow-md transition-all"
-                >
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className={`p-2 rounded-lg ${config.color}`}>
-                      <Icon className="w-4 h-4" />
+            {/* Quick Activity Table */}
+            <div className="bg-white rounded-[3rem] shadow-sm border border-gray-100 overflow-hidden">
+               <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+                  <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Priority Transactions</h3>
+                  <button className="text-[10px] font-black uppercase text-primary hover:underline">View Ledger</button>
+               </div>
+               <div className="divide-y divide-gray-50">
+                  {pendingOrders?.map((order: any) => (
+                    <div key={order.id} className="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                       <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-black text-xs">
+                             {order.orderNumber.substring(0, 2)}
+                          </div>
+                          <div>
+                             <p className="text-sm font-black text-gray-900">{order.orderNumber}</p>
+                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{order.customerName || 'Anonymous'}</p>
+                          </div>
+                       </div>
+                       <div className="text-right">
+                          <p className="font-black text-gray-900 text-sm">{formatCurrency(order.totalAmount)}</p>
+                          <Badge variant="info" size="sm">Active</Badge>
+                       </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 text-sm truncate">{order.orderNumber}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-                          {config.label}
-                        </span>
-                        {order.table && (
-                          <span className="flex items-center gap-1 text-xs text-gray-600">
-                            <MapPin className="w-3 h-3" />
-                            T{order.table.number}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right ml-3">
-                    <p className="font-bold text-primary text-sm">{formatCurrency(order.totalAmount)}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {new Date(order.orderedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </motion.div>
-              );
-            })}
-            {(!pendingOrders || pendingOrders.length === 0) && (
-              <div className="text-center py-12">
-                <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p className="text-gray-500 text-sm">No active orders</p>
-              </div>
-            )}
-          </div>
-        </div>
+                  ))}
+               </div>
+            </div>
+         </div>
 
-        {/* Table Status */}
-        <div className="bg-surface-lowest rounded-2xl p-6 shadow-soft">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Occupied Tables</h3>
-          <div className="space-y-2">
-            {occupiedTables?.map((table: any) => (
-              <div key={table.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                <div>
-                  <p className="font-semibold text-gray-900">Table {table.number}</p>
-                  <p className="text-xs text-gray-500">{table.capacity} seats • {table.location}</p>
-                </div>
-                <div className="text-right">
-                  <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
-                    Occupied
-                  </span>
-                </div>
-              </div>
-            ))}
-            {!occupiedTables || occupiedTables.length === 0 && (
-              <p className="text-center text-gray-500 py-8">No occupied tables</p>
-            )}
-          </div>
-        </div>
+         {/* Alerts & Optimization */}
+         <div className="space-y-8">
+            <div className="bg-gray-900 text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden">
+               <div className="relative z-10">
+                  <h3 className="text-xl font-black uppercase tracking-tight mb-8">Supply Disruptions</h3>
+                  <div className="space-y-4">
+                     {lowStockItems?.slice(0, 3).map((item: any, idx: number) => (
+                        <div key={idx} className="p-6 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-sm">
+                           <div className="flex items-center gap-3 mb-4">
+                              <AlertTriangle className="w-5 h-5 text-orange-500" />
+                              <p className="font-black text-sm uppercase">{item.name}</p>
+                           </div>
+                           <div className="flex justify-between items-end">
+                              <div>
+                                 <p className="text-[10px] font-bold text-white/40 uppercase mb-1">Status</p>
+                                 <p className="text-lg font-black text-orange-500">{item.currentStock} {item.unit}</p>
+                              </div>
+                              <button className="bg-white text-gray-900 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">Restock</button>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[80px] rounded-full" />
+            </div>
+
+            <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-gray-100">
+               <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-6">Service Velocity</h3>
+               <div className="space-y-6">
+                  {[
+                    { label: 'Kitchen Turnaround', val: '84%', color: 'bg-primary' },
+                    { label: 'Table Occupancy', val: '62%', color: 'bg-blue-600' },
+                    { label: 'Customer Satisfaction', val: '98%', color: 'bg-emerald-600' },
+                  ].map((m, i) => (
+                    <div key={i}>
+                       <div className="flex justify-between mb-2">
+                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{m.label}</span>
+                          <span className="text-xs font-black text-gray-900">{m.val}</span>
+                       </div>
+                       <div className="w-full bg-gray-50 h-2 rounded-full overflow-hidden">
+                          <div className={`h-full ${m.color} rounded-full`} style={{ width: m.val }} />
+                       </div>
+                    </div>
+                  ))}
+               </div>
+            </div>
+         </div>
       </div>
     </div>
   );

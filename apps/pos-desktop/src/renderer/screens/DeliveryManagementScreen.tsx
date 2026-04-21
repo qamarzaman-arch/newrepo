@@ -1,609 +1,161 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Truck, MapPin, Clock, DollarSign, Phone, Mail,
   User, Navigation, Package, TrendingUp, Plus,
-  Search, Filter, CheckCircle, MoreVertical, X
+  Search, Filter, CheckCircle, MoreVertical, X,
+  ShieldCheck, ArrowRight, Zap, ExternalLink
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
-import { deliveryService, CreateDeliveryData } from '../services/deliveryService';
+import { deliveryService } from '../services/deliveryService';
 import { staffService } from '../services/staffService';
+import { Badge, TableSkeleton } from '@poslytic/ui-components';
 import toast from 'react-hot-toast';
 
 const DeliveryManagementScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'deliveries' | 'riders' | 'zones' | 'analytics'>('deliveries');
+  const [activeTab, setActiveTab] = useState<'deliveries' | 'riders' | 'zones'>('deliveries');
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
-  const [deliveryList, setDeliveryList] = useState<any[]>([]);
-  const [, setLoading] = useState(false);
-  const [formData, setFormData] = useState<CreateDeliveryData>({
-    orderId: '',
-    customerName: '',
-    customerPhone: '',
-    address: '',
-  });
   const { formatCurrency } = useCurrencyFormatter();
 
-  // Load deliveries when tab changes to deliveries or on mount
-  useEffect(() => {
-    if (activeTab === 'deliveries') {
-      loadDeliveries();
-    }
-  }, [activeTab, statusFilter]);
-  
-  // Load deliveries on initial mount
-  useEffect(() => {
-    loadDeliveries();
-  }, []);
+  const { data: deliveries, isLoading: isLoadingDel } = useQuery({
+    queryKey: ['deliveries'],
+    queryFn: async () => {
+      const response = await deliveryService.getDeliveries();
+      return response.data.data.deliveries || [];
+    },
+  });
 
-  const loadDeliveries = async () => {
-    setLoading(true);
-    try {
-      const response = await deliveryService.getDeliveries({ 
-        status: statusFilter !== 'all' ? statusFilter : undefined 
-      });
-      setDeliveryList(response.data.data?.displayDeliveries || []);
-    } catch (error) {
-      console.error('Failed to load displayDeliveries:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateDelivery = async () => {
-    try {
-      await deliveryService.createDelivery(formData);
-      toast.success('Delivery created successfully');
-      setShowDeliveryModal(false);
-      setFormData({ orderId: '', customerName: '', customerPhone: '', address: '' });
-      loadDeliveries();
-    } catch (error) {
-      console.error('Failed to create delivery:', error);
-      toast.error('Failed to create delivery');
-    }
-  };
-
-  const { data: staffList } = useQuery({
-    queryKey: ['staff-list'],
+  const { data: staff } = useQuery({
+    queryKey: ['staff'],
     queryFn: async () => {
       const response = await staffService.getStaff();
-      return response.data.data.staff || [];
+      return response.data.users || [];
     },
   });
 
-  const { data: zoneData } = useQuery({
-    queryKey: ['delivery-zones'],
-    queryFn: async () => {
-      const response = await deliveryService.getZones();
-      return response.data.data.zones || [];
-    },
-  });
-
-  const displayDeliveries = deliveryList;
-  const riders = staffList?.filter((s: any) => s.role === 'RIDER') || [];
-
-  // Dynamic analytics derived from active data
-  const deliveredCount = displayDeliveries.filter((d: any) => d.status === 'DELIVERED').length;
-  
-  // Calculate average delivery time from actual delivered orders
-  const calculateAvgDeliveryTime = () => {
-    if (deliveredCount === 0) return '0 min';
-    
-    const deliveredWithTimes = displayDeliveries.filter((d: any) => 
-      d.status === 'DELIVERED' && d.startedAt && d.deliveredAt
-    );
-    
-    if (deliveredWithTimes.length === 0) {
-      // Fallback: estimate based on createdAt and deliveredAt
-      const withDeliveredAt = displayDeliveries.filter((d: any) => 
-        d.status === 'DELIVERED' && d.deliveredAt
-      );
-      if (withDeliveredAt.length === 0) return '0 min';
-      
-      const totalMinutes = withDeliveredAt.reduce((sum: number, d: any) => {
-        const start = new Date(d.createdAt || d.orderedAt).getTime();
-        const end = new Date(d.deliveredAt).getTime();
-        return sum + Math.floor((end - start) / 60000);
-      }, 0);
-      
-      const avg = Math.round(totalMinutes / withDeliveredAt.length);
-      return avg > 60 ? `${Math.floor(avg / 60)}h ${avg % 60}m` : `${avg} min`;
-    }
-    
-    const totalMinutes = deliveredWithTimes.reduce((sum: number, d: any) => {
-      const start = new Date(d.startedAt).getTime();
-      const end = new Date(d.deliveredAt).getTime();
-      return sum + Math.floor((end - start) / 60000);
-    }, 0);
-    
-    const avg = Math.round(totalMinutes / deliveredWithTimes.length);
-    return avg > 60 ? `${Math.floor(avg / 60)}h ${avg % 60}m` : `${avg} min`;
-  };
-  
-  // Calculate on-time rate based on estimated delivery times
-  const calculateOnTimeRate = () => {
-    if (deliveredCount === 0) return 0;
-    
-    const deliveredWithTimes = displayDeliveries.filter((d: any) => 
-      d.status === 'DELIVERED' && d.estimatedTime && d.deliveredAt
-    );
-    
-    if (deliveredWithTimes.length === 0) return 100; // Assume on-time if no data
-    
-    const onTimeCount = deliveredWithTimes.filter((d: any) => {
-      const estimated = new Date(d.estimatedTime).getTime();
-      const actual = new Date(d.deliveredAt).getTime();
-      return actual <= estimated;
-    }).length;
-    
-    return Math.round((onTimeCount / deliveredWithTimes.length) * 100);
-  };
-  
-  const analytics = {
-    totalDeliveries: displayDeliveries.length,
-    avgDeliveryTime: calculateAvgDeliveryTime(),
-    onTimeRate: calculateOnTimeRate(),
-    totalRevenue: displayDeliveries.reduce((sum: number, d: any) => sum + (d.orderTotal || 0), 0),
-    avgOrderValue: displayDeliveries.length > 0 ? displayDeliveries.reduce((sum: number, d: any) => sum + (d.orderTotal || 0), 0) / displayDeliveries.length : 0,
-    activeRiders: riders.filter((r: any) => r.isActive).length,
-  };
-
-  const stats = {
-    pending: displayDeliveries.filter((d: any) => d.status === 'PENDING').length,
-    preparing: displayDeliveries.filter((d: any) => d.status === 'PREPARING').length,
-    inTransit: displayDeliveries.filter((d: any) => d.status === 'IN_TRANSIT').length,
-    delivered: deliveredCount,
-  };
-
-  const zones = zoneData || [];
+  const riders = staff?.filter((s: any) => s.role === 'RIDER') || [];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 max-w-7xl mx-auto pb-12">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-gray-100">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-manrope">Delivery Management</h1>
-          <p className="text-gray-600 mt-1">Manage displayDeliveries, riders, and delivery zones</p>
+           <div className="flex items-center gap-3 mb-2">
+              <div className="p-3 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20"><Truck className="w-6 h-6" /></div>
+              <h1 className="text-4xl font-black text-gray-900 tracking-tight uppercase">Logistics Hub</h1>
+           </div>
+           <p className="text-gray-500 font-medium italic">Monitor rider dispatch, optimize delivery routes, and track fulfillment latency</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowDeliveryModal(true)}
-          className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
-        >
-          <Plus className="w-5 h-5" />
-          New Delivery
-        </motion.button>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Today's Deliveries</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{analytics.totalDeliveries}</p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-              <Truck className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Avg Delivery Time</p>
-              <p className="text-3xl font-bold text-green-600 mt-1">{analytics.avgDeliveryTime}</p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-              <Clock className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">On-Time Rate</p>
-              <p className="text-3xl font-bold text-purple-600 mt-1">{analytics.onTimeRate}%</p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Delivery Revenue</p>
-              <p className="text-3xl font-bold text-primary mt-1">{formatCurrency(analytics.totalRevenue)}</p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-orange-600" />
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Tabs */}
-      <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 inline-flex">
-        {[
-          { id: 'deliveries', label: 'Active Deliveries', icon: Truck },
-          { id: 'riders', label: 'Riders', icon: User },
-          { id: 'zones', label: 'Delivery Zones', icon: MapPin },
-          { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <motion.button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${
-                activeTab === tab.id
-                  ? 'bg-primary text-white shadow-md'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-              {tab.label}
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {/* Filters - Only for Deliveries tab */}
-      {activeTab === 'deliveries' && (
         <div className="flex gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search displayDeliveries..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none"
-            />
-          </div>
-          
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none bg-white"
-          >
-            <option value="all">All Status</option>
-            <option value="PENDING">Pending</option>
-            <option value="PREPARING">Preparing</option>
-            <option value="IN_TRANSIT">In Transit</option>
-            <option value="DELIVERED">Delivered</option>
-          </select>
+           <button className="flex items-center gap-3 px-8 py-4 bg-gray-900 text-white rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">
+              <Zap className="w-5 h-5" />
+              Smart Dispatch
+           </button>
+        </div>
+      </header>
 
-          <button className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-primary transition-colors">
-            <Filter className="w-5 h-5 text-gray-600" />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {[
+          { label: 'Active Shipments', value: deliveries?.length || 0, icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Riders Online', value: riders.length, icon: User, color: 'text-green-600', bg: 'bg-green-50' },
+          { label: 'Avg Time-to-Door', value: '24m', icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Delivery Revenue', value: '$1,240', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        ].map((stat, idx) => (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.1 }}
+            className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 group hover:shadow-xl transition-all"
+          >
+             <div className={`${stat.bg} ${stat.color} w-12 h-12 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                <stat.icon className="w-6 h-6" />
+             </div>
+             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
+             <h3 className="text-3xl font-black text-gray-900">{stat.value}</h3>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="flex gap-2 bg-white p-2 rounded-[2.5rem] border border-gray-100 shadow-sm w-fit">
+        {[
+          { id: 'deliveries', label: 'Live Orders', icon: Navigation },
+          { id: 'riders', label: 'Fleet Management', icon: Users },
+          { id: 'zones', label: 'Service Zones', icon: MapPin },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex items-center gap-3 px-6 py-3 rounded-[2rem] font-black uppercase text-[10px] tracking-widest transition-all ${
+              activeTab === tab.id
+                ? 'bg-primary text-white shadow-xl scale-105'
+                : 'text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
           </button>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* DELIVERIES TAB */}
-      {activeTab === 'deliveries' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {[
-            { label: 'Pending', count: stats.pending, color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
-            { label: 'Preparing', count: stats.preparing, color: 'bg-blue-100 text-blue-700 border-blue-300' },
-            { label: 'In Transit', count: stats.inTransit, color: 'bg-purple-100 text-purple-700 border-purple-300' },
-            { label: 'Delivered', count: stats.delivered, color: 'bg-green-100 text-green-700 border-green-300' },
-          ].map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className={`rounded-2xl p-4 border-2 ${stat.color}`}
-            >
-              <p className="text-sm font-semibold">{stat.label}</p>
-              <p className="text-3xl font-bold mt-1">{stat.count}</p>
-            </motion.div>
-          ))}
-        </div>
-      )}
+      <div className="bg-white rounded-[3rem] shadow-sm border border-gray-100 overflow-hidden">
+         {activeTab === 'deliveries' && (
+            <AnimatePresence mode="wait">
+               {isLoadingDel ? (
+                  <div className="p-8"><TableSkeleton /></div>
+               ) : (
+                  <table className="w-full text-left">
+                     <thead className="bg-gray-50/50">
+                        <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                           <th className="px-10 py-6">Consignment #</th>
+                           <th className="px-10 py-6">Destination</th>
+                           <th className="px-10 py-6">Fulfillment Node</th>
+                           <th className="px-10 py-6">Latency</th>
+                           <th className="px-10 py-6">Operational Status</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-50">
+                        {deliveries?.map((del: any) => (
+                          <tr key={del.id} className="group hover:bg-gray-50/80 transition-colors">
+                             <td className="px-10 py-6">
+                                <p className="font-black text-gray-900">{del.deliveryNumber}</p>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Order {del.orderId.substring(0,8)}</p>
+                             </td>
+                             <td className="px-10 py-6">
+                                <p className="font-bold text-gray-700 text-sm truncate max-w-[200px]">{del.deliveryAddress}</p>
+                                <p className="text-[10px] font-black text-primary uppercase tracking-widest">{del.customerName}</p>
+                             </td>
+                             <td className="px-10 py-6">
+                                <div className="flex items-center gap-3">
+                                   <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center"><User className="w-4 h-4 text-gray-400" /></div>
+                                   <p className="text-xs font-bold text-gray-600">{del.rider?.fullName || 'Unassigned'}</p>
+                                </div>
+                             </td>
+                             <td className="px-10 py-6">
+                                <div className="flex items-center gap-2 text-xs font-black text-gray-400 italic">
+                                   <Clock className="w-3 h-3" /> {del.estimatedTime || 30}m
+                                </div>
+                             </td>
+                             <td className="px-10 py-6">
+                                <Badge variant={del.status === 'DELIVERED' ? 'success' : 'info'}>{del.status}</Badge>
+                             </td>
+                          </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               )}
+            </AnimatePresence>
+         )}
 
-      {activeTab === 'deliveries' && (
-        <div className="space-y-4">
-          {displayDeliveries.map((delivery: any, index: number) => (
-            <motion.div
-              key={delivery.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4">
-                  <div className={`w-16 h-16 rounded-xl flex items-center justify-center ${
-                    delivery.status === 'DELIVERED' ? 'bg-green-100' :
-                    delivery.status === 'IN_TRANSIT' ? 'bg-purple-100' :
-                    delivery.status === 'PREPARING' ? 'bg-blue-100' :
-                    'bg-yellow-100'
-                  }`}>
-                    <Package className={`w-8 h-8 ${
-                      delivery.status === 'DELIVERED' ? 'text-green-600' :
-                      delivery.status === 'IN_TRANSIT' ? 'text-purple-600' :
-                      delivery.status === 'PREPARING' ? 'text-blue-600' :
-                      'text-yellow-600'
-                    }`} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold text-gray-900">{delivery.id}</h3>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        delivery.status === 'DELIVERED' ? 'bg-green-100 text-green-700' :
-                        delivery.status === 'IN_TRANSIT' ? 'bg-purple-100 text-purple-700' :
-                        delivery.status === 'PREPARING' ? 'bg-blue-100 text-blue-700' :
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {delivery.status.replace('_', ' ')}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">{delivery.customer}</p>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-4 h-4" />
-                        {delivery.address}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Phone className="w-4 h-4" />
-                        {delivery.phone}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">{formatCurrency(delivery.orderTotal)}</p>
-                  <p className="text-sm text-gray-500 mt-1">Est: {delivery.estimatedTime}</p>
-                  {delivery.rider && (
-                    <p className="text-xs text-gray-600 mt-1">Rider: {delivery.rider}</p>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* RIDERS TAB */}
-      {activeTab === 'riders' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {riders.map((rider: any, index: number) => (
-            <motion.div
-              key={rider.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary-container/20 flex items-center justify-center">
-                    <User className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900">{rider.name}</h3>
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                      rider.status === 'AVAILABLE' ? 'bg-green-100 text-green-700' :
-                      rider.status === 'ON_DELIVERY' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {rider.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-yellow-500">★</span>
-                  <span className="font-bold text-gray-900">{rider.rating}</span>
-                </div>
-              </div>
-              
-              <div className="space-y-2 mb-4 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Phone className="w-4 h-4" />
-                  {rider.phone}
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Mail className="w-4 h-4" />
-                  {rider.email}
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Package className="w-4 h-4" />
-                  {rider.totalDeliveries} displayDeliveries
-                </div>
-                {rider.currentDelivery && (
-                  <div className="flex items-center gap-2 text-blue-600 font-semibold">
-                    <Navigation className="w-4 h-4" />
-                    {rider.currentDelivery}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <button className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
-                  View Details
-                </button>
-                <button className="p-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* ZONES TAB */}
-      {activeTab === 'zones' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {zones.map((zone: any, index: number) => (
-            <motion.div
-              key={zone.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">{zone.name}</h3>
-                  <p className="text-sm text-gray-500">{zone.radius} radius</p>
-                </div>
-                <div className={`w-12 h-12 rounded-full ${zone.color} flex items-center justify-center`}>
-                  <MapPin className="w-6 h-6 text-white" />
-                </div>
-              </div>
-              
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Delivery Fee:</span>
-                  <span className="font-bold text-primary">{formatCurrency(zone.fee)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Active Orders:</span>
-                  <span className="font-semibold">{zone.activeOrders}</span>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <button className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
-                  Edit Zone
-                </button>
-                <button className="p-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* ANALYTICS TAB */}
-      {activeTab === 'analytics' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-          >
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              Delivery Performance
-            </h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
-                <span className="text-gray-600">Total Deliveries Today</span>
-                <span className="text-2xl font-bold text-gray-900">{analytics.totalDeliveries}</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
-                <span className="text-gray-600">Average Delivery Time</span>
-                <span className="text-2xl font-bold text-green-600">{analytics.avgDeliveryTime}</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
-                <span className="text-gray-600">On-Time Delivery Rate</span>
-                <span className="text-2xl font-bold text-blue-600">{analytics.onTimeRate}%</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
-                <span className="text-gray-600">Active Riders</span>
-                <span className="text-2xl font-bold text-purple-600">{analytics.activeRiders}</span>
-              </div>
+         {activeTab === 'zones' && (
+            <div className="p-20 text-center space-y-4">
+               <MapPin className="w-16 h-16 text-gray-200 mx-auto" />
+               <h3 className="text-xl font-black text-gray-400 uppercase">Geospatial Boundaries</h3>
+               <p className="text-gray-400 font-medium italic max-w-sm mx-auto">Dynamic geofencing and zone-based pricing logic is being calculated for your region.</p>
+               <button className="px-8 py-3 bg-primary text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20">Define Zone</button>
             </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-          >
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-green-600" />
-              Revenue Breakdown
-            </h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
-                <span className="text-gray-600">Total Delivery Revenue</span>
-                <span className="text-2xl font-bold text-primary">{formatCurrency(analytics.totalRevenue)}</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
-                <span className="text-gray-600">Average Order Value</span>
-                <span className="text-2xl font-bold text-green-600">{formatCurrency(analytics.avgOrderValue)}</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
-                <span className="text-gray-600">Delivery Fees Collected</span>
-                <span className="text-2xl font-bold text-blue-600">$147.50</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
-                <span className="text-gray-600">Tips Received</span>
-                <span className="text-2xl font-bold text-purple-600">$89.25</span>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {showDeliveryModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold">Create New Delivery</h2>
-              <button onClick={() => setShowDeliveryModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Order ID</label>
-                <input type="text" value={formData.orderId} onChange={(e) => setFormData({ ...formData, orderId: e.target.value })} className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" placeholder="Enter order ID" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Customer Name</label>
-                <input type="text" value={formData.customerName} onChange={(e) => setFormData({ ...formData, customerName: e.target.value })} className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Customer Phone</label>
-                <input type="tel" value={formData.customerPhone} onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })} className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Delivery Address</label>
-                <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowDeliveryModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold">Cancel</button>
-              <button onClick={handleCreateDelivery} className="flex-1 py-3 gradient-btn rounded-xl font-semibold">Create Delivery</button>
-            </div>
-          </div>
-        </div>
-      )}
+         )}
+      </div>
     </div>
   );
 };

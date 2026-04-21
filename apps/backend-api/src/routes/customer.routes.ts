@@ -4,6 +4,7 @@ import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { AuditLogService } from '../services/auditLog.service';
 
 const router = Router();
 

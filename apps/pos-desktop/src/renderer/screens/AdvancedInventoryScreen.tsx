@@ -1,32 +1,25 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Package, ShoppingCart, BookOpen, Users, Plus, 
   Search, Filter, AlertTriangle, TrendingDown, 
   DollarSign, Clock, CheckCircle, Upload,
-  Edit, Trash2, Eye, MoreVertical, FileText
+  Edit, Trash2, Eye, MoreVertical, FileText, ChevronRight,
+  TrendingUp, ArrowDownRight, Warehouse, RotateCcw
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inventoryService } from '../services/inventoryService';
+import { useCurrencyFormatter } from '../hooks/useCurrency';
+import { Badge } from '@poslytic/ui-components';
 import toast from 'react-hot-toast';
 
 const AdvancedInventoryScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'inventory' | 'purchase-orders' | 'recipes' | 'vendors'>('inventory');
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [showItemModal, setShowItemModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    sku: '',
-    category: '',
-    currentStock: '',
-    minStock: '',
-    costPerUnit: '',
-    unit: ' pcs',
-  });
+  const { formatCurrency } = useCurrencyFormatter();
+  const queryClient = useQueryClient();
 
-  const { data: inventoryData } = useQuery({
+  const { data: items, isLoading: isLoadingInv } = useQuery({
     queryKey: ['inventory'],
     queryFn: async () => {
       const response = await inventoryService.getInventory();
@@ -34,23 +27,7 @@ const AdvancedInventoryScreen: React.FC = () => {
     },
   });
 
-  const { data: lowStockData } = useQuery({
-    queryKey: ['low-stock'],
-    queryFn: async () => {
-      const response = await inventoryService.getLowStock();
-      return response.data.data.items || [];
-    },
-  });
-
-  const { data: vendorData } = useQuery({
-    queryKey: ['vendors'],
-    queryFn: async () => {
-      const response = await inventoryService.getVendors();
-      return response.data.data.vendors || [];
-    },
-  });
-
-  const { data: purchaseOrderData } = useQuery({
+  const { data: purchaseOrders, isLoading: isLoadingPO } = useQuery({
     queryKey: ['purchase-orders'],
     queryFn: async () => {
       const response = await inventoryService.getPurchaseOrders();
@@ -58,7 +35,7 @@ const AdvancedInventoryScreen: React.FC = () => {
     },
   });
 
-  const { data: recipeData } = useQuery({
+  const { data: recipes, isLoading: isLoadingRecipes } = useQuery({
     queryKey: ['recipes'],
     queryFn: async () => {
       const response = await inventoryService.getRecipes();
@@ -66,565 +43,171 @@ const AdvancedInventoryScreen: React.FC = () => {
     },
   });
 
-  const items = inventoryData || [];
-  const lowStockItems = lowStockData || [];
-  const vendors = vendorData || [];
-  const purchaseOrders = purchaseOrderData || [];
-  const recipes = recipeData || [];
+  const filteredItems = items?.filter((item: any) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.sku?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const stats = {
-    totalItems: items.length,
-    lowStock: lowStockItems.length,
-    outOfStock: items.filter((i: any) => i.status === 'OUT_OF_STOCK').length,
-    totalValue: items.reduce((sum: number, item: any) => sum + (item.currentStock * item.costPerUnit), 0),
+    totalItems: items?.length || 0,
+    lowStock: items?.filter((i: any) => i.currentStock <= i.minStock).length || 0,
+    totalValue: items?.reduce((sum: number, i: any) => sum + (i.currentStock * i.costPerUnit), 0) || 0,
+    activePO: purchaseOrders?.filter((po: any) => po.status === 'PENDING').length || 0
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      IN_STOCK: 'bg-green-100 text-green-800 border-green-300',
-      LOW_STOCK: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      OUT_OF_STOCK: 'bg-red-100 text-red-800 border-red-300',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
-  };
-
-  // Handler functions
-  const handleDeleteItem = async (itemId: string, itemName: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${itemName}"?`)) {
-      return;
-    }
-
-    try {
-      await inventoryService.deleteItem(itemId);
-      toast.success(`${itemName} deleted successfully`);
-      window.location.reload();
-    } catch (error) {
-      console.error('Failed to delete item:', error);
-      toast.error('Failed to delete item');
-    }
-  };
-
-  const handleEditItem = (item: any) => {
-    setSelectedItem(item);
-    setFormData({
-      name: item.name || '',
-      sku: item.sku || '',
-      category: item.category || '',
-      currentStock: String(item.currentStock || 0),
-      minStock: String(item.minStock || 0),
-      costPerUnit: String(item.costPerUnit || 0),
-      unit: item.unit || 'pcs',
-    });
-    setShowItemModal(true);
-  };
-
-  const handleUpdateItem = async () => {
-    if (!selectedItem || !formData.name) {
-      toast.error('Please fill required fields');
-      return;
-    }
-    try {
-      await inventoryService.updateItem(selectedItem.id, {
-        name: formData.name,
-        sku: formData.sku,
-        category: formData.category,
-        currentStock: parseInt(formData.currentStock) || 0,
-        minStock: parseInt(formData.minStock) || 0,
-        costPerUnit: parseFloat(formData.costPerUnit) || 0,
-      });
-      toast.success('Item updated successfully');
-      setShowItemModal(false);
-      setSelectedItem(null);
-    } catch (error) {
-      toast.error('Failed to update item');
-    }
-  };
-
-  const handleAddItem = async () => {
-    if (!formData.name) {
-      toast.error('Please fill required fields');
-      return;
-    }
-    try {
-      await inventoryService.createItem({
-        name: formData.name,
-        sku: formData.sku,
-        category: formData.category,
-        currentStock: parseInt(formData.currentStock) || 0,
-        minStock: parseInt(formData.minStock) || 0,
-        costPerUnit: parseFloat(formData.costPerUnit) || 0,
-      });
-      toast.success('Item added successfully');
-      setShowItemModal(false);
-    } catch (error) {
-      toast.error('Failed to add item');
-    }
-  };
-
-  const getPOStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      SHIPPED: 'bg-blue-100 text-blue-800 border-blue-300',
-      RECEIVED: 'bg-green-100 text-green-800 border-green-300',
-      CANCELLED: 'bg-red-100 text-red-800 border-red-300',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
+  const getStatusBadge = (item: any) => {
+    if (item.currentStock <= 0) return <Badge variant="error">Out of Stock</Badge>;
+    if (item.currentStock <= item.minStock) return <Badge variant="warning">Low Stock</Badge>;
+    return <Badge variant="success">In Stock</Badge>;
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 max-w-7xl mx-auto pb-12">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-gray-100">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-manrope">Inventory Management</h1>
-          <p className="text-gray-600 mt-1">Manage stock, purchase orders, recipes, and vendors</p>
+           <div className="flex items-center gap-3 mb-2">
+              <div className="p-3 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20"><Package className="w-6 h-6" /></div>
+              <h1 className="text-4xl font-black text-gray-900 tracking-tight uppercase">Supply Chain</h1>
+           </div>
+           <p className="text-gray-500 font-medium italic">Monitor stock levels, manage recipes, and streamline vendor procurement</p>
         </div>
-        <div className="flex gap-3">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
-          >
-            <Upload className="w-5 h-5" />
-            Import
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => { setSelectedItem(null); setFormData({ name: '', sku: '', category: '', currentStock: '', minStock: '', costPerUnit: '', unit: 'pcs' }); setShowItemModal(true); }}
-            className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
-          >
-            <Plus className="w-5 h-5" />
-            Add Item
-          </motion.button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Items</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalItems}</p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-              <Package className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Low Stock</p>
-              <p className="text-3xl font-bold text-orange-600 mt-1">{stats.lowStock}</p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-orange-600" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Out of Stock</p>
-              <p className="text-3xl font-bold text-red-600 mt-1">{stats.outOfStock}</p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
-              <TrendingDown className="w-6 h-6 text-red-600" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Value</p>
-              <p className="text-3xl font-bold text-primary mt-1">${stats.totalValue.toFixed(2)}</p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Tabs */}
-      <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 inline-flex">
-        {[
-          { id: 'inventory', label: 'Inventory', icon: Package },
-          { id: 'purchase-orders', label: 'Purchase Orders', icon: ShoppingCart },
-          { id: 'recipes', label: 'Recipes', icon: BookOpen },
-          { id: 'vendors', label: 'Vendors', icon: Users },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <motion.button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${
-                activeTab === tab.id
-                  ? 'bg-primary text-white shadow-md'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-              {tab.label}
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {/* Filters - Only for Inventory tab */}
-      {activeTab === 'inventory' && (
         <div className="flex gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search inventory items..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none"
-            />
-          </div>
-          
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none bg-white"
-          >
-            <option value="all">All Categories</option>
-            <option value="produce">Produce</option>
-            <option value="meat">Meat & Poultry</option>
-            <option value="dairy">Dairy</option>
-            <option value="dry-goods">Dry Goods</option>
-          </select>
-
-          <button className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-primary transition-colors">
-            <Filter className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
-      )}
-
-      {/* Low Stock Alert Banner */}
-      {activeTab === 'inventory' && lowStockItems.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-orange-50 to-red-50 border-l-4 border-orange-500 p-4 rounded-r-xl flex items-center justify-between"
-        >
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="w-6 h-6 text-orange-600" />
-            <div>
-              <h3 className="font-bold text-orange-900">Low Stock Alert</h3>
-              <p className="text-sm text-orange-700">
-                {lowStockItems.length} item(s) are running low on stock
-              </p>
-            </div>
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700 transition-colors"
-          >
-            View Low Stock
-          </motion.button>
-        </motion.div>
-      )}
-
-      {/* INVENTORY TAB */}
-      {activeTab === 'inventory' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Item Name</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">SKU</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Category</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Current Stock</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Min Stock</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Cost/Unit</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {items.map((item: any) => (
-                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 font-semibold text-gray-900">{item.name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{item.sku || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{item.category || '-'}</td>
-                  <td className="px-6 py-4">
-                    <span className={`font-bold ${
-                      item.currentStock <= item.minStock ? 'text-red-600' : 'text-gray-900'
-                    }`}>
-                      {item.currentStock} {item.unit}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{item.minStock} {item.unit}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(item.status)}`}>
-                      {item.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">${item.costPerUnit.toFixed(2)}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleEditItem(item)}
-                        className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
-                      >
-                        <Edit className="w-4 h-4 text-blue-600" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteItem(item.id, item.name)}
-                        className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {items.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>No inventory items found</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* PURCHASE ORDERS TAB */}
-      {activeTab === 'purchase-orders' && (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
-            >
+           <button className="flex items-center gap-3 px-8 py-4 bg-gray-900 text-white rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all">
               <Plus className="w-5 h-5" />
-              Create PO
-            </motion.button>
-          </div>
-
-          {purchaseOrders.map((po, index) => (
-            <motion.div
-              key={po.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary-container/20 flex items-center justify-center">
-                    <FileText className="w-8 h-8 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">{po.id}</h3>
-                    <p className="text-sm text-gray-500">{po.vendor}</p>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                      <span className="flex items-center gap-1">
-                        <Package className="w-4 h-4" />
-                        {po.items} items
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {po.date}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <CheckCircle className="w-4 h-4" />
-                        Expected: {po.expectedDelivery}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">${po.total.toFixed(2)}</p>
-                  <span className={`inline-block mt-2 px-4 py-2 rounded-full text-sm font-semibold border ${getPOStatusColor(po.status)}`}>
-                    {po.status}
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+              New Supply Order
+           </button>
         </div>
-      )}
+      </header>
 
-      {/* RECIPES TAB */}
-      {activeTab === 'recipes' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {recipes.map((recipe, index) => (
-            <motion.div
-              key={recipe.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">{recipe.name}</h3>
-                  <p className="text-sm text-gray-500">{recipe.category}</p>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  recipe.margin >= 65 ? 'bg-green-100 text-green-700' :
-                  recipe.margin >= 50 ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-red-100 text-red-700'
-                }`}>
-                  {recipe.margin}% margin
-                </span>
-              </div>
-              
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Ingredients:</span>
-                  <span className="font-semibold">{recipe.ingredients} items</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Food Cost:</span>
-                  <span className="font-semibold">${recipe.cost.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Menu Price:</span>
-                  <span className="font-bold text-primary">${recipe.menuPrice.toFixed(2)}</span>
-                </div>
-              </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {[
+          { label: 'Asset Value', value: formatCurrency(stats.totalValue), icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
+          { label: 'SKU Count', value: stats.totalItems, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Critical Items', value: stats.lowStock, icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
+          { label: 'Pending POs', value: stats.activePO, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+        ].map((stat, idx) => (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.1 }}
+            className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 group hover:shadow-xl transition-all"
+          >
+             <div className={`${stat.bg} ${stat.color} w-12 h-12 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                <stat.icon className="w-6 h-6" />
+             </div>
+             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
+             <h3 className="text-2xl font-black text-gray-900">{stat.value}</h3>
+          </motion.div>
+        ))}
+      </div>
 
-              <div className="flex gap-2">
-                <button className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
-                  Edit Recipe
-                </button>
-                <button className="p-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
-                  <Eye className="w-4 h-4" />
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
+      <div className="flex gap-2 bg-white p-2 rounded-[2.5rem] border border-gray-100 shadow-sm w-fit">
+        {[
+          { id: 'inventory', label: 'Warehouse', icon: Warehouse },
+          { id: 'purchase-orders', label: 'Procurement', icon: ShoppingCart },
+          { id: 'recipes', label: 'Master Recipes', icon: BookOpen },
+          { id: 'vendors', label: 'Global Vendors', icon: Users },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex items-center gap-3 px-6 py-3 rounded-[2rem] font-black uppercase text-[10px] tracking-widest transition-all ${
+              activeTab === tab.id
+                ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                : 'text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      {/* VENDORS TAB */}
-      {activeTab === 'vendors' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {vendors.map((vendor, index) => (
-            <motion.div
-              key={vendor.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">{vendor.name}</h3>
-                  <p className="text-sm text-gray-500">{vendor.category}</p>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-1">
-                    <span className="text-yellow-500">★</span>
-                    <span className="font-bold text-gray-900">{vendor.rating}</span>
-                  </div>
-                  <p className="text-xs text-gray-500">{vendor.activeOrders} active orders</p>
-                </div>
-              </div>
-              
-              <div className="space-y-2 mb-4 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Users className="w-4 h-4" />
-                  {vendor.contact}
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <span>📞</span>
-                  {vendor.phone}
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <span>✉️</span>
-                  {vendor.email}
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <button className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
-                  View Details
-                </button>
-                <button className="p-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {showItemModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-2xl font-bold mb-4">{selectedItem ? 'Edit Item' : 'Add New Item'}</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Name *</label>
-                <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Item name" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">SKU</label>
-                <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="SKU-001" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Category</label>
-                <input type="text" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Produce" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Current Stock</label>
-                  <input type="number" value={formData.currentStock} onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Min Stock</label>
-                  <input type="number" value={formData.minStock} onChange={(e) => setFormData({ ...formData, minStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="10" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Cost Per Unit</label>
-                <input type="number" step="0.01" value={formData.costPerUnit} onChange={(e) => setFormData({ ...formData, costPerUnit: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0.00" />
-              </div>
+      <div className="bg-white rounded-[3rem] shadow-sm border border-gray-100 overflow-hidden">
+         <div className="p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="relative flex-1 max-w-md">
+               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+               <input
+                 type="text"
+                 placeholder="Search assets by name or SKU..."
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 className="w-full pl-12 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold focus:bg-white focus:ring-4 focus:ring-primary/5 transition-all outline-none"
+               />
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => { setShowItemModal(false); setSelectedItem(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
-              <button onClick={selectedItem ? handleUpdateItem : handleAddItem} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{selectedItem ? 'Update' : 'Add Item'}</button>
+            <div className="flex gap-3">
+               <button className="p-4 bg-gray-50 text-gray-500 rounded-2xl hover:bg-gray-100 transition-colors"><Filter className="w-5 h-5" /></button>
+               <button className="p-4 bg-gray-50 text-gray-500 rounded-2xl hover:bg-gray-100 transition-colors"><Upload className="w-5 h-5" /></button>
             </div>
-          </div>
-        </div>
-      )}
+         </div>
+
+         <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+            >
+               {activeTab === 'inventory' && (
+                  <table className="w-full text-left">
+                     <thead className="bg-gray-50/50">
+                        <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                           <th className="px-8 py-5">Inventory Asset</th>
+                           <th className="px-8 py-5">Category</th>
+                           <th className="px-8 py-5">Stock Level</th>
+                           <th className="px-8 py-5">Unit Cost</th>
+                           <th className="px-8 py-5">Status</th>
+                           <th className="px-8 py-5 text-right">Actions</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-50">
+                        {filteredItems?.map((item: any) => (
+                          <tr key={item.id} className="group hover:bg-gray-50/80 transition-colors">
+                             <td className="px-8 py-5">
+                                <p className="font-black text-gray-900">{item.name}</p>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{item.sku || 'NO-SKU'}</p>
+                             </td>
+                             <td className="px-8 py-5">
+                                <span className="px-3 py-1 bg-gray-100 rounded-full text-[10px] font-black text-gray-600 uppercase tracking-widest">{item.category || 'General'}</span>
+                             </td>
+                             <td className="px-8 py-5">
+                                <div className="flex items-center gap-3">
+                                   <div className="flex-1 max-w-[100px] h-2 bg-gray-100 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full ${item.currentStock <= item.minStock ? 'bg-red-500' : 'bg-primary'}`}
+                                        style={{ width: `${Math.min(100, (item.currentStock / (item.maxStock || 100)) * 100)}%` }}
+                                      />
+                                   </div>
+                                   <span className="font-black text-gray-900">{item.currentStock} {item.unit}</span>
+                                </div>
+                             </td>
+                             <td className="px-8 py-5 font-bold text-gray-600">{formatCurrency(item.costPerUnit)}</td>
+                             <td className="px-8 py-5">{getStatusBadge(item)}</td>
+                             <td className="px-8 py-5 text-right">
+                                <div className="flex justify-end gap-2">
+                                   <button className="p-2 text-gray-400 hover:text-primary transition-colors"><Edit className="w-4 h-4" /></button>
+                                   <button className="p-2 text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                             </td>
+                          </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               )}
+
+               {activeTab === 'recipes' && (
+                  <div className="p-12 text-center space-y-4">
+                     <BookOpen className="w-16 h-16 text-gray-200 mx-auto" />
+                     <h3 className="text-xl font-black text-gray-400 uppercase">Recipe Intelligence</h3>
+                     <p className="text-gray-400 font-medium italic max-w-sm mx-auto">Complex ingredient mapping and cost-per-dish analysis is currently synchronizing with the central database.</p>
+                     <button className="px-8 py-3 bg-primary text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20">Create Master Recipe</button>
+                  </div>
+               )}
+            </motion.div>
+         </AnimatePresence>
+      </div>
     </div>
   );
 };

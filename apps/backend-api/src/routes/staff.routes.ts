@@ -3,6 +3,7 @@ import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { AuditLogService } from '../services/auditLog.service';
 
 const router = Router();
 
@@ -85,6 +86,7 @@ router.post('/:id/shift', authenticate, async (req: AuthRequest, res: Response, 
       });
 
       logger.info(`Staff ${sanitize(req.params.id)} clocked in by ${sanitize(req.user!.username)}`);
+      await AuditLogService.log(req.user!.userId, 'CLOCK_IN', 'Staff', req.params.id);
       res.status(201).json({ success: true, data: { shift } });
     } else if (action === 'clock-out') {
       const openShift = await prisma.shift.findFirst({
@@ -100,6 +102,7 @@ router.post('/:id/shift', authenticate, async (req: AuthRequest, res: Response, 
       });
 
       logger.info(`Staff ${sanitize(req.params.id)} clocked out by ${sanitize(req.user!.username)}`);
+      await AuditLogService.log(req.user!.userId, 'CLOCK_OUT', 'Staff', req.params.id);
       res.json({ success: true, data: { shift } });
     } else {
       throw new AppError('Invalid action. Use clock-in or clock-out', 400);

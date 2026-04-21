@@ -8,7 +8,7 @@ export const useOrders = (params?: { status?: string; orderType?: string; page?:
       const response = await orderService.getOrders(params);
       return response.data.data;
     },
-    refetchInterval: 10000, // Refetch every 10 seconds to catch new orders
+    refetchInterval: 10000,
   });
 };
 
@@ -18,6 +18,17 @@ export const useOrder = (id: string) => {
     queryFn: async () => {
       const response = await orderService.getOrder(id);
       return response.data.data.order;
+    },
+    enabled: !!id,
+  });
+};
+
+export const useOrderReceipt = (id: string) => {
+  return useQuery({
+    queryKey: ['order-receipt', id],
+    queryFn: async () => {
+      const response = await (orderService as any).getOrder(`${id}/receipt`);
+      return response.data.data.receiptText;
     },
     enabled: !!id,
   });

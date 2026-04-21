@@ -4,6 +4,7 @@ import { prisma } from '../server';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { AuditLogService } from '../services/auditLog.service';
 
 const router = Router();
 
@@ -168,6 +169,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
     });
 
     logger.info(`Table created: ${sanitize(table.number)} by ${sanitize(req.user!.username)}`);
+    await AuditLogService.log(req.user!.userId, 'CREATE', 'Table', table.id);
 
     res.status(201).json({
       success: true,
@@ -202,6 +204,8 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
       where: { id: req.params.id },
       data,
     });
+
+    await AuditLogService.log(req.user!.userId, 'UPDATE', 'Table', table.id, data);
 
     res.json({
       success: true,

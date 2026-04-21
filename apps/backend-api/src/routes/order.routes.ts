@@ -1,3 +1,6 @@
+import { ValidationService } from "../services/validation.service";
+import { ReceiptService } from "../services/receipt.service";
+import { AuditLogService } from "../services/auditLog.service";
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
@@ -456,7 +459,14 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
 // Update order status
 router.patch('/:id/status', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { status, cancelReason } = req.body;
+    const { status, cancelReason, managerPin } = req.body;
+
+    // Required PIN for cancellation/voiding
+    if (status === 'CANCELLED' || status === 'VOIDED') {
+      if (!managerPin) throw new AppError('Manager PIN required for this action', 401);
+      await ValidationService.authorizeAction(managerPin, `Order ${status}`);
+    }
+
 
     const order = await prisma.order.findUnique({
       where: { id: req.params.id },
@@ -666,6 +676,7 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
       throw new AppError('Cannot refund unpaid order', 400);
     }
 
+    await ValidationService.authorizeAction(managerPin, 'Order Refund');
     // Validate manager PIN
     const managerPinSetting = await prisma.setting.findUnique({
       where: { key: 'manager_pin' },
@@ -839,6 +850,35 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
     res.json({
       success: true,
       data: { order: updatedOrder },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+// Get order receipt (formatted text)
+router.get('/:id/receipt', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: req.params.id },
+      include: {
+        items: { include: { menuItem: true } },
+        table: true,
+      },
+    });
+
+    if (!order) throw new AppError('Order not found', 404);
+
+    const settingsRecords = await prisma.setting.findMany();
+    const settings: any = {};
+    settingsRecords.forEach(s => settings[s.key] = s.value);
+
+    const receiptText = ReceiptService.generateReceiptText(order, settings);
+
+    res.json({
+      success: true,
+      data: { receiptText },
     });
   } catch (error) {
     next(error);

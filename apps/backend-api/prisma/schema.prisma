@@ -514,6 +514,12 @@ model Discount {
   applicableTo  String   @default("all")
   itemIds       String?
   categoryIds   String?
+  daysOfWeek    String?  // Comma separated 1-7
+  startTime     String?  // HH:mm
+  endTime       String?  // HH:mm
+  minQuantity   Int?     @default(0)
+  isBOGO        Boolean  @default(false)
+
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

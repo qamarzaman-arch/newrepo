@@ -6,28 +6,41 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-interface TableProps extends React.TableHTMLAttributes<HTMLTableElement> {
+export interface TableProps extends React.TableHTMLAttributes<HTMLTableElement> {
   headers: string[];
+  variant?: 'standard' | 'terminal';
 }
 
-export const Table = ({ className, headers, children, ...props }: TableProps) => {
+export const Table = ({ className, headers, variant = 'standard', children, ...props }: TableProps) => {
   return (
-    <div className="w-full overflow-hidden bg-white rounded-3xl shadow-soft border border-gray-100 mt-6">
-      <div className="overflow-x-auto">
+    <div className={cn(
+      "w-full overflow-hidden rounded-[2.5rem] border mt-6",
+      variant === 'terminal' ? "bg-gray-950 border-primary/10" : "bg-white border-gray-100 shadow-sm"
+    )}>
+      <div className="overflow-x-auto custom-scrollbar">
         <table className={cn('w-full text-left border-collapse', className)} {...props}>
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
+            <tr className={cn(
+              "border-b",
+              variant === 'terminal' ? "bg-white/5 border-primary/10" : "bg-gray-50 border-gray-100"
+            )}>
               {headers.map((header) => (
                 <th
                   key={header}
-                  className="px-6 py-5 text-xs font-black text-gray-400 uppercase tracking-widest"
+                  className={cn(
+                    "px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em]",
+                    variant === 'terminal' ? "text-primary/70" : "text-gray-400"
+                  )}
                 >
                   {header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className={cn(
+            "divide-y",
+            variant === 'terminal' ? "divide-white/5" : "divide-gray-50"
+          )}>
             {children}
           </tbody>
         </table>
@@ -37,13 +50,13 @@ export const Table = ({ className, headers, children, ...props }: TableProps) =>
 };
 
 export const TableRow = ({ className, children, ...props }: React.HTMLAttributes<HTMLTableRowElement>) => (
-  <tr className={cn('hover:bg-gray-50/50 transition-colors', className)} {...props}>
+  <tr className={cn('hover:bg-gray-50/50 transition-all duration-300 group', className)} {...props}>
     {children}
   </tr>
 );
 
 export const TableCell = ({ className, children, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) => (
-  <td className={cn('px-6 py-5 text-sm', className)} {...props}>
+  <td className={cn('px-8 py-6 text-sm font-medium text-gray-600 group-hover:text-gray-900', className)} {...props}>
     {children}
   </td>
 );
