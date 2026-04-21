@@ -12,13 +12,38 @@ export interface AuthTokens {
   user: User;
 }
 
-export const AUTH_TOKEN_KEY = 'auth_token';
-export const AUTH_USER_KEY = 'auth_user';
+// Use same keys as POS Desktop for consistency
+export const AUTH_TOKEN_KEY = 'token';
+export const AUTH_USER_KEY = 'user';
+
+function setCookie(name: string, value: string, maxAgeSeconds = 24 * 60 * 60) {
+  if (typeof window === 'undefined') return;
+
+  const cookieParts = [
+    `${name}=${encodeURIComponent(value)}`,
+    `Max-Age=${maxAgeSeconds}`,
+    'Path=/',
+    'SameSite=Lax',
+  ];
+
+  if (window.location.protocol === 'https:') {
+    cookieParts.push('Secure');
+  }
+
+  document.cookie = cookieParts.join('; ');
+}
+
+function deleteCookie(name: string) {
+  if (typeof window === 'undefined') return;
+
+  document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax`;
+}
 
 export function setAuth(tokens: AuthTokens): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(AUTH_TOKEN_KEY, tokens.token);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(tokens.user));
+    setCookie(AUTH_TOKEN_KEY, tokens.token);
   }
 }
 
@@ -26,6 +51,7 @@ export function clearAuth(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
+    deleteCookie(AUTH_TOKEN_KEY);
   }
 }
 

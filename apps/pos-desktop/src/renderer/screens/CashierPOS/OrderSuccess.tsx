@@ -47,6 +47,48 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder, change = 0 }) =
     return () => clearTimeout(timer);
   }, []);
 
+  // Auto-print receipt if enabled in settings
+  useEffect(() => {
+    const autoPrintReceipt = async () => {
+      if (settings.autoPrintReceipt) {
+        setIsPrinting(true);
+        try {
+          const hw = getHardwareManager();
+          await hw.printReceipt({
+            restaurantName: settings.restaurantName || 'POSLytic Restaurant',
+            restaurantAddress: settings.address || '',
+            restaurantPhone: settings.phone || '',
+            orderNumber: receiptData.orderNumber,
+            cashierName: receiptData.customerName || 'Cashier',
+            items: receiptData.items.map(item => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price,
+              notes: item.notes,
+            })),
+            subtotal: receiptData.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+            tax: 0,
+            taxRate: settings.taxRate || 8.5,
+            discount: 0,
+            total: receiptData.total,
+            paymentMethod: 'CASH',
+            change: change,
+          });
+          toast.success('Receipt printed automatically!');
+        } catch (error) {
+          console.error('Auto-print failed:', error);
+          toast.error('Auto-print failed. Please print manually.');
+        } finally {
+          setIsPrinting(false);
+        }
+      }
+    };
+
+    // Small delay to ensure UI is ready
+    const timer = setTimeout(autoPrintReceipt, 500);
+    return () => clearTimeout(timer);
+  }, [settings.autoPrintReceipt, settings.restaurantName, settings.address, settings.phone, settings.taxRate, receiptData, change]);
+
   // Confetti particles
   const confettiParticles = Array.from({ length: 50 }, (_, i) => ({
     id: i,
@@ -55,8 +97,6 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder, change = 0 }) =
     duration: 2 + Math.random() * 2,
     color: ['#6ee591', '#50c878', '#45e3d3', '#ffe2ab'][Math.floor(Math.random() * 4)],
   }));
-
-  const currencyCode = settings.currency || 'USD';
 
   return (
     <div className="flex h-full overflow-y-auto bg-gradient-to-br from-gray-50 to-white relative overflow-hidden">

@@ -3,9 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import { 
   BarChart3, Users, DollarSign, Package, 
-  ShoppingCart, TrendingUp, AlertTriangle, Activity
+  ShoppingCart, TrendingUp, AlertTriangle, Activity,
+  Wifi, WifiOff
 } from 'lucide-react';
 import apiClient from './lib/api';
+import { useAdminWebSocket } from './hooks/useAdminWebSocket';
 
 interface DailyReport {
   totalOrders: number;
@@ -24,6 +26,9 @@ export default function Home() {
   const [topItems, setTopItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // WebSocket integration for real-time updates
+  const { isConnected, newOrders, lowStockAlerts, resetNewOrderCount } = useAdminWebSocket();
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -58,6 +63,15 @@ export default function Home() {
 
     fetchDashboardData();
   }, []);
+
+  // Refresh data when new orders come in
+  useEffect(() => {
+    if (newOrders > 0) {
+      console.log(`[Dashboard] ${newOrders} new order(s) received`);
+      // Optionally refresh dashboard data
+      // fetchDashboardData();
+    }
+  }, [newOrders]);
 
   const stats = [
     { 
@@ -99,9 +113,30 @@ export default function Home() {
             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-xl font-bold text-sm">
-          <Activity size={16} />
-          Live Data
+        <div className="flex items-center gap-3">
+          {/* WebSocket Connection Status */}
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold ${
+            isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          }`}>
+            {isConnected ? <Wifi size={16} /> : <WifiOff size={16} />}
+            {isConnected ? 'Live Updates' : 'Offline'}
+          </div>
+          
+          {/* New Orders Badge */}
+          {newOrders > 0 && (
+            <button
+              onClick={resetNewOrderCount}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors animate-pulse"
+            >
+              <ShoppingCart size={16} />
+              {newOrders} New Order{newOrders > 1 ? 's' : ''}
+            </button>
+          )}
+          
+          <div className="flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-xl font-bold text-sm">
+            <Activity size={16} />
+            Live Data
+          </div>
         </div>
       </header>
 
@@ -109,6 +144,23 @@ export default function Home() {
         <div className="bg-amber-50 border border-amber-200 text-amber-700 p-4 rounded-2xl flex items-center gap-3">
           <AlertTriangle size={20} />
           {error} — Backend may not be running. Start with <code className="bg-amber-100 px-2 py-0.5 rounded text-xs">npm run dev:api</code>
+        </div>
+      )}
+
+      {/* Real-time Alerts */}
+      {lowStockAlerts.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 space-y-2">
+          <div className="flex items-center gap-2 text-red-700 font-bold text-sm mb-2">
+            <AlertTriangle size={16} />
+            Real-Time Low Stock Alerts ({lowStockAlerts.length})
+          </div>
+          <div className="space-y-1 max-h-32 overflow-y-auto">
+            {lowStockAlerts.slice(0, 5).map((alert: any, idx: number) => (
+              <div key={idx} className="text-xs text-red-600 bg-white/50 px-3 py-2 rounded-lg">
+                ⚠️ {alert.name || 'Item'} is running low on stock
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

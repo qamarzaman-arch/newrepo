@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Clock, AlertCircle, CheckCircle, PlayCircle, 
@@ -8,9 +8,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { kitchenService, KotTicket } from '../services/kitchenService';
 import toast from 'react-hot-toast';
-import { io } from 'socket.io-client';
-import { useAuthStore } from '../stores/authStore';
-import { API_BASE_URL } from '../services/api';
+import { useKitchenWebSocket } from '../hooks/useWebSocket';
 
 interface PrepListItem {
   id: string;
@@ -26,37 +24,18 @@ const AdvancedKitchenScreen: React.FC = () => {
   const [selectedStation, setSelectedStation] = useState<string>('all');
   const [prepList, setPrepList] = useState<PrepListItem[]>([]);
   const queryClient = useQueryClient();
-  const { token } = useAuthStore();
 
-  useEffect(() => {
-    // Extract base WS URL from API URL (e.g. http://localhost:3001/api/v1 -> http://localhost:3001)
-    const wsUrl = API_BASE_URL.replace('/api/v1', '');
-    const socket = io(wsUrl, {
-      auth: { token },
-      autoConnect: true,
-    });
+  // Use the standardized WebSocket hook for kitchen updates
+  const handleNewTicket = () => {
+    queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
+    toast.success(`New order requires preparation`);
+  };
 
-    socket.on('connect', () => {
-      socket.emit('join-room', 'kitchen');
-    });
+  const handleTicketUpdate = () => {
+    queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
+  };
 
-    socket.on('order:new', (data) => {
-      queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
-      toast.success(`New order requires preparation`);
-    });
-
-    socket.on('order:updated', () => {
-      queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
-    });
-
-    socket.on('order:status-changed', () => {
-      queryClient.invalidateQueries({ queryKey: ['kitchen-tickets'] });
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [token, queryClient]);
+  const { isConnected } = useKitchenWebSocket(handleNewTicket, handleTicketUpdate);
 
   const { data: ticketsData, refetch, isRefetching } = useQuery({
     queryKey: ['kitchen-tickets'],
@@ -99,13 +78,13 @@ const AdvancedKitchenScreen: React.FC = () => {
   });
 
   // Fetch prep list from inventory service
-  const { data: lowStockItems, refetch: refetchPrep } = useQuery<PrepListItem[]>({
+  const { data: lowStockItems } = useQuery<PrepListItem[]>({
     queryKey: ['kitchen-prep-list'],
     queryFn: async () => {
       try {
         // Import inventory service dynamically to avoid circular deps
         const { inventoryService } = await import('../services/inventoryService');
-        const response = await inventoryService.getLowStockItems();
+        const response = await inventoryService.getLowStock();
         const items = response.data.data?.items || [];
         return items.map((item: any, index: number) => ({
           id: item.id || `prep-${index}`,
@@ -266,6 +245,17 @@ const AdvancedKitchenScreen: React.FC = () => {
                   Syncing
                 </div>
               )}
+              {/* WebSocket Connection Status */}
+              <div className={`flex items-center gap-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                isConnected 
+                  ? 'bg-green-500/20 text-green-400' 
+                  : 'bg-red-500/20 text-red-400'
+              }`}>
+                <div className={`w-1 h-1 rounded-full ${
+                  isConnected ? 'bg-green-400' : 'bg-red-400 animate-pulse'
+                }`}></div>
+                {isConnected ? 'Live' : 'Offline'}
+              </div>
             </div>
             <p className="text-sm text-gray-400">Real-time Order Management</p>
           </div>

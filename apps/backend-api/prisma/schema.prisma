@@ -37,6 +37,15 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   lastLoginAt   DateTime?
+  
+  // Rider-specific fields
+  status          String?   @default("ACTIVE")
+  isAvailable     Boolean   @default(true)
+  lastLocationLat Decimal?  @db.Decimal(10, 8)
+  lastLocationLng Decimal?  @db.Decimal(11, 8)
+  lastLocationAt  DateTime?
+  vehicleType     String?
+  vehiclePlate    String?
 
   orders        Order[]          @relation("CashierOrders")
   servedOrders  Order[]          @relation("ServerOrders")
@@ -49,6 +58,7 @@ model User {
   @@index([username])
   @@index([email])
   @@index([role])
+  @@index([isAvailable])
 }
 
 model Session {
@@ -211,6 +221,7 @@ model Order {
   @@index([customerId])
   @@index([tableId])
   @@index([cashierId])
+  @@index([status, orderedAt])
 }
 
 model OrderItem {
@@ -464,6 +475,7 @@ model KotTicket {
   @@index([status])
   @@index([ticketNumber])
   @@index([orderedAt])
+  @@index([status, orderedAt])
 }
 
 model Delivery {
@@ -499,6 +511,7 @@ model Delivery {
   @@index([status])
   @@index([riderId])
   @@index([deliveryNumber])
+  @@index([status, createdAt])
 }
 
 model Expense {

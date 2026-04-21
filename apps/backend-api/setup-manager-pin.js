@@ -38,7 +38,6 @@ async function setupManagerPin(pin) {
         key: 'manager_pin',
         value: hashedPin,
         category: 'security',
-        description: 'Manager PIN for approving discounts and sensitive operations',
       },
     });
 

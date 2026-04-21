@@ -6,6 +6,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 import { getWebSocketManager } from '../utils/websocket';
+import { rateLimiters } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -211,7 +212,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
 });
 
 // Create new order with retry logic for order number generation
-router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createOrderSchema.parse(req.body);
 
@@ -779,18 +780,28 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
       throw new AppError('Cannot refund unpaid order', 400);
     }
 
-    // Validate manager PIN
-    const managerPinSetting = await prisma.setting.findUnique({
-      where: { key: 'manager_pin' },
-    });
-
-    if (!managerPinSetting) {
-      throw new AppError('Manager PIN not configured', 500);
+    // Validate manager authorization
+    // Check if requesting user has manager/admin role
+    if (req.user?.role !== 'MANAGER' && req.user?.role !== 'ADMIN') {
+      logger.warn(`Unauthorized refund attempt by ${req.user?.username} (role: ${req.user?.role})`);
+      throw new AppError('Manager or Admin authorization required for refunds', 403);
     }
 
-    const isValidPin = await bcrypt.compare(managerPin, managerPinSetting.value);
+    // Get the user's PIN from database and validate
+    const requestingUser = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: { pin: true, fullName: true },
+    });
+
+    if (!requestingUser || !requestingUser.pin) {
+      logger.warn(`Refund attempted by ${req.user?.username} without PIN configured`);
+      throw new AppError('Manager PIN not configured for your account. Please contact admin.', 400);
+    }
+
+    // Validate provided PIN against user's stored PIN hash
+    const isValidPin = await bcrypt.compare(managerPin, requestingUser.pin);
     if (!isValidPin) {
-      logger.warn(`Failed refund PIN validation for order ${order.id}`);
+      logger.warn(`Failed refund PIN validation for user ${requestingUser.fullName} (${req.user?.username})`);
       throw new AppError('Invalid manager PIN', 401);
     }
 

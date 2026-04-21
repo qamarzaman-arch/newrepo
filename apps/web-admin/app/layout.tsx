@@ -6,8 +6,16 @@ import './globals.css';
 import { useRouter, usePathname } from 'next/navigation';
 import { Toaster } from 'react-hot-toast';
 import Sidebar from './components/Sidebar';
+import { apiClient } from './lib/api';
+import { clearAuth } from './lib/auth';
 
 const inter = Inter({ subsets: ['latin'] });
+
+function hasAuthCookie(): boolean {
+  if (typeof document === 'undefined') return false;
+  // Check for consistent token key
+  return document.cookie.split(';').some((cookie) => cookie.trim().startsWith('token='));
+}
 
 // Auth wrapper component
 function AuthWrapper({ children }: { children: React.ReactNode }) {
@@ -16,21 +24,43 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check authentication
-    const token = localStorage.getItem('auth_token');
-    const user = localStorage.getItem('auth_user');
+    const verifySession = async () => {
+      // Use same keys as POS Desktop for consistency
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('user');
+      const cookieExists = hasAuthCookie();
 
-    if (!token || !user) {
-      setIsAuthenticated(false);
-      if (pathname !== '/login') {
-        router.push('/login');
+      if (token && user) {
+        setIsAuthenticated(true);
+        return;
       }
-    } else {
-      setIsAuthenticated(true);
-    }
+
+      if (!cookieExists && !token) {
+        setIsAuthenticated(false);
+        if (pathname !== '/login') {
+          router.push('/login');
+        }
+        return;
+      }
+
+      try {
+        const response = await apiClient.get('/auth/verify');
+        const verifiedUser = response.data.data.user;
+        // Store with consistent keys
+        localStorage.setItem('user', JSON.stringify(verifiedUser));
+        setIsAuthenticated(true);
+      } catch (error) {
+        clearAuth();
+        setIsAuthenticated(false);
+        if (pathname !== '/login') {
+          router.push('/login');
+        }
+      }
+    };
+
+    verifySession();
   }, [pathname, router]);
 
-  // Show loading state while checking auth
   if (isAuthenticated === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -39,14 +69,12 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Don't wrap login page with sidebar
   if (pathname === '/login') {
     return <>{children}</>;
   }
 
-  // Require auth for all other pages
   if (!isAuthenticated) {
-    return null; // Will redirect in useEffect
+    return null;
   }
 
   return (

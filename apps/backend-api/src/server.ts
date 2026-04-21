@@ -23,10 +23,14 @@ if (!process.env.JWT_SECRET) {
 
 const app: Application = express();
 const server = http.createServer(app);
+
+// Socket.IO CORS configuration
+const socketCorsOrigins = process.env.CORS_ORIGIN?.split(',').map(origin => origin.trim()) || ['http://localhost:5173'];
 const io = new SocketIOServer(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: socketCorsOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
   },
 });
 
@@ -44,10 +48,28 @@ initializeWebSocketManager(io);
 
 // Middleware
 app.use(helmet());
+
+// CORS configuration - support multiple origins and reflect the request origin
+const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(origin => origin.trim()).filter(Boolean) || [];
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || false,
-  credentials: Boolean(process.env.CORS_ORIGIN),
+  origin: (origin, callback) => {
+    if (!origin) {
+      // Allow non-browser requests, such as server-to-server or curl
+      return callback(null, true);
+    }
+
+    if (corsOrigins.length === 0 || corsOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS origin not allowed: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
 }));
+
 app.use(compression());
 
 // Stripe webhook needs raw body for signature verification

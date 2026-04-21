@@ -32,7 +32,10 @@ const swapRequestSchema = z.object({
 // Get schedules for a date range
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { startDate, endDate, userId, role } = req.query;
+    const { startDate, endDate, userId, role, page = '1', limit = '50' } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
 
     const where: any = {};
     
@@ -51,27 +54,40 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
       where.role = role as string;
     }
 
-    const schedules = await (prisma as any).staffSchedule.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            username: true,
-            role: true,
+    const [schedules, total] = await Promise.all([
+      (prisma as any).staffSchedule.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              username: true,
+              role: true,
+            },
           },
         },
-      },
-      orderBy: [
-        { date: 'asc' },
-        { startTime: 'asc' },
-      ],
-    });
+        orderBy: [
+          { date: 'asc' },
+          { startTime: 'asc' },
+        ],
+        skip,
+        take: limitNum,
+      }),
+      (prisma as any).staffSchedule.count({ where }),
+    ]);
 
     res.json({
       success: true,
-      data: { schedules },
+      data: { 
+        schedules,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        }
+      },
     });
   } catch (error) {
     next(error);

@@ -13,6 +13,7 @@ import { OrderCard } from './components/OrderCard';
 import { PaymentModal } from './components/PaymentModal';
 import { ModifyOrderModal } from './components/ModifyOrderModal';
 import { ViewOrderModal } from './components/ViewOrderModal';
+import { validationService } from '../../services/validationService';
 
 const CashierActiveOrders: React.FC = () => {
   const { settings } = useSettingsStore();
@@ -103,15 +104,11 @@ const CashierActiveOrders: React.FC = () => {
   // Validate manager PIN for discount
   const validatePinMutation = useMutation({
     mutationFn: async (pin: string) => {
-      const response = await fetch('/api/v1/auth/validate-pin', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ pin, operation: 'apply_discount' }),
-      });
-      return response.json();
+      const isValid = await validationService.validateManagerPin(pin, 'apply_discount');
+      if (!isValid) {
+        throw new Error('Invalid PIN');
+      }
+      return { valid: true };
     },
   });
 

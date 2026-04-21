@@ -57,10 +57,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRoles?: stri
   children, 
   requiredRoles 
 }) => {
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const location = useLocation();
 
-  if (!user) {
+  if (!user || !isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
@@ -119,9 +119,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRoles?: stri
 
 // Default redirect based on user role
 const DefaultRedirect: React.FC = () => {
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   
-  if (!user) {
+  if (!user || !isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
   

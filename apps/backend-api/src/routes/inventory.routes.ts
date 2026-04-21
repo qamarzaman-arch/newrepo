@@ -57,12 +57,22 @@ const stockAdjustmentSchema = z.object({
 // Get all inventory items with filters
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { category, status, warehouseId, lowStock } = req.query;
+    const { category, status, warehouseId, lowStock, page = '1', limit = '50', search } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
 
     const where: any = { isActive: true };
 
     if (category) where.category = category;
     if (warehouseId) where.warehouseId = warehouseId;
+    if (search) {
+      where.OR = [
+        { name: { contains: search as string, mode: 'insensitive' } },
+        { sku: { contains: search as string, mode: 'insensitive' } },
+        { barcode: { contains: search as string, mode: 'insensitive' } },
+      ];
+    }
 
     if (status) {
       where.status = status;
@@ -72,19 +82,32 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
       where.currentStock = { lt: prisma.inventoryItem.fields.minStock as any };
     }
 
-    const items = await prisma.inventoryItem.findMany({
-      where,
-      include: {
-        menuItem: true,
-        supplier: true,
-        warehouse: true,
-      },
-      orderBy: { name: 'asc' },
-    });
+    const [items, total] = await Promise.all([
+      prisma.inventoryItem.findMany({
+        where,
+        include: {
+          menuItem: true,
+          supplier: true,
+          warehouse: true,
+        },
+        orderBy: { name: 'asc' },
+        skip,
+        take: limitNum,
+      }),
+      prisma.inventoryItem.count({ where }),
+    ]);
 
     res.json({
       success: true,
-      data: { items },
+      data: { 
+        items,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        }
+      },
     });
   } catch (error) {
     next(error);

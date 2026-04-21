@@ -13,25 +13,65 @@ import {
   BarChart3,
   LogOut,
 } from 'lucide-react';
-import { clearAuth } from '../lib/auth';
+import { clearAuth, getUser } from '../lib/auth';
 
 const navItems = [
-  { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/menu', icon: Utensils, label: 'Menu' },
-  { href: '/staff', icon: Users, label: 'Staff' },
-  { href: '/inventory', icon: Package, label: 'Inventory' },
-  { href: '/orders', icon: Receipt, label: 'Orders' },
-  { href: '/reports', icon: BarChart3, label: 'Reports' },
-  { href: '/settings', icon: Settings, label: 'Settings' },
+  {
+    href: '/',
+    icon: LayoutDashboard,
+    label: 'Dashboard',
+    roles: ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF', 'KITCHEN', 'RIDER'],
+  },
+  {
+    href: '/menu',
+    icon: Utensils,
+    label: 'Menu',
+    roles: ['ADMIN', 'MANAGER', 'CASHIER'],
+  },
+  {
+    href: '/orders',
+    icon: Receipt,
+    label: 'Orders',
+    roles: ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER'],
+  },
+  {
+    href: '/staff',
+    icon: Users,
+    label: 'Staff',
+    roles: ['ADMIN', 'MANAGER', 'CASHIER'],
+  },
+  {
+    href: '/inventory',
+    icon: Package,
+    label: 'Inventory',
+    roles: ['ADMIN', 'MANAGER'],
+  },
+  {
+    href: '/reports',
+    icon: BarChart3,
+    label: 'Reports',
+    roles: ['ADMIN', 'MANAGER', 'CASHIER'],
+  },
+  {
+    href: '/settings',
+    icon: Settings,
+    label: 'Settings',
+    roles: ['ADMIN', 'MANAGER'],
+  },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const user = getUser();
 
   const handleLogout = () => {
     clearAuth();
     window.location.href = '/login';
   };
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <aside className="w-64 bg-slate-900 text-white min-h-screen flex flex-col">
@@ -41,25 +81,27 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 py-4">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        {navItems
+          .filter((item) => item.roles.includes(user.role))
+          .map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-6 py-3 transition-colors ${
-                isActive
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-6 py-3 transition-colors ${
+                  isActive
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
       </nav>
 
       <div className="p-4 border-t border-slate-800">

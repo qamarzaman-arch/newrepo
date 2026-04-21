@@ -34,6 +34,11 @@ export const useAuthStore = create<AuthState>()(
           token,
           isAuthenticated: true,
         });
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', token);
+          localStorage.setItem('user', JSON.stringify(user));
+        }
       },
 
       logout: async () => {
@@ -42,6 +47,12 @@ export const useAuthStore = create<AuthState>()(
         } catch (error) {
           console.error('Logout error:', error);
         }
+
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+
         set({
           user: null,
           token: null,
@@ -50,29 +61,47 @@ export const useAuthStore = create<AuthState>()(
       },
 
       initialize: async () => {
-        const token = localStorage.getItem('token');
-        if (token) {
-          try {
-            // Verify token with backend
-            const response = await authService.verifyToken();
-            const user = response.data.data.user;
-            
-            set({
-              user,
-              token,
-              isAuthenticated: true,
-            });
-          } catch (error) {
-            console.error('Token verification failed:', error);
-            // Token is invalid, clear storage
+        const storedToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const token = storedToken || useAuthStore.getState().token;
+
+        if (!token) {
+          if (typeof window !== 'undefined') {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
-            set({
-              user: null,
-              token: null,
-              isAuthenticated: false,
-            });
           }
+          set({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+          });
+          return;
+        }
+
+        try {
+          const response = await authService.verifyToken();
+          const user = response.data.data.user;
+
+          set({
+            user,
+            token,
+            isAuthenticated: true,
+          });
+
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(user));
+          }
+        } catch (error) {
+          console.error('Token verification failed:', error);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+          }
+          set({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+          });
         }
       },
     }),
@@ -81,6 +110,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         token: state.token,
+        isAuthenticated: state.isAuthenticated,
       }),
     }
   )

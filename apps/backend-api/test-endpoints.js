@@ -7,7 +7,27 @@
 
 const axios = require('axios');
 
-const API_BASE = process.env.API_URL || 'http://localhost:3000/api/v1';
+const API_BASE = process.env.API_URL || 'http://localhost:3001/api/v1';
+
+let authToken = null;
+
+async function login() {
+  console.log('\n🔑 Logging in...');
+  
+  try {
+    const response = await axios.post(`${API_BASE}/auth/login`, {
+      username: 'admin',
+      password: 'admin123'
+    });
+    
+    authToken = response.data.data.token;
+    console.log('✅ Login successful!');
+    return true;
+  } catch (error) {
+    console.error('❌ Login failed:', error.response?.data || error.message);
+    return false;
+  }
+}
 
 async function testPinValidation() {
   console.log('\n🔐 Testing PIN Validation...');
@@ -17,6 +37,10 @@ async function testPinValidation() {
     const response = await axios.post(`${API_BASE}/auth/validate-pin`, {
       pin: '123456',
       operation: 'discount-25%'
+    }, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
     });
     
     console.log('✅ PIN Validation Response:', response.data);
@@ -40,6 +64,10 @@ async function testCardPayment() {
       cardDetails: {
         lastFour: '1234'
       }
+    }, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
     });
     
     console.log('✅ Card Payment Response:', response.data);
@@ -57,7 +85,11 @@ async function testPaymentHistory() {
   console.log('\n📊 Testing Payment History...');
   
   try {
-    const response = await axios.get(`${API_BASE}/payments/validations`);
+    const response = await axios.get(`${API_BASE}/payments/validations`, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
     
     console.log('✅ Payment History Response:', response.data);
     console.log(`   Found ${response.data.data.validations.length} validation records`);
@@ -69,6 +101,13 @@ async function testPaymentHistory() {
 async function runTests() {
   console.log('🚀 Starting API Endpoint Tests...');
   console.log(`   API Base URL: ${API_BASE}`);
+  
+  // Login first
+  const loggedIn = await login();
+  if (!loggedIn) {
+    console.log('❌ Cannot proceed without authentication');
+    return;
+  }
   
   await testPinValidation();
   await testCardPayment();

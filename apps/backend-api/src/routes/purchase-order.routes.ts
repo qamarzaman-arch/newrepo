@@ -22,22 +22,43 @@ const purchaseOrderSchema = z.object({
 
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { status, vendorId } = req.query;
+    const { status, vendorId, page = '1', limit = '20' } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
+
     const where: any = { isActive: true };
     if (status) where.status = status as string;
     if (vendorId) where.vendorId = vendorId as string;
 
-    const orders = await prisma.purchaseOrder.findMany({
-      where,
-      include: {
-        vendor: true,
-        items: {
-          include: { inventoryItem: true },
+    const [orders, total] = await Promise.all([
+      prisma.purchaseOrder.findMany({
+        where,
+        include: {
+          vendor: true,
+          items: {
+            include: { inventoryItem: true },
+          },
         },
-      },
-      orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum,
+      }),
+      prisma.purchaseOrder.count({ where }),
+    ]);
+    
+    res.json({ 
+      success: true, 
+      data: { 
+        orders,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        }
+      } 
     });
-    res.json({ success: true, data: { orders } });
   } catch (error) {
     next(error);
   }

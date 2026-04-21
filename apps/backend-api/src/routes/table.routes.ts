@@ -344,7 +344,6 @@ router.post('/:id/merge', authenticate, async (req: AuthRequest, res: Response, 
       where: { id: sourceTableId },
       data: {
         status: 'OUT_OF_ORDER',
-        notes: `Merged with Table ${targetTable.number}`,
       },
     });
 
@@ -353,7 +352,6 @@ router.post('/:id/merge', authenticate, async (req: AuthRequest, res: Response, 
       where: { id: targetTableId },
       data: {
         capacity: combinedCapacity,
-        notes: `Combined with Table ${sourceTable.number} (Total capacity: ${combinedCapacity})`,
       },
     });
 

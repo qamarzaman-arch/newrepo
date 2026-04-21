@@ -6,6 +6,7 @@ import { prisma } from '../config/database';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { rateLimiters } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -21,7 +22,12 @@ const loginSchema = z.object({
 const registerSchema = z.object({
   username: z.string().min(3),
   email: z.string().email().optional(),
-  password: z.string().min(6),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
   fullName: z.string().min(2),
   role: z.enum(['ADMIN', 'MANAGER', 'CASHIER', 'STAFF', 'KITCHEN', 'RIDER']),
   phone: z.string().optional(),
@@ -29,7 +35,7 @@ const registerSchema = z.object({
 });
 
 // Login
-router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/login', rateLimiters.strict, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { username, password, pin } = loginSchema.parse(req.body);
 
@@ -238,28 +244,31 @@ router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Respons
       throw new AppError('PIN is required', 400);
     }
 
-    // Get manager PIN from settings - auto-create default if not exists
-    let managerPinSetting = await prisma.setting.findUnique({
-      where: { key: 'manager_pin' },
+    // Get the authenticated user's PIN from database
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: { id: true, pin: true, role: true, fullName: true, username: true },
     });
 
-    // If no PIN configured, create default PIN "123456"
-    if (!managerPinSetting) {
-      const defaultPinHash = await bcrypt.hash('123456', 10);
-      managerPinSetting = await prisma.setting.create({
-        data: {
-          key: 'manager_pin',
-          value: defaultPinHash,
-        },
-      });
-      logger.warn('Created default manager PIN: 123456 - Please change in settings');
+    if (!user) {
+      throw new AppError('User not found', 404);
     }
 
-    // Compare PIN (stored as bcrypt hash)
-    const isValid = await bcrypt.compare(pin, managerPinSetting.value);
+    // Check if user has PIN configured
+    if (!user.pin) {
+      logger.warn(`PIN validation attempted by ${user.username} but no PIN configured`);
+      return res.json({
+        success: false,
+        valid: false,
+        message: 'No PIN configured for your account. Please contact administrator.',
+      });
+    }
+
+    // Compare provided PIN with user's stored PIN hash
+    const isValid = await bcrypt.compare(pin, user.pin);
 
     if (!isValid) {
-      logger.warn(`Failed PIN validation attempt for operation: ${operation}`);
+      logger.warn(`Failed PIN validation attempt by ${user.fullName} (${user.username}) for operation: ${operation}`);
       // Return false instead of error to prevent information leakage
       return res.json({
         success: true,
@@ -267,38 +276,19 @@ router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Respons
       });
     }
 
-    logger.info(`PIN validated successfully for operation: ${operation}`);
-
-    // Get manager name - either from authenticated user (if they're a manager) or find first manager
-    let managerName = req.user?.username || 'Manager';
-    
-    // If the current user is not a manager, try to find a manager user for audit purposes
-    if (req.user?.role !== 'MANAGER' && req.user?.role !== 'ADMIN') {
-      const managerUser = await prisma.user.findFirst({
-        where: { 
-          role: { in: ['MANAGER', 'ADMIN'] },
-          isActive: true,
-        },
-        select: { fullName: true, username: true },
-        orderBy: { lastLoginAt: 'desc' },
-      });
-      if (managerUser) {
-        managerName = managerUser.fullName || managerUser.username || 'Manager';
-      }
-    } else {
-      // Current user is a manager/admin, get their full name
-      const currentUser = await prisma.user.findUnique({
-        where: { id: req.user!.userId },
-        select: { fullName: true, username: true },
-      });
-      if (currentUser) {
-        managerName = currentUser.fullName || currentUser.username || 'Manager';
-      }
-    }
+    logger.info(`PIN validated successfully for ${user.fullName} (${user.username}) - Operation: ${operation}`);
 
     res.json({
       success: true,
-      data: { valid: true, managerName },
+      data: { 
+        valid: true,
+        user: {
+          id: user.id,
+          name: user.fullName,
+          username: user.username,
+          role: user.role,
+        }
+      },
     });
   } catch (error) {
     next(error);

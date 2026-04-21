@@ -11,7 +11,12 @@ const router = Router();
 const createUserSchema = z.object({
   username: z.string().min(3),
   email: z.string().email().optional(),
-  password: z.string().min(6),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
   fullName: z.string().min(1),
   role: z.enum(['ADMIN', 'MANAGER', 'CASHIER', 'STAFF', 'KITCHEN', 'RIDER']),
   pin: z.string().length(4).optional(),
@@ -21,19 +26,46 @@ const createUserSchema = z.object({
 // Get users
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { role } = req.query;
+    const { role, page = '1', limit = '20', search } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
+
     const where: any = { isActive: true };
     if (role) where.role = role;
+    if (search) {
+      where.OR = [
+        { fullName: { contains: search as string, mode: 'insensitive' } },
+        { username: { contains: search as string, mode: 'insensitive' } },
+        { email: { contains: search as string, mode: 'insensitive' } },
+      ];
+    }
 
-    const users = await prisma.user.findMany({
-      where,
-      select: {
-        id: true, username: true, email: true, fullName: true, role: true, phone: true, avatar: true, isActive: true, lastLoginAt: true,
-      },
-      orderBy: { fullName: 'asc' },
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true, username: true, email: true, fullName: true, role: true, phone: true, avatar: true, isActive: true, lastLoginAt: true,
+        },
+        orderBy: { fullName: 'asc' },
+        skip,
+        take: limitNum,
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    res.json({ 
+      success: true, 
+      data: { 
+        users,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        }
+      } 
     });
-
-    res.json({ success: true, data: { users } });
   } catch (error) {
     next(error);
   }

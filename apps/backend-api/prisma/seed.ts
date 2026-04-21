@@ -8,9 +8,10 @@ async function main() {
 
   // Create admin user
   const adminPassword = await bcrypt.hash('admin123', 12);
+  const adminPin = await bcrypt.hash('9876', 12); // Hashed PIN
   await prisma.user.upsert({
     where: { username: 'admin' },
-    update: { pin: '1234' },
+    update: { pin: adminPin },
     create: {
       username: 'admin',
       email: 'admin@restaurant.com',
@@ -18,16 +19,17 @@ async function main() {
       fullName: 'Admin User',
       role: 'ADMIN',
       phone: '+1234567890',
-      pin: '1234',
+      pin: adminPin,
     },
   });
-  console.log('✅ Created admin user');
+  console.log('✅ Created admin user (PIN: 9876)');
 
   // Create cashier users
   const cashierPassword = await bcrypt.hash('cashier123', 12);
+  const cashierPin1 = await bcrypt.hash('5678', 12); // Hashed PIN
   await prisma.user.upsert({
     where: { username: 'cashier' },
-    update: { pin: '0000' },
+    update: { pin: cashierPin1 },
     create: {
       username: 'cashier',
       email: 'cashier@restaurant.com',
@@ -35,14 +37,14 @@ async function main() {
       fullName: 'Default Cashier',
       role: 'CASHIER',
       phone: '+1234567899',
-      pin: '0000',
+      pin: cashierPin1,
     },
   });
-  console.log('✅ Created cashier user');
+  console.log('✅ Created cashier user (PIN: 5678)');
 
   await prisma.user.upsert({
     where: { username: 'cashier1' },
-    update: { pin: '1111' },
+    update: {},
     create: {
       username: 'cashier1',
       email: 'cashier1@restaurant.com',
@@ -50,14 +52,13 @@ async function main() {
       fullName: 'John Cashier',
       role: 'CASHIER',
       phone: '+1234567891',
-      pin: '1111',
     },
   });
-  console.log('✅ Created cashier1 user');
+  console.log('✅ Created cashier1 user (No PIN)');
 
   await prisma.user.upsert({
     where: { username: 'cashier2' },
-    update: { pin: '2222' },
+    update: {},
     create: {
       username: 'cashier2',
       email: 'cashier2@restaurant.com',
@@ -65,16 +66,16 @@ async function main() {
       fullName: 'Sarah Cashier',
       role: 'CASHIER',
       phone: '+1234567892',
-      pin: '2222',
     },
   });
-  console.log('✅ Created cashier2 user');
+  console.log('✅ Created cashier2 user (No PIN)');
 
   // Create manager user
   const managerPassword = await bcrypt.hash('manager123', 12);
+  const managerPin = await bcrypt.hash('4567', 12); // Hashed PIN for manager
   await prisma.user.upsert({
     where: { username: 'manager' },
-    update: { pin: '3333' },
+    update: { pin: managerPin },
     create: {
       username: 'manager',
       email: 'manager@restaurant.com',
@@ -82,16 +83,16 @@ async function main() {
       fullName: 'Mike Manager',
       role: 'MANAGER',
       phone: '+1234567893',
-      pin: '3333',
+      pin: managerPin,
     },
   });
-  console.log('✅ Created manager user');
+  console.log('✅ Created manager user (PIN: 4567)');
 
   // Create kitchen staff user
   const kitchenPassword = await bcrypt.hash('kitchen123', 12);
   await prisma.user.upsert({
     where: { username: 'kitchen' },
-    update: { pin: '4444' },
+    update: {},
     create: {
       username: 'kitchen',
       email: 'kitchen@restaurant.com',
@@ -99,10 +100,9 @@ async function main() {
       fullName: 'Chef Kitchen',
       role: 'KITCHEN',
       phone: '+1234567894',
-      pin: '4444',
     },
   });
-  console.log('✅ Created kitchen user');
+  console.log('✅ Created kitchen user (No PIN)');
 
   // Create menu categories
   const categories = await Promise.all([
