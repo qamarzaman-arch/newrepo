@@ -8,6 +8,9 @@ export interface Customer {
   phone: string;
   address?: string;
   city?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  notes?: string;
   loyaltyPoints: number;
   totalOrders: number;
   totalSpent: number;

@@ -8,6 +8,8 @@ export interface Staff {
   email?: string;
   phone?: string;
   avatar?: string;
+  pin?: string;
+  password?: string;
   isActive: boolean;
 }
 

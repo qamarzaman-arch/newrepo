@@ -264,24 +264,63 @@ const AdvancedOrdersScreen: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 font-manrope">Order Management</h1>
           <p className="text-gray-600 mt-1">Manage orders, tables, and reservations</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            if (activeTab === 'orders') {
-              refetch();
-            } else if (activeTab === 'tables') {
-              refetchTables();
-            } else if (activeTab === 'reservations') {
-              refetchReservations();
-            }
-            toast.success(`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} refreshed!`);
-          }}
-          className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors self-start"
-        >
-          <RefreshCw className="w-5 h-5" />
-          Refresh
-        </motion.button>
+        <div className="flex gap-3 self-start">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              if (activeTab === 'orders') {
+                refetch();
+              } else if (activeTab === 'tables') {
+                refetchTables();
+              } else if (activeTab === 'reservations') {
+                refetchReservations();
+              }
+              toast.success(`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} refreshed!`);
+            }}
+            className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
+          >
+            <RefreshCw className="w-5 h-5" />
+            Refresh
+          </motion.button>
+          {isAdminOrManager && (
+            <>
+              {activeTab === 'orders' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowOrderModal(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Order
+                </motion.button>
+              )}
+              {activeTab === 'tables' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowTableModal(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Table
+                </motion.button>
+              )}
+              {activeTab === 'reservations' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowReservationModal(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Reservation
+                </motion.button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}

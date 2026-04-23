@@ -188,6 +188,7 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder, change = 0 }) =
                   <span className="text-gray-500">Type:</span>
                   <span className="text-gray-900 font-semibold">
                     {receiptData.orderType === 'DINE_IN' ? 'Dine-In' :
+                     receiptData.orderType === 'PICKUP' ? 'Pickup' :
                      receiptData.orderType === 'TAKEAWAY' ? 'Takeaway' :
                      receiptData.orderType === 'DELIVERY' ? 'Delivery' :
                      receiptData.orderType === 'PICKUP' ? 'Pickup' :

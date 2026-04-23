@@ -155,9 +155,6 @@ const RefundModal: React.FC<RefundModalProps> = ({ isOpen, onClose, order, onSuc
       return;
     }
 
-    // Store manager name for audit
-    setManagerName(user?.fullName || 'Manager');
-
     // Process refund
     const refundAmount = refundType === 'FULL' 
       ? order.total 

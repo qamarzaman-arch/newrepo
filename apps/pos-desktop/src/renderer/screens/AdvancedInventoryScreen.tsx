@@ -19,6 +19,9 @@ const AdvancedInventoryScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showItemModal, setShowItemModal] = useState(false);
+  const [showPOModal, setShowPOModal] = useState(false);
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [showVendorModal, setShowVendorModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -36,6 +39,38 @@ const AdvancedInventoryScreen: React.FC = () => {
     status: 'IN_STOCK',
     isActive: true,
     warehouseId: '',
+  });
+  const [poFormData, setPOFormData] = useState({
+    vendorId: '',
+    status: 'PENDING',
+    notes: '',
+    totalAmount: 0,
+    expectedDelivery: '',
+    isActive: true,
+    items: [] as Array<{ inventoryItemId: string; quantity: number; unitCost: number }>,
+  });
+  const [recipeFormData, setRecipeFormData] = useState({
+    name: '',
+    description: '',
+    instructions: '',
+    prepTimeMinutes: 0,
+    cookTimeMinutes: 0,
+    servings: 1,
+    cost: 0,
+    menuItemId: '',
+    isActive: true,
+    ingredients: [] as Array<{ inventoryItemId: string; quantity: number; unit: string }>,
+  });
+  const [vendorFormData, setVendorFormData] = useState({
+    name: '',
+    contactName: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    website: '',
+    notes: '',
+    isActive: true,
   });
 
   const { data: inventoryData } = useQuery({
@@ -199,6 +234,153 @@ const AdvancedInventoryScreen: React.FC = () => {
     }
   };
 
+  const handleAddPO = async () => {
+    if (!poFormData.vendorId || poFormData.items.length === 0) {
+      toast.error('Please select a vendor and add at least one item');
+      return;
+    }
+    try {
+      await inventoryService.createPurchaseOrder({
+        vendorId: poFormData.vendorId,
+        status: poFormData.status,
+        notes: poFormData.notes,
+        totalAmount: poFormData.totalAmount,
+        expectedDelivery: poFormData.expectedDelivery ? new Date(poFormData.expectedDelivery).toISOString() : undefined,
+        isActive: poFormData.isActive,
+        items: poFormData.items,
+      });
+      toast.success('Purchase Order created successfully');
+      setShowPOModal(false);
+      setPOFormData({
+        vendorId: '',
+        status: 'PENDING',
+        notes: '',
+        totalAmount: 0,
+        expectedDelivery: '',
+        isActive: true,
+        items: [],
+      });
+    } catch (error) {
+      toast.error('Failed to create Purchase Order');
+    }
+  };
+
+  const handleAddRecipe = async () => {
+    if (!recipeFormData.name || recipeFormData.ingredients.length === 0) {
+      toast.error('Please fill required fields and add at least one ingredient');
+      return;
+    }
+    try {
+      await inventoryService.createRecipe({
+        name: recipeFormData.name,
+        description: recipeFormData.description,
+        instructions: recipeFormData.instructions,
+        prepTimeMinutes: recipeFormData.prepTimeMinutes,
+        cookTimeMinutes: recipeFormData.cookTimeMinutes,
+        servings: recipeFormData.servings,
+        cost: recipeFormData.cost,
+        menuItemId: recipeFormData.menuItemId || undefined,
+        isActive: recipeFormData.isActive,
+        ingredients: recipeFormData.ingredients,
+      });
+      toast.success('Recipe added successfully');
+      setShowRecipeModal(false);
+      setRecipeFormData({
+        name: '',
+        description: '',
+        instructions: '',
+        prepTimeMinutes: 0,
+        cookTimeMinutes: 0,
+        servings: 1,
+        cost: 0,
+        menuItemId: '',
+        isActive: true,
+        ingredients: [],
+      });
+    } catch (error) {
+      toast.error('Failed to add recipe');
+    }
+  };
+
+  const handleAddVendor = async () => {
+    if (!vendorFormData.name) {
+      toast.error('Please fill required fields');
+      return;
+    }
+    try {
+      await inventoryService.createVendor({
+        name: vendorFormData.name,
+        contactName: vendorFormData.contactName,
+        email: vendorFormData.email,
+        phone: vendorFormData.phone,
+        address: vendorFormData.address,
+        city: vendorFormData.city,
+        website: vendorFormData.website,
+        notes: vendorFormData.notes,
+        isActive: vendorFormData.isActive,
+      });
+      toast.success('Vendor added successfully');
+      setShowVendorModal(false);
+      setVendorFormData({
+        name: '',
+        contactName: '',
+        email: '',
+        phone: '',
+        address: '',
+        city: '',
+        website: '',
+        notes: '',
+        isActive: true,
+      });
+    } catch (error) {
+      toast.error('Failed to add vendor');
+    }
+  };
+
+  const handleImport = () => {
+    toast.success('Import functionality - please select a CSV file');
+  };
+
+  const addPOItem = () => {
+    setPOFormData({
+      ...poFormData,
+      items: [...poFormData.items, { inventoryItemId: '', quantity: 0, unitCost: 0 }],
+    });
+  };
+
+  const removePOItem = (index: number) => {
+    setPOFormData({
+      ...poFormData,
+      items: poFormData.items.filter((_, i) => i !== index),
+    });
+  };
+
+  const updatePOItem = (index: number, field: string, value: any) => {
+    const updatedItems = [...poFormData.items];
+    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    setPOFormData({ ...poFormData, items: updatedItems });
+  };
+
+  const addRecipeIngredient = () => {
+    setRecipeFormData({
+      ...recipeFormData,
+      ingredients: [...recipeFormData.ingredients, { inventoryItemId: '', quantity: 0, unit: '' }],
+    });
+  };
+
+  const removeRecipeIngredient = (index: number) => {
+    setRecipeFormData({
+      ...recipeFormData,
+      ingredients: recipeFormData.ingredients.filter((_, i) => i !== index),
+    });
+  };
+
+  const updateRecipeIngredient = (index: number, field: string, value: any) => {
+    const updatedIngredients = [...recipeFormData.ingredients];
+    updatedIngredients[index] = { ...updatedIngredients[index], [field]: value };
+    setRecipeFormData({ ...recipeFormData, ingredients: updatedIngredients });
+  };
+
   const getPOStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -221,6 +403,7 @@ const AdvancedInventoryScreen: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={handleImport}
             className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
           >
             <Upload className="w-5 h-5" />
@@ -243,7 +426,7 @@ const AdvancedInventoryScreen: React.FC = () => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => toast.success('Add Purchase Order functionality coming soon')}
+                  onClick={() => setShowPOModal(true)}
                   className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
                 >
                   <Plus className="w-5 h-5" />
@@ -254,7 +437,7 @@ const AdvancedInventoryScreen: React.FC = () => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => toast.success('Add Recipe functionality coming soon')}
+                  onClick={() => setShowRecipeModal(true)}
                   className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
                 >
                   <Plus className="w-5 h-5" />
@@ -265,7 +448,7 @@ const AdvancedInventoryScreen: React.FC = () => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => toast.success('Add Vendor functionality coming soon')}
+                  onClick={() => setShowVendorModal(true)}
                   className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
                 >
                   <Plus className="w-5 h-5" />
@@ -502,17 +685,6 @@ const AdvancedInventoryScreen: React.FC = () => {
       {/* PURCHASE ORDERS TAB */}
       {activeTab === 'purchase-orders' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
-            >
-              <Plus className="w-5 h-5" />
-              Create PO
-            </motion.button>
-          </div>
-
           {purchaseOrders.map((po, index) => (
             <motion.div
               key={po.id}
@@ -665,7 +837,7 @@ const AdvancedInventoryScreen: React.FC = () => {
 
       {showItemModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">{selectedItem ? 'Edit Item' : 'Add New Item'}</h2>
             <div className="space-y-4">
               <div>
@@ -674,30 +846,257 @@ const AdvancedInventoryScreen: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">SKU</label>
-                <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="SKU-001" />
+                <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="SKU" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Barcode</label>
+                <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Barcode" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Category</label>
-                <input type="text" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Produce" />
+                <input type="text" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Category" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Unit</label>
+                <input type="text" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="pcs" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Current Stock</label>
-                  <input type="number" value={formData.currentStock} onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
+                  <input type="number" step="0.01" value={formData.currentStock} onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Min Stock</label>
-                  <input type="number" value={formData.minStock} onChange={(e) => setFormData({ ...formData, minStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="10" />
+                  <input type="number" step="0.01" value={formData.minStock} onChange={(e) => setFormData({ ...formData, minStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Max Stock</label>
+                  <input type="number" step="0.01" value={formData.maxStock} onChange={(e) => setFormData({ ...formData, maxStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Reserved Stock</label>
+                  <input type="number" step="0.01" value={formData.reservedStock} onChange={(e) => setFormData({ ...formData, reservedStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Cost Per Unit</label>
+                  <input type="number" step="0.01" value={formData.costPerUnit} onChange={(e) => setFormData({ ...formData, costPerUnit: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0.00" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Selling Price</label>
+                  <input type="number" step="0.01" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0.00" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Cost Per Unit</label>
-                <input type="number" step="0.01" value={formData.costPerUnit} onChange={(e) => setFormData({ ...formData, costPerUnit: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0.00" />
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Supplier ID</label>
+                <input type="text" value={formData.supplierId} onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Supplier ID" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Warehouse ID</label>
+                <input type="text" value={formData.warehouseId} onChange={(e) => setFormData({ ...formData, warehouseId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Warehouse ID" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
+                <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                  <option value="IN_STOCK">In Stock</option>
+                  <option value="LOW_STOCK">Low Stock</option>
+                  <option value="OUT_OF_STOCK">Out of Stock</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="itemActive" checked={formData.isActive} onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })} className="w-4 h-4" />
+                <label htmlFor="itemActive" className="text-sm text-gray-700">Active</label>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => { setShowItemModal(false); setSelectedItem(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={selectedItem ? handleUpdateItem : handleAddItem} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{selectedItem ? 'Update' : 'Add Item'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PO Modal */}
+      {showPOModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Purchase Order</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Vendor *</label>
+                <select value={poFormData.vendorId} onChange={(e) => setPOFormData({ ...poFormData, vendorId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required>
+                  <option value="">Select Vendor</option>
+                  {vendors.map((v: any) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
+                <select value={poFormData.status} onChange={(e) => setPOFormData({ ...poFormData, status: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                  <option value="PENDING">Pending</option>
+                  <option value="SHIPPED">Shipped</option>
+                  <option value="RECEIVED">Received</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Expected Delivery</label>
+                <input type="date" value={poFormData.expectedDelivery} onChange={(e) => setPOFormData({ ...poFormData, expectedDelivery: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Notes</label>
+                <textarea value={poFormData.notes} onChange={(e) => setPOFormData({ ...poFormData, notes: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={3} placeholder="Notes" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-semibold text-gray-700">Items *</label>
+                  <button onClick={addPOItem} className="text-sm text-primary font-semibold">+ Add Item</button>
+                </div>
+                {poFormData.items.map((item, index) => (
+                  <div key={index} className="grid grid-cols-4 gap-2 mb-2">
+                    <select value={item.inventoryItemId} onChange={(e) => updatePOItem(index, 'inventoryItemId', e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg">
+                      <option value="">Select Item</option>
+                      {items.map((i: any) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                    </select>
+                    <input type="number" placeholder="Qty" value={item.quantity} onChange={(e) => updatePOItem(index, 'quantity', parseFloat(e.target.value))} className="px-3 py-2 border border-gray-200 rounded-lg" />
+                    <input type="number" step="0.01" placeholder="Unit Cost" value={item.unitCost} onChange={(e) => updatePOItem(index, 'unitCost', parseFloat(e.target.value))} className="px-3 py-2 border border-gray-200 rounded-lg" />
+                    <button onClick={() => removePOItem(index)} className="px-3 py-2 bg-red-100 text-red-700 rounded-lg">Remove</button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="poActive" checked={poFormData.isActive} onChange={(e) => setPOFormData({ ...poFormData, isActive: e.target.checked })} className="w-4 h-4" />
+                <label htmlFor="poActive" className="text-sm text-gray-700">Active</label>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowPOModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleAddPO} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Create PO</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recipe Modal */}
+      {showRecipeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Recipe</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Recipe Name *</label>
+                <input type="text" value={recipeFormData.name} onChange={(e) => setRecipeFormData({ ...recipeFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+                <textarea value={recipeFormData.description} onChange={(e) => setRecipeFormData({ ...recipeFormData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={2} placeholder="Description" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Instructions</label>
+                <textarea value={recipeFormData.instructions} onChange={(e) => setRecipeFormData({ ...recipeFormData, instructions: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={4} placeholder="Cooking instructions" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Prep Time (min)</label>
+                  <input type="number" value={recipeFormData.prepTimeMinutes} onChange={(e) => setRecipeFormData({ ...recipeFormData, prepTimeMinutes: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Cook Time (min)</label>
+                  <input type="number" value={recipeFormData.cookTimeMinutes} onChange={(e) => setRecipeFormData({ ...recipeFormData, cookTimeMinutes: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Servings</label>
+                  <input type="number" value={recipeFormData.servings} onChange={(e) => setRecipeFormData({ ...recipeFormData, servings: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Cost</label>
+                  <input type="number" step="0.01" value={recipeFormData.cost} onChange={(e) => setRecipeFormData({ ...recipeFormData, cost: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Menu Item (Optional)</label>
+                <input type="text" value={recipeFormData.menuItemId} onChange={(e) => setRecipeFormData({ ...recipeFormData, menuItemId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Menu Item ID" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-semibold text-gray-700">Ingredients *</label>
+                  <button onClick={addRecipeIngredient} className="text-sm text-primary font-semibold">+ Add Ingredient</button>
+                </div>
+                {recipeFormData.ingredients.map((ing, index) => (
+                  <div key={index} className="grid grid-cols-4 gap-2 mb-2">
+                    <select value={ing.inventoryItemId} onChange={(e) => updateRecipeIngredient(index, 'inventoryItemId', e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg">
+                      <option value="">Select Item</option>
+                      {items.map((i: any) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                    </select>
+                    <input type="number" step="0.01" placeholder="Quantity" value={ing.quantity} onChange={(e) => updateRecipeIngredient(index, 'quantity', parseFloat(e.target.value))} className="px-3 py-2 border border-gray-200 rounded-lg" />
+                    <input type="text" placeholder="Unit" value={ing.unit} onChange={(e) => updateRecipeIngredient(index, 'unit', e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg" />
+                    <button onClick={() => removeRecipeIngredient(index)} className="px-3 py-2 bg-red-100 text-red-700 rounded-lg">Remove</button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="recipeActive" checked={recipeFormData.isActive} onChange={(e) => setRecipeFormData({ ...recipeFormData, isActive: e.target.checked })} className="w-4 h-4" />
+                <label htmlFor="recipeActive" className="text-sm text-gray-700">Active</label>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowRecipeModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleAddRecipe} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Add Recipe</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vendor Modal */}
+      {showVendorModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Vendor</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Vendor Name *</label>
+                <input type="text" value={vendorFormData.name} onChange={(e) => setVendorFormData({ ...vendorFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Contact Name</label>
+                <input type="text" value={vendorFormData.contactName} onChange={(e) => setVendorFormData({ ...vendorFormData, contactName: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                <input type="email" value={vendorFormData.email} onChange={(e) => setVendorFormData({ ...vendorFormData, email: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
+                <input type="tel" value={vendorFormData.phone} onChange={(e) => setVendorFormData({ ...vendorFormData, phone: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Address</label>
+                <input type="text" value={vendorFormData.address} onChange={(e) => setVendorFormData({ ...vendorFormData, address: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
+                <input type="text" value={vendorFormData.city} onChange={(e) => setVendorFormData({ ...vendorFormData, city: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Website</label>
+                <input type="url" value={vendorFormData.website} onChange={(e) => setVendorFormData({ ...vendorFormData, website: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Notes</label>
+                <textarea value={vendorFormData.notes} onChange={(e) => setVendorFormData({ ...vendorFormData, notes: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={3} placeholder="Notes" />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="vendorActive" checked={vendorFormData.isActive} onChange={(e) => setVendorFormData({ ...vendorFormData, isActive: e.target.checked })} className="w-4 h-4" />
+                <label htmlFor="vendorActive" className="text-sm text-gray-700">Active</label>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowVendorModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleAddVendor} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Add Vendor</button>
             </div>
           </div>
         </div>

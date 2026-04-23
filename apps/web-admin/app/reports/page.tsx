@@ -13,8 +13,8 @@ interface SalesReport {
 
 interface TopItem {
   name: string;
-  quantity: number;
-  revenue: number;
+  totalQuantity: number;
+  totalRevenue: number;
 }
 
 export default function ReportsPage() {
@@ -29,9 +29,10 @@ export default function ReportsPage() {
     const fetchReports = async () => {
       setLoading(true);
       try {
+        const rangeDays = parseInt(dateRange.replace('d', ''), 10) || 7;
         const [salesRes, topRes, staffRes] = await Promise.allSettled([
-          apiClient.get(`/reports/sales?range=${dateRange}`),
-          apiClient.get('/reports/products/top-selling?limit=10'),
+          apiClient.get(`/reports/sales/monthly?range=${rangeDays}`),
+          apiClient.get(`/reports/products/top-selling?limit=10&days=${rangeDays}`),
           apiClient.get('/reports/staff/performance'),
         ]);
 
@@ -41,15 +42,20 @@ export default function ReportsPage() {
           setSummary({
             totalRevenue: data.totalRevenue || 0,
             totalOrders: data.totalOrders || 0,
-            avgOrderValue: data.avgOrderValue || 0,
-            topItem: topItems[0]?.name || '-',
+            avgOrderValue: data.totalOrders ? (data.totalRevenue || 0) / data.totalOrders : 0,
+            topItem: '-',
           });
         }
         if (topRes.status === 'fulfilled') {
-          setTopItems(topRes.value.data.data?.items || []);
+          const items = topRes.value.data.data?.items || [];
+          setTopItems(items);
+          setSummary((current) => ({
+            ...current,
+            topItem: items[0]?.name || '-',
+          }));
         }
         if (staffRes.status === 'fulfilled') {
-          setStaffPerformance(staffRes.value.data.data || []);
+          setStaffPerformance(staffRes.value.data.data?.performances || []);
         }
       } catch (err) {
         console.error('Failed to fetch reports:', err);
@@ -189,8 +195,8 @@ export default function ReportsPage() {
                     <span className="font-semibold text-gray-700">{item.name}</span>
                   </div>
                   <div className="text-right">
-                    <span className="font-bold text-gray-900">{item.quantity} sold</span>
-                    <span className="text-green-600 text-sm ml-2">${item.revenue?.toFixed(2)}</span>
+                    <span className="font-bold text-gray-900">{item.totalQuantity} sold</span>
+                    <span className="text-green-600 text-sm ml-2">${item.totalRevenue?.toFixed(2)}</span>
                   </div>
                 </div>
               ))}

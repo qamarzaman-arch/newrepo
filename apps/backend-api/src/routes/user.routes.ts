@@ -177,9 +177,11 @@ router.patch('/:id/pin', authenticate, async (req: AuthRequest, res: Response, n
       throw new AppError('PIN must be 4 digits', 400);
     }
 
+    const pinHash = await bcrypt.hash(pin, 12);
+
     await prisma.user.update({
       where: { id: req.params.id },
-      data: { pin },
+      data: { pin: pinHash },
     });
 
     res.json({ success: true, message: 'PIN updated successfully' });

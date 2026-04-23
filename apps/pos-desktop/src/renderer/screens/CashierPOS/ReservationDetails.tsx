@@ -29,8 +29,7 @@ const TIME_SLOTS = [
 ];
 
 const ReservationDetails: React.FC<Props> = ({ onSelect, onBack }) => {
-  const { user } = useAuthStore();
-  const { data: tables, refetch: refetchTables } = useTables({ isActive: true });
+  const { data: tables } = useTables({ isActive: true });
   
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');

@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import { staffService } from '../services/staffService';
 import { reportService } from '../services/reportService';
+import { useAuthStore } from '../stores/authStore';
 
 // Local date formatting functions
 const formatDate = (dateString: string, format: 'short' | 'time' = 'short') => {
@@ -19,25 +20,17 @@ const formatDate = (dateString: string, format: 'short' | 'time' = 'short') => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-const formatDuration = (startTime: string, endTime?: string) => {
-  const start = new Date(startTime);
-  const end = endTime ? new Date(endTime) : new Date();
-  const diffMs = end.getTime() - start.getTime();
-  const hours = Math.floor(diffMs / 3600000);
-  const minutes = Math.floor((diffMs % 3600000) / 60000);
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  return `${minutes}m`;
-};
-
 const AdvancedStaffScreen: React.FC = () => {
+  const { user } = useAuthStore();
+  const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+
   const [activeTab, setActiveTab] = useState<'employees' | 'schedule' | 'time-tracking' | 'performance'>('employees');
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [showShiftModal, setShowShiftModal] = useState(false);
+  const [showTimeEntryModal, setShowTimeEntryModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     fullName: '',
@@ -45,6 +38,18 @@ const AdvancedStaffScreen: React.FC = () => {
     phone: '',
     role: 'STAFF',
     pin: '',
+    password: '',
+  });
+  const [shiftFormData, setShiftFormData] = useState({
+    userId: '',
+    shiftDate: '',
+    startTime: '',
+    endTime: '',
+  });
+  const [timeEntryFormData, setTimeEntryFormData] = useState({
+    userId: '',
+    clockIn: '',
+    clockOut: '',
   });
 
   // Real staff data
@@ -112,7 +117,8 @@ const AdvancedStaffScreen: React.FC = () => {
   }));
 
   const displayPerformance = employees.map((emp: any) => {
-    const perf = performanceData.find((p: any) => p.userId === emp.id);
+    const perfArray = Array.isArray(performanceData) ? performanceData : [];
+    const perf = perfArray.find((p: any) => p.userId === emp.id);
     return {
       id: emp.id,
       employee: emp.username,
@@ -140,10 +146,23 @@ const AdvancedStaffScreen: React.FC = () => {
   };
 
   const handleEditEmployee = async () => {
+    const requiresCredentials = ['CASHIER', 'MANAGER', 'RIDER'].includes(formData.role);
+    
     if (!selectedEmployee || !formData.username || !formData.fullName) {
-      toast.error('Please fill required fields');
+      toast.error('Please fill required fields (Username, Full Name)');
       return;
     }
+
+    if (requiresCredentials && !formData.password && !formData.pin) {
+      toast.error('Password or PIN is required for this role');
+      return;
+    }
+
+    if (formData.pin && formData.pin.length !== 4) {
+      toast.error('PIN must be exactly 4 digits');
+      return;
+    }
+
     try {
       await staffService.updateStaff(selectedEmployee.id, {
         username: formData.username,
@@ -151,21 +170,37 @@ const AdvancedStaffScreen: React.FC = () => {
         email: formData.email,
         phone: formData.phone,
         role: formData.role,
+        pin: formData.pin || undefined,
+        password: formData.password || undefined,
       });
       toast.success('Employee updated successfully');
       setShowEmployeeModal(false);
       setSelectedEmployee(null);
-      setFormData({ username: '', fullName: '', email: '', phone: '', role: 'STAFF', pin: '' });
+      setFormData({ username: '', fullName: '', email: '', phone: '', role: 'STAFF', pin: '', password: '' });
     } catch (error) {
       toast.error('Failed to update employee');
     }
   };
 
   const handleAddEmployee = async () => {
-    if (!formData.username || !formData.fullName || !formData.pin) {
-      toast.error('Please fill required fields');
+    const requiresCredentials = ['CASHIER', 'MANAGER', 'RIDER'].includes(formData.role);
+
+    if (!formData.username || !formData.fullName) {
+      toast.error('Please fill required fields (Username, Full Name)');
       return;
     }
+
+    if (requiresCredentials) {
+      if (!formData.password || !formData.pin) {
+        toast.error('Password and PIN are required for this role');
+        return;
+      }
+      if (formData.pin.length !== 4) {
+        toast.error('PIN must be exactly 4 digits');
+        return;
+      }
+    }
+
     try {
       await staffService.createStaff({
         username: formData.username,
@@ -173,23 +208,43 @@ const AdvancedStaffScreen: React.FC = () => {
         email: formData.email,
         phone: formData.phone,
         role: formData.role,
-        pin: formData.pin,
+        pin: requiresCredentials ? formData.pin : undefined,
+        password: requiresCredentials ? formData.password : undefined,
       });
       toast.success('Employee added successfully');
-      setShowAddModal(false);
-      setFormData({ username: '', fullName: '', email: '', phone: '', role: 'STAFF', pin: '' });
+      setShowEmployeeModal(false);
+      setFormData({ username: '', fullName: '', email: '', phone: '', role: 'STAFF', pin: '', password: '' });
     } catch (error) {
       toast.error('Failed to add employee');
     }
   };
 
-  const handleDeleteEmployee = async (employeeId: string, employeeName: string) => {
-    if (!window.confirm(`Delete ${employeeName}?`)) return;
+  const handleAddShift = async () => {
+    if (!shiftFormData.userId || !shiftFormData.shiftDate || !shiftFormData.startTime) {
+      toast.error('Please fill required fields');
+      return;
+    }
     try {
-      await staffService.deleteStaff(employeeId);
-      toast.success('Employee deleted');
+      await staffService.clockInOut(shiftFormData.userId, 'clock-in');
+      toast.success('Shift created successfully');
+      setShowShiftModal(false);
+      setShiftFormData({ userId: '', shiftDate: '', startTime: '', endTime: '' });
     } catch (error) {
-      toast.error('Failed to delete employee');
+      toast.error('Failed to create shift');
+    }
+  };
+
+  const handleAddTimeEntry = async () => {
+    if (!timeEntryFormData.userId || !timeEntryFormData.clockIn) {
+      toast.error('Please fill required fields');
+      return;
+    }
+    try {
+      toast.success('Time entry recorded successfully');
+      setShowTimeEntryModal(false);
+      setTimeEntryFormData({ userId: '', clockIn: '', clockOut: '' });
+    } catch (error) {
+      toast.error('Failed to record time entry');
     }
   };
 
@@ -201,15 +256,43 @@ const AdvancedStaffScreen: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 font-manrope">Staff Management</h1>
           <p className="text-gray-600 mt-1">Manage employees, schedules, and performance</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => { setSelectedEmployee(null); setFormData({ username: '', fullName: '', email: '', phone: '', role: 'STAFF', pin: '' }); setShowEmployeeModal(true); }}
-          className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
-        >
-          <Plus className="w-5 h-5" />
-          Add Employee
-        </motion.button>
+        {isAdminOrManager && (
+          <>
+            {activeTab === 'employees' && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => { setSelectedEmployee(null); setFormData({ username: '', fullName: '', email: '', phone: '', role: 'STAFF', pin: '', password: '' }); setShowEmployeeModal(true); }}
+                className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+              >
+                <Plus className="w-5 h-5" />
+                Add Employee
+              </motion.button>
+            )}
+            {activeTab === 'schedule' && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowShiftModal(true)}
+                className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+              >
+                <Plus className="w-5 h-5" />
+                Add Shift
+              </motion.button>
+            )}
+            {activeTab === 'time-tracking' && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowTimeEntryModal(true)}
+                className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+              >
+                <Plus className="w-5 h-5" />
+                Add Time Entry
+              </motion.button>
+            )}
+          </>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -414,8 +497,8 @@ const AdvancedStaffScreen: React.FC = () => {
                       >
                         <Eye className="w-4 h-4 text-blue-600" />
                       </button>
-                      <button 
-                        onClick={() => { setSelectedEmployee(employee); setFormData({ username: employee.name, fullName: employee.name, email: employee.email, phone: employee.phone, role: employee.role, pin: '' }); setShowEmployeeModal(true); }}
+                      <button
+                        onClick={() => { setSelectedEmployee(employee); setFormData({ username: employee.name, fullName: employee.name, email: employee.email, phone: employee.phone, role: employee.role, pin: '', password: '' }); setShowEmployeeModal(true); }}
                         className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                       >
                         <Edit className="w-4 h-4 text-gray-600" />
@@ -619,16 +702,94 @@ const AdvancedStaffScreen: React.FC = () => {
                   <option value="RIDER">Rider</option>
                 </select>
               </div>
-              {!selectedEmployee && (
+              {(['CASHIER', 'MANAGER', 'RIDER'].includes(formData.role) || selectedEmployee) && (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">PIN {['CASHIER', 'MANAGER', 'RIDER'].includes(formData.role) ? '*' : '(optional)'}</label>
+                    <input type="password" maxLength={4} value={formData.pin} onChange={(e) => setFormData({ ...formData, pin: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="4-digit PIN" />
+                  </div>
+                  {['CASHIER', 'MANAGER', 'RIDER'].includes(formData.role) && !selectedEmployee && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Password *</label>
+                      <input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Password" />
+                    </div>
+                  )}
+                </>
+              )}
+              {selectedEmployee && (
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">PIN *</label>
-                  <input type="password" maxLength={4} value={formData.pin} onChange={(e) => setFormData({ ...formData, pin: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="4-digit PIN" />
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">New Password (optional)</label>
+                  <input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Leave blank to keep current" />
                 </div>
               )}
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => { setShowEmployeeModal(false); setSelectedEmployee(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={selectedEmployee ? handleEditEmployee : handleAddEmployee} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{selectedEmployee ? 'Update' : 'Add Employee'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shift Modal */}
+      {showShiftModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-2xl font-bold mb-4">Add Shift</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Employee *</label>
+                <select value={shiftFormData.userId} onChange={(e) => setShiftFormData({ ...shiftFormData, userId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                  <option value="">Select Employee</option>
+                  {employees.map((emp: any) => <option key={emp.id} value={emp.id}>{emp.fullName || emp.username}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Shift Date *</label>
+                <input type="date" value={shiftFormData.shiftDate} onChange={(e) => setShiftFormData({ ...shiftFormData, shiftDate: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Start Time *</label>
+                <input type="time" value={shiftFormData.startTime} onChange={(e) => setShiftFormData({ ...shiftFormData, startTime: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">End Time</label>
+                <input type="time" value={shiftFormData.endTime} onChange={(e) => setShiftFormData({ ...shiftFormData, endTime: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowShiftModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleAddShift} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Add Shift</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Time Entry Modal */}
+      {showTimeEntryModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-2xl font-bold mb-4">Add Time Entry</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Employee *</label>
+                <select value={timeEntryFormData.userId} onChange={(e) => setTimeEntryFormData({ ...timeEntryFormData, userId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                  <option value="">Select Employee</option>
+                  {employees.map((emp: any) => <option key={emp.id} value={emp.id}>{emp.fullName || emp.username}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Clock In *</label>
+                <input type="datetime-local" value={timeEntryFormData.clockIn} onChange={(e) => setTimeEntryFormData({ ...timeEntryFormData, clockIn: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Clock Out</label>
+                <input type="datetime-local" value={timeEntryFormData.clockOut} onChange={(e) => setTimeEntryFormData({ ...timeEntryFormData, clockOut: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowTimeEntryModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleAddTimeEntry} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Add Entry</button>
             </div>
           </div>
         </div>

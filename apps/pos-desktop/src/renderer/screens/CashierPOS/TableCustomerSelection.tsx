@@ -196,6 +196,7 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
 
   const isDineIn = orderType === 'DINE_IN';
   const isDelivery = orderType === 'DELIVERY';
+  const isPickup = orderType === 'PICKUP';
 
   return (
     <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
@@ -211,10 +212,10 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
         </motion.button>
         <div>
           <h1 className="font-manrope text-2xl font-extrabold text-gray-900">
-            {isDineIn ? 'Select Table' : 'Customer Details'}
+            {isDineIn ? 'Select Table' : isPickup ? 'Pickup Details' : 'Customer Details'}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {isDineIn ? 'Choose an available table from the floor plan' : isDelivery ? 'Enter delivery customer information' : 'Optional customer information'}
+            {isDineIn ? 'Choose an available table from the floor plan' : isDelivery ? 'Enter delivery customer information' : 'Optional customer information for pickup'}
           </p>
         </div>
         {isDineIn && (
@@ -299,7 +300,7 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
           )}
 
           {/* Customer Info Form */}
-          {(isDineIn || isDelivery || orderType === 'TAKEAWAY') && (
+          {(isDineIn || isDelivery || isPickup) && (
             <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
               <h3 className="font-manrope text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <User className="w-5 h-5 text-primary" />
@@ -425,9 +426,10 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
       {/* Sticky Footer CTA */}
       <div className="bg-white border-t border-gray-200 px-8 py-5 flex items-center justify-between flex-shrink-0">
         <div className="text-sm text-gray-500">
-          {isDineIn && localTableId && (
+        {isDineIn && localTableId && (
             <span className="font-semibold text-primary">Table {localTableNumber} selected</span>
           )}
+          {isPickup && 'Pickup order will go straight to menu after details are entered'}
           {isDineIn && !localTableId && 'No table selected yet'}
         </div>
         <motion.button

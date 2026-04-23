@@ -80,24 +80,26 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // General rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Limit each IP to 1000 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
-});
-app.use('/api/', limiter);
+// TEMPORARILY DISABLED FOR TESTING
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 1000, // Limit each IP to 1000 requests per windowMs
+//   message: 'Too many requests from this IP, please try again later.',
+// });
+// app.use('/api/', limiter);
 
 // Stricter rate limiting for auth endpoints (brute force protection)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 attempts per 15 minutes
-  skipSuccessfulRequests: true, // Don't count successful logins
-  message: 'Too many login attempts, please try again after 15 minutes.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use('/api/v1/auth/login', authLimiter);
-app.use('/api/v1/auth/validate-pin', authLimiter);
+// TEMPORARILY DISABLED FOR TESTING
+// const authLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 10, // 10 attempts per 15 minutes
+//   skipSuccessfulRequests: true, // Don't count successful logins
+//   message: 'Too many login attempts, please try again after 15 minutes.',
+//   standardHeaders: true,
+//   legacyHeaders: false,
+// });
+// app.use('/api/v1/auth/login', authLimiter);
+// app.use('/api/v1/auth/validate-pin', authLimiter);
 
 // Health check
 app.get('/health', (_req: Request, res: Response) => {

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Lock, LogIn, Sparkles, Hash, Delete, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, LogIn, Sparkles, Hash, Delete } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { authService } from '../services/authService';
 import toast from 'react-hot-toast';
-import { Button, Input, Card, Badge, Spinner } from '../components/ui';
 
 type LoginMode = 'password' | 'pin';
 

@@ -1,374 +1,379 @@
-import React, { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Edit, Eye, X, Plus, Trash2, Send, CheckCircle, AlertCircle, Minus, Search, DollarSign, XCircle, CreditCard, Banknote, Smartphone, Tag, Percent } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { orderService } from '../../services/orderService';
-import { useMenuItems } from '../../hooks/useMenu';
-import { useSettingsStore } from '../../stores/settingsStore';
-import { useCurrencyFormatter } from '../../hooks/useCurrency';
+import React, { useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  AlertCircle,
+  Banknote,
+  CheckCircle2,
+  CreditCard,
+  Eye,
+  Pencil,
+  Plus,
+  Receipt,
+  Search,
+  Smartphone,
+  Trash2,
+  X,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useActiveOrders } from './hooks/useActiveOrders';
-import { usePaymentFlow } from './hooks/usePaymentFlow';
-import { OrderCard } from './components/OrderCard';
-import { PaymentModal } from './components/PaymentModal';
-import { ModifyOrderModal } from './components/ModifyOrderModal';
-import { ViewOrderModal } from './components/ViewOrderModal';
+import { useMenuItems } from '../../hooks/useMenu';
+import { useCurrencyFormatter } from '../../hooks/useCurrency';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { orderService } from '../../services/orderService';
 import { validationService } from '../../services/validationService';
 
+type ActiveOrder = {
+  id: string;
+  orderNumber?: string;
+  status: string;
+  orderType: string;
+  customerName?: string;
+  table?: { number?: string };
+  tableNumber?: string;
+  notes?: string;
+  subtotal?: number;
+  totalAmount?: number;
+  taxAmount?: number;
+  createdAt?: string;
+  orderedAt?: string;
+  items: Array<{
+    id?: string;
+    menuItemId?: string;
+    quantity: number;
+    notes?: string;
+    menuItem?: { id: string; name: string; price?: number };
+    name?: string;
+    price?: number;
+  }>;
+  payments?: Array<{ method?: string }>;
+};
+
+type EditableOrderItem = {
+  id: string;
+  menuItemId: string;
+  name: string;
+  quantity: number;
+  price: number;
+  notes?: string;
+};
+
 const CashierActiveOrders: React.FC = () => {
+  const queryClient = useQueryClient();
   const { settings } = useSettingsStore();
   const { formatCurrency } = useCurrencyFormatter();
-  const queryClient = useQueryClient();
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+
+  const [selectedOrder, setSelectedOrder] = useState<ActiveOrder | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [showModifyModal, setShowModifyModal] = useState(false);
-  const [modifyNotes, setModifyNotes] = useState('');
-  const [modifiedItems, setModifiedItems] = useState<any[]>([]);
-  const [showAddItemModal, setShowAddItemModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Payment modal state
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentOrder, setPaymentOrder] = useState<any>(null);
+  const [editableItems, setEditableItems] = useState<EditableOrderItem[]>([]);
+  const [editNotes, setEditNotes] = useState('');
+  const [menuSearch, setMenuSearch] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'ONLINE_TRANSFER'>('CASH');
-  const [cashReceived, setCashReceived] = useState<string>('');
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [cashReceived, setCashReceived] = useState('');
   const [cardLastFour, setCardLastFour] = useState('');
   const [transferReference, setTransferReference] = useState('');
-  const [discountPercent, setDiscountPercent] = useState<string>('');
-  const [discountAmount, setDiscountAmount] = useState<number>(0);
-  const [showDiscountInput, setShowDiscountInput] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState('');
+  const [discountAmount, setDiscountAmount] = useState(0);
   const [managerPin, setManagerPin] = useState('');
-  const [isValidatingPin, setIsValidatingPin] = useState(false);
 
-  // Load menu items for adding to order
-  const { data: menuItems } = useMenuItems({
-    search: searchQuery || undefined,
+  const { data: menuItems = [] } = useMenuItems({
+    search: menuSearch || undefined,
     available: true,
   });
 
-  const { data: ordersData, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['cashier-active-orders'],
     queryFn: async () => {
       const response = await orderService.getOrders({
         status: 'PENDING,PREPARING,READY',
         limit: 100,
       });
-      return response.data.data;
+
+      return response.data.data.orders as ActiveOrder[];
     },
     refetchInterval: 5000,
   });
 
+  const orders = data || [];
+
+  const groupedOrders = useMemo(() => {
+    return {
+      PENDING: orders.filter((order) => order.status === 'PENDING'),
+      PREPARING: orders.filter((order) => order.status === 'PREPARING'),
+      READY: orders.filter((order) => order.status === 'READY'),
+    };
+  }, [orders]);
+
+  const refreshOrders = () => {
+    queryClient.invalidateQueries({ queryKey: ['cashier-active-orders'] });
+    queryClient.invalidateQueries({ queryKey: ['orders'] });
+  };
+
   const updateOrderMutation = useMutation({
-    mutationFn: async ({ orderId, updates }: { orderId: string; updates: any }) => {
-      return await orderService.updateOrder(orderId, updates);
-    },
+    mutationFn: (payload: { orderId: string; items: EditableOrderItem[]; notes?: string }) =>
+      orderService.modifyOrder(payload.orderId, {
+        items: payload.items.map((item) => ({
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          notes: item.notes,
+        })),
+        notes: payload.notes,
+        notifyKitchen: true,
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cashier-active-orders'] });
-      toast.success('Order updated and kitchen notified');
-      setShowModifyModal(false);
-      setShowAddItemModal(false);
+      toast.success('Order updated');
+      refreshOrders();
+      setShowEditModal(false);
       setSelectedOrder(null);
+      setMenuSearch('');
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update order');
     },
   });
 
-  const markReadyMutation = useMutation({
-    mutationFn: async (orderId: string) => {
-      return await orderService.updateStatus(orderId, 'READY');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cashier-active-orders'] });
-      toast.success('Order marked as ready');
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ orderId, status, reason }: { orderId: string; status: string; reason?: string }) =>
+      orderService.updateStatus(orderId, status, reason),
+    onSuccess: (_response, variables) => {
+      toast.success(
+        variables.status === 'READY'
+          ? 'Order marked ready'
+          : variables.status === 'COMPLETED'
+          ? 'Order completed'
+          : 'Order updated'
+      );
+      refreshOrders();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update status');
+      toast.error(error.response?.data?.message || 'Failed to update order');
     },
   });
 
   const cancelOrderMutation = useMutation({
-    mutationFn: async ({ orderId, reason }: { orderId: string; reason: string }) => {
-      return await orderService.updateStatus(orderId, 'CANCELLED', reason);
-    },
+    mutationFn: ({ orderId, reason }: { orderId: string; reason: string }) => orderService.cancelOrder(orderId, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cashier-active-orders'] });
       toast.success('Order cancelled');
+      refreshOrders();
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to cancel order');
     },
   });
 
-  // Validate manager PIN for discount
-  const validatePinMutation = useMutation({
-    mutationFn: async (pin: string) => {
-      const isValid = await validationService.validateManagerPin(pin, 'apply_discount');
-      if (!isValid) {
-        throw new Error('Invalid PIN');
-      }
-      return { valid: true };
-    },
-  });
-
-  // Payment processing mutation
   const processPaymentMutation = useMutation({
-    mutationFn: async ({ 
-      orderId, 
-      paymentData 
-    }: { 
-      orderId: string; 
-      paymentData: { 
-        method: string; 
-        amount: number; 
-        cashReceived?: number;
-        cardLastFour?: string;
-        transferReference?: string;
-        discountAmount?: number;
-        discountPercent?: number;
-      } 
-    }) => {
-      return await orderService.processPayment(orderId, {
-        method: paymentData.method,
-        amount: paymentData.amount,
-        cashReceived: paymentData.cashReceived,
-        cardLastFour: paymentData.cardLastFour,
-        transferReference: paymentData.transferReference,
-        discountAmount: paymentData.discountAmount,
-        discountPercent: paymentData.discountPercent,
+    mutationFn: async () => {
+      if (!selectedOrder) {
+        throw new Error('Order not selected');
+      }
+
+      const orderTotal = selectedOrder.totalAmount ?? 0;
+      const finalAmount = Math.max(orderTotal - discountAmount, 0);
+
+      if (discountAmount > 0) {
+        const isValid = await validationService.validateManagerPin(managerPin, 'apply_discount');
+        if (!isValid) {
+          throw new Error('Invalid manager PIN');
+        }
+      }
+
+      await orderService.processPayment(selectedOrder.id, {
+        method: paymentMethod,
+        amount: finalAmount,
+        cashReceived: paymentMethod === 'CASH' ? parseFloat(cashReceived || '0') : undefined,
+        cardLastFour: paymentMethod === 'CARD' ? cardLastFour || undefined : undefined,
+        transferReference: paymentMethod === 'ONLINE_TRANSFER' ? transferReference || undefined : undefined,
+        discountAmount: discountAmount > 0 ? discountAmount : undefined,
+        discountPercent: discountPercent ? Number(discountPercent) : undefined,
       });
+
+      await orderService.updateStatus(selectedOrder.id, 'COMPLETED');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cashier-active-orders'] });
-      toast.success('Payment processed successfully!');
+      toast.success('Payment collected');
+      refreshOrders();
       setShowPaymentModal(false);
-      setPaymentOrder(null);
+      setSelectedOrder(null);
       setCashReceived('');
       setCardLastFour('');
       setTransferReference('');
       setDiscountPercent('');
       setDiscountAmount(0);
-      setShowDiscountInput(false);
       setManagerPin('');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Payment failed');
+      toast.error(error.response?.data?.message || error.message || 'Failed to collect payment');
     },
   });
 
-  const orders = ordersData?.orders || [];
-  const pendingOrders = orders.filter((o: any) => o.status === 'PENDING');
-  const preparingOrders = orders.filter((o: any) => o.status === 'PREPARING');
-  const readyOrders = orders.filter((o: any) => o.status === 'READY');
+  const openEditModal = (order: ActiveOrder) => {
+    setSelectedOrder(order);
+    setEditableItems(
+      (order.items || []).map((item, index) => ({
+        id: item.id || `${order.id}-${index}`,
+        menuItemId: item.menuItemId || item.menuItem?.id || '',
+        name: item.menuItem?.name || item.name || 'Item',
+        quantity: item.quantity,
+        price: item.price || item.menuItem?.price || 0,
+        notes: item.notes || '',
+      }))
+    );
+    setEditNotes(order.notes || '');
+    setShowEditModal(true);
+  };
+
+  const addMenuItemToEdit = (item: any) => {
+    setEditableItems((current) => {
+      const existing = current.find((entry) => entry.menuItemId === item.id && !entry.notes);
+      if (existing) {
+        return current.map((entry) =>
+          entry.menuItemId === item.id && !entry.notes
+            ? { ...entry, quantity: entry.quantity + 1 }
+            : entry
+        );
+      }
+
+      return [
+        ...current,
+        {
+          id: `new-${item.id}-${Date.now()}`,
+          menuItemId: item.id,
+          name: item.name,
+          quantity: 1,
+          price: item.price,
+          notes: '',
+        },
+      ];
+    });
+  };
+
+  const getElapsedTime = (order: ActiveOrder) => {
+    const source = order.createdAt || order.orderedAt;
+    if (!source) return 'Unknown';
+
+    const elapsedMs = Date.now() - new Date(source).getTime();
+    const minutes = Math.floor(elapsedMs / 60000);
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ${minutes % 60}m`;
+  };
 
   const getOrderTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       DINE_IN: 'Dine-In',
       WALK_IN: 'Walk-In',
       TAKEAWAY: 'Take Away',
+      PICKUP: 'Pickup',
       DELIVERY: 'Delivery',
+      RESERVATION: 'Reservation',
     };
-    return labels[type] || type;
+    return labels[type] || type.replace('_', ' ');
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      PENDING: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-      PREPARING: 'bg-blue-100 text-blue-700 border-blue-200',
-      READY: 'bg-green-100 text-green-700 border-green-200',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-700 border-gray-200';
+  const getStatusClasses = (status: string) => {
+    if (status === 'PENDING') return 'bg-red-50 text-red-700 ring-1 ring-red-200';
+    if (status === 'PREPARING') return 'bg-white text-red-700 ring-1 ring-red-200';
+    return 'bg-red-700 text-white';
   };
 
-  const getElapsedTime = (createdAt: string) => {
-    const elapsed = Date.now() - new Date(createdAt).getTime();
-    const minutes = Math.floor(elapsed / 60000);
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ${minutes % 60}m ago`;
-  };
-
-  const handleModifyOrder = () => {
-    if (!selectedOrder) return;
-    
-    const itemsChanged = JSON.stringify(modifiedItems) !== JSON.stringify(selectedOrder.items);
-    
-    updateOrderMutation.mutate({
-      orderId: selectedOrder.id,
-      updates: {
-        notes: modifyNotes,
-        items: itemsChanged ? modifiedItems.map((item: any) => ({
-          id: item.id,
-          menuItemId: item.menuItemId || item.menuItem?.id,
-          quantity: item.quantity,
-          notes: item.notes,
-        })) : undefined,
-        notifyKitchen: itemsChanged,
-      },
-    });
-  };
-
-  const handleUpdateItemQuantity = (itemId: string, delta: number) => {
-    setModifiedItems(prev => 
-      prev.map(item => 
-        item.id === itemId 
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
-    );
-  };
-
-  const handleRemoveItem = (itemId: string) => {
-    setModifiedItems(prev => prev.filter(item => item.id !== itemId));
-  };
-
-  const handleAddItem = (menuItem: any) => {
-    const newItem = {
-      id: `temp_${Date.now()}`,
-      menuItemId: menuItem.id,
-      menuItem: menuItem,
-      quantity: 1,
-      price: menuItem.price,
-      notes: '',
-    };
-    setModifiedItems(prev => [...prev, newItem]);
-    setShowAddItemModal(false);
-    setSearchQuery('');
-    toast.success(`${menuItem.name} added to order`);
-  };
-
-  const OrderCard = ({ order }: { order: any }) => {
-    const isOverdue = Date.now() - new Date(order.createdAt).getTime() > 30 * 60000;
+  const renderOrderCard = (order: ActiveOrder) => {
+    const total = order.totalAmount ?? 0;
+    const tableNumber = order.table?.number || order.tableNumber;
 
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className={`bg-white rounded-xl p-4 border-2 transition-all ${
-          isOverdue ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-primary'
-        }`}
+        key={order.id}
+        layout
+        className="rounded-[28px] border border-red-100 bg-white p-5 shadow-[0_24px_60px_rgba(153,27,27,0.08)]"
       >
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-bold text-lg text-gray-900">#{order.id.slice(-6)}</span>
-              {isOverdue && <AlertCircle className="w-4 h-4 text-red-500" />}
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${getStatusColor(order.status)}`}>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-lg font-black text-gray-900">#{order.orderNumber || order.id.slice(-6)}</span>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${getStatusClasses(order.status)}`}>
                 {order.status}
               </span>
-              <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full">
-                {getOrderTypeLabel(order.orderType)}
-              </span>
-              {order.tableNumber && (
-                <span className="text-xs text-gray-600">Table {order.tableNumber}</span>
-              )}
             </div>
+            <p className="text-sm text-gray-500">
+              {getOrderTypeLabel(order.orderType)}
+              {tableNumber ? ` • Table ${tableNumber}` : ''}
+            </p>
+            {order.customerName && <p className="mt-1 text-sm font-medium text-gray-700">{order.customerName}</p>}
           </div>
-          <div className="flex items-center gap-1 text-xs text-gray-500">
-            <Clock className="w-3 h-3" />
-            {getElapsedTime(order.createdAt)}
+          <div className="text-right">
+            <p className="text-xs font-semibold uppercase tracking-wide text-red-500">Elapsed</p>
+            <p className="text-sm font-bold text-gray-700">{getElapsedTime(order)}</p>
           </div>
         </div>
 
-        {order.customerName && (
-          <p className="text-sm text-gray-600 mb-2">Customer: {order.customerName}</p>
-        )}
-
-        <div className="space-y-1 mb-3">
-          {order.items?.slice(0, 3).map((item: any, index: number) => (
-            <div key={index} className="text-sm text-gray-700">
-              <span className="font-semibold">{item.quantity}x</span> {item.menuItem?.name || item.name || 'Unknown'}
+        <div className="space-y-2 rounded-2xl bg-red-50/60 p-3">
+          {(order.items || []).slice(0, 4).map((item, index) => (
+            <div key={`${order.id}-${index}`} className="flex items-center justify-between text-sm text-gray-700">
+              <span>
+                {item.quantity}x {item.menuItem?.name || item.name || 'Item'}
+              </span>
+              <span className="font-semibold">{formatCurrency((item.price || item.menuItem?.price || 0) * item.quantity)}</span>
             </div>
           ))}
-          {order.items?.length > 3 && (
-            <p className="text-xs text-gray-500">+{order.items.length - 3} more items</p>
+          {(order.items || []).length > 4 && (
+            <p className="text-xs font-semibold text-red-600">+{order.items.length - 4} more items</p>
           )}
         </div>
 
         {order.notes && (
-          <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-xs text-yellow-800 italic">&quot;{order.notes}&quot;</p>
+          <div className="mt-4 rounded-2xl border border-red-100 bg-white p-3 text-sm text-gray-600">
+            <span className="font-semibold text-red-700">Kitchen note:</span> {order.notes}
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-          <span className="text-lg font-black text-primary">
-            {formatCurrency(order.totalAmount ?? order.total ?? 0, settings.currency)}
-          </span>
-          <div className="flex gap-2">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+        <div className="mt-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-red-500">Total</p>
+            <p className="text-2xl font-black text-red-700">{formatCurrency(total)}</p>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <ActionButton
+              icon={<Eye className="h-4 w-4" />}
+              label="View"
               onClick={() => {
                 setSelectedOrder(order);
                 setShowViewModal(true);
               }}
-              className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              title="View Details"
-            >
-              <Eye className="w-4 h-4 text-gray-600" />
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setSelectedOrder(order);
-                setModifiedItems(order.items || []);
-                setModifyNotes(order.notes || '');
-                setShowModifyModal(true);
-              }}
-              className="p-2 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
-              title="Modify Order"
-            >
-              <Edit className="w-4 h-4 text-blue-600" />
-            </motion.button>
+            />
+            <ActionButton icon={<Pencil className="h-4 w-4" />} label="Edit" onClick={() => openEditModal(order)} />
             {(order.status === 'PENDING' || order.status === 'PREPARING') && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => markReadyMutation.mutate(order.id)}
-                className="p-2 bg-green-100 hover:bg-green-200 rounded-lg transition-colors"
-                title="Mark as Ready"
-              >
-                <CheckCircle className="w-4 h-4 text-green-600" />
-              </motion.button>
+              <ActionButton
+                icon={<CheckCircle2 className="h-4 w-4" />}
+                label="Ready"
+                variant="primary"
+                onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: 'READY' })}
+              />
             )}
             {order.status === 'READY' && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <ActionButton
+                icon={<Receipt className="h-4 w-4" />}
+                label="Collect"
+                variant="primary"
                 onClick={() => {
-                  // Open payment modal directly instead of navigating
-                  console.log('[CashierActiveOrders] Opening payment modal for order:', order.id);
-                  setPaymentOrder(order);
+                  setSelectedOrder(order);
+                  setCashReceived(String(order.totalAmount || 0));
                   setShowPaymentModal(true);
-                  setCashReceived(order.totalAmount?.toString() || '');
                 }}
-                className="p-2 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
-                title="Collect Payment"
-              >
-                <DollarSign className="w-4 h-4 text-primary" />
-              </motion.button>
+              />
             )}
             {(order.status === 'PENDING' || order.status === 'PREPARING') && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <ActionButton
+                icon={<Trash2 className="h-4 w-4" />}
+                label="Cancel"
+                variant="danger"
                 onClick={() => {
-                  if (window.confirm(`Cancel order #${order.id.slice(-6)}?`)) {
+                  if (window.confirm(`Cancel order #${order.orderNumber || order.id.slice(-6)}?`)) {
                     cancelOrderMutation.mutate({ orderId: order.id, reason: 'Cancelled by cashier' });
                   }
                 }}
-                className="p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
-                title="Cancel Order"
-              >
-                <XCircle className="w-4 h-4 text-red-600" />
-              </motion.button>
+              />
             )}
           </div>
         </div>
@@ -377,766 +382,413 @@ const CashierActiveOrders: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
-        <div className="flex items-center justify-between">
+    <div className="flex h-full flex-col bg-[linear-gradient(180deg,#fff5f5_0%,#ffffff_34%,#fff1f2_100%)]">
+      <div className="border-b border-red-100 bg-white/90 px-6 py-5 backdrop-blur">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Active Orders</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {orders.length} active order{orders.length !== 1 ? 's' : ''}
-            </p>
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-red-500">Cashier Desk</p>
+            <h1 className="mt-2 text-3xl font-black text-gray-900">Active Orders</h1>
+            <p className="mt-1 text-sm text-gray-500">Live order management with direct kitchen, payment, and cancellation actions.</p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-50 border border-yellow-200 rounded-full">
-                <span className="w-2 h-2 rounded-full bg-yellow-500" />
-                <span className="text-xs font-semibold text-yellow-700">Pending: {pendingOrders.length}</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full">
-                <span className="w-2 h-2 rounded-full bg-blue-500" />
-                <span className="text-xs font-semibold text-blue-700">Preparing: {preparingOrders.length}</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-xs font-semibold text-green-700">Ready: {readyOrders.length}</span>
-              </div>
-            </div>
+          <div className="grid grid-cols-3 gap-3">
+            <SummaryCard label="Pending" value={groupedOrders.PENDING.length} />
+            <SummaryCard label="Preparing" value={groupedOrders.PREPARING.length} />
+            <SummaryCard label="Ready" value={groupedOrders.READY.length} />
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto px-6 py-6">
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <div className="flex h-64 items-center justify-center">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-red-200 border-t-red-600" />
           </div>
         ) : orders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-            <CheckCircle className="w-16 h-16 mb-4 opacity-30" />
-            <p className="text-lg font-semibold">No active orders</p>
-            <p className="text-sm">All orders are completed</p>
+          <div className="mx-auto flex max-w-xl flex-col items-center rounded-[32px] border border-dashed border-red-200 bg-white p-12 text-center">
+            <CheckCircle2 className="mb-4 h-16 w-16 text-red-200" />
+            <h2 className="text-2xl font-black text-gray-900">No active orders</h2>
+            <p className="mt-2 text-sm text-gray-500">New kitchen and ready-to-pay orders will appear here automatically.</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {pendingOrders.length > 0 && (
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-yellow-500" />
-                  Pending Orders
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {pendingOrders.map((order: any) => (
-                    <OrderCard key={order.id} order={order} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {preparingOrders.length > 0 && (
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-blue-500" />
-                  Preparing Orders
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {preparingOrders.map((order: any) => (
-                    <OrderCard key={order.id} order={order} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {readyOrders.length > 0 && (
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-green-500" />
-                  Ready for Pickup
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {readyOrders.map((order: any) => (
-                    <OrderCard key={order.id} order={order} />
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="space-y-8">
+            <OrderSection title="Pending" accent="bg-red-500" orders={groupedOrders.PENDING} renderOrderCard={renderOrderCard} />
+            <OrderSection title="Preparing" accent="bg-red-300" orders={groupedOrders.PREPARING} renderOrderCard={renderOrderCard} />
+            <OrderSection title="Ready For Payment" accent="bg-red-700" orders={groupedOrders.READY} renderOrderCard={renderOrderCard} />
           </div>
         )}
       </div>
 
-      {/* Modify Order Modal */}
       <AnimatePresence>
-        {showModifyModal && selectedOrder && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowModifyModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Modify Order</h2>
-                <button
-                  onClick={() => setShowModifyModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-6 h-6 text-gray-500" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <p className="text-sm text-blue-800">
-                    <strong>Note:</strong> Modifying items will send an update notification to the kitchen staff.
+        {showViewModal && selectedOrder && (
+          <ModalShell title={`Order #${selectedOrder.orderNumber || selectedOrder.id.slice(-6)}`} onClose={() => setShowViewModal(false)}>
+            <div className="space-y-4">
+              {(selectedOrder.items || []).map((item, index) => (
+                <div key={`${selectedOrder.id}-view-${index}`} className="flex items-center justify-between rounded-2xl bg-red-50 p-4">
+                  <div>
+                    <p className="font-bold text-gray-900">
+                      {item.quantity}x {item.menuItem?.name || item.name}
+                    </p>
+                    {item.notes && <p className="mt-1 text-sm text-gray-500">{item.notes}</p>}
+                  </div>
+                  <p className="font-bold text-red-700">
+                    {formatCurrency((item.price || item.menuItem?.price || 0) * item.quantity)}
                   </p>
                 </div>
+              ))}
 
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-semibold text-gray-700">
-                      Order Items
-                    </label>
-                    <button
-                      onClick={() => setShowAddItemModal(true)}
-                      className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity flex items-center gap-1"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Item
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {modifiedItems.map((item: any) => (
-                      <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-900">
-                            {item.menuItem?.name || item.name || 'Unknown Item'}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {formatCurrency(item.price, settings.currency)} each
+              {selectedOrder.notes && (
+                <div className="rounded-2xl border border-red-100 p-4 text-sm text-gray-600">
+                  <span className="font-semibold text-red-700">Order notes:</span> {selectedOrder.notes}
+                </div>
+              )}
+            </div>
+          </ModalShell>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showEditModal && selectedOrder && (
+          <ModalShell title={`Edit Order #${selectedOrder.orderNumber || selectedOrder.id.slice(-6)}`} onClose={() => setShowEditModal(false)} widthClass="max-w-4xl">
+            <div className="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
+              <div className="space-y-4">
+                <div className="rounded-[28px] border border-red-100 bg-red-50 p-4">
+                  <p className="mb-3 text-xs font-black uppercase tracking-[0.25em] text-red-500">Current Items</p>
+                  <div className="space-y-3">
+                    {editableItems.map((item) => (
+                      <div key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-gray-900">{item.name}</p>
+                            <p className="text-sm text-gray-500">{formatCurrency(item.price)} each</p>
+                            <input
+                              value={item.notes || ''}
+                              onChange={(event) =>
+                                setEditableItems((current) =>
+                                  current.map((entry) =>
+                                    entry.id === item.id ? { ...entry, notes: event.target.value } : entry
+                                  )
+                                )
+                              }
+                              placeholder="Item note"
+                              className="mt-3 w-full rounded-xl border border-red-100 px-3 py-2 text-sm focus:border-red-400 focus:outline-none"
+                            />
+                          </div>
+                          <button
+                            onClick={() => setEditableItems((current) => current.filter((entry) => entry.id !== item.id))}
+                            className="rounded-xl bg-red-50 p-2 text-red-600 transition-colors hover:bg-red-100"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between">
+                          <div className="flex items-center gap-2 rounded-xl bg-red-50 p-1">
+                            <button
+                              onClick={() =>
+                                setEditableItems((current) =>
+                                  current.map((entry) =>
+                                    entry.id === item.id
+                                      ? { ...entry, quantity: Math.max(1, entry.quantity - 1) }
+                                      : entry
+                                  )
+                                )
+                              }
+                              className="rounded-lg bg-white px-3 py-2 text-sm font-bold text-red-700"
+                            >
+                              -
+                            </button>
+                            <span className="min-w-[3rem] text-center font-bold text-gray-900">{item.quantity}</span>
+                            <button
+                              onClick={() =>
+                                setEditableItems((current) =>
+                                  current.map((entry) =>
+                                    entry.id === item.id ? { ...entry, quantity: entry.quantity + 1 } : entry
+                                  )
+                                )
+                              }
+                              className="rounded-lg bg-white px-3 py-2 text-sm font-bold text-red-700"
+                            >
+                              +
+                            </button>
+                          </div>
+                          <p className="font-bold text-red-700">
+                            {formatCurrency(item.price * item.quantity)}
                           </p>
                         </div>
-                        
-                        <div className="flex items-center gap-2 bg-white rounded-lg p-1 border border-gray-200">
-                          <button
-                            onClick={() => handleUpdateItemQuantity(item.id, -1)}
-                            className="w-7 h-7 rounded-md hover:bg-gray-100 flex items-center justify-center"
-                          >
-                            <Minus className="w-4 h-4 text-gray-700" />
-                          </button>
-                          <span className="w-8 text-center font-bold text-gray-900">{item.quantity}</span>
-                          <button
-                            onClick={() => handleUpdateItemQuantity(item.id, 1)}
-                            className="w-7 h-7 rounded-md hover:bg-gray-100 flex items-center justify-center"
-                          >
-                            <Plus className="w-4 h-4 text-gray-700" />
-                          </button>
-                        </div>
-                        
-                        <button
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-600" />
-                        </button>
                       </div>
                     ))}
                   </div>
-                  
-                  {modifiedItems.length === 0 && (
-                    <div className="text-center py-8 text-gray-400">
-                      <p className="text-sm">No items in order</p>
-                    </div>
-                  )}
                 </div>
 
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-2 block">
-                    Order Notes / Special Instructions
-                  </label>
-                  <textarea
-                    value={modifyNotes}
-                    onChange={(e) => setModifyNotes(e.target.value)}
-                    placeholder="Add or update order notes..."
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    rows={3}
-                  />
-                </div>
+                <textarea
+                  value={editNotes}
+                  onChange={(event) => setEditNotes(event.target.value)}
+                  rows={4}
+                  placeholder="Kitchen note or order note"
+                  className="w-full rounded-[24px] border border-red-100 px-4 py-3 text-sm focus:border-red-400 focus:outline-none"
+                />
 
                 <div className="flex gap-3">
                   <button
-                    onClick={() => {
-                      setShowModifyModal(false);
-                      setModifiedItems([]);
-                    }}
-                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                    onClick={() =>
+                      updateOrderMutation.mutate({
+                        orderId: selectedOrder.id,
+                        items: editableItems,
+                        notes: editNotes,
+                      })
+                    }
+                    disabled={updateOrderMutation.isPending || editableItems.length === 0}
+                    className="flex-1 rounded-2xl bg-red-600 py-3 font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
                   >
-                    Cancel
+                    {updateOrderMutation.isPending ? 'Saving...' : 'Save Changes'}
                   </button>
                   <button
-                    onClick={handleModifyOrder}
-                    disabled={updateOrderMutation.isPending || modifiedItems.length === 0}
-                    className="flex-1 py-3 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+                    onClick={() => setShowEditModal(false)}
+                    className="rounded-2xl bg-gray-100 px-5 py-3 font-bold text-gray-700 transition-colors hover:bg-gray-200"
                   >
-                    <Send className="w-5 h-5" />
-                    {updateOrderMutation.isPending ? 'Updating...' : 'Update Order'}
+                    Close
                   </button>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Add Item Modal */}
-      <AnimatePresence>
-        {showAddItemModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
-            onClick={() => setShowAddItemModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[80vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Add Item to Order</h2>
-                <button
-                  onClick={() => setShowAddItemModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-6 h-6 text-gray-500" />
-                </button>
-              </div>
-
-              <div className="mb-6 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search menu items..."
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  autoFocus
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-                {menuItems?.filter((item: any) => item.isAvailable).map((item: any) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleAddItem(item)}
-                    className="p-4 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 hover:border-primary transition-all text-left"
-                  >
-                    <p className="font-semibold text-gray-900 mb-1">{item.name}</p>
-                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">{item.description}</p>
-                    <p className="text-lg font-bold text-primary">
-                      {formatCurrency(item.price, settings.currency)}
-                    </p>
-                  </button>
-                ))}
-              </div>
-
-              {menuItems?.length === 0 && (
-                <div className="text-center py-12 text-gray-400">
-                  <p>No menu items found</p>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* View Order Details Modal */}
-      <AnimatePresence>
-        {showViewModal && selectedOrder && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowViewModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Order #{selectedOrder.orderNumber || selectedOrder.id.slice(-6)}
-                </h2>
-                <button
-                  onClick={() => setShowViewModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-6 h-6 text-gray-500" />
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                {/* Order Info */}
-                <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
-                  <div>
-                    <p className="text-xs text-gray-500">Order Type</p>
-                    <p className="font-semibold text-gray-900">{selectedOrder.orderType?.replace('_', ' ')}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Status</p>
-                    <p className="font-semibold text-gray-900">{selectedOrder.status}</p>
-                  </div>
-                  {selectedOrder.table?.number && (
-                    <div>
-                      <p className="text-xs text-gray-500">Table</p>
-                      <p className="font-semibold text-gray-900">#{selectedOrder.table.number}</p>
-                    </div>
-                  )}
-                  {selectedOrder.customerName && (
-                    <div>
-                      <p className="text-xs text-gray-500">Customer</p>
-                      <p className="font-semibold text-gray-900">{selectedOrder.customerName}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Order Items */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Order Items</h3>
-                  <div className="space-y-2">
-                    {selectedOrder.items?.map((item: any) => (
-                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-900">
-                            {item.quantity}x {item.menuItem?.name || item.name}
-                          </p>
-                          {item.notes && (
-                            <p className="text-xs text-gray-500 mt-1">Note: {item.notes}</p>
-                          )}
-                        </div>
-                        <p className="font-semibold text-primary">
-                          {formatCurrency(item.totalPrice || (item.unitPrice * item.quantity), settings.currency)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Order Summary */}
-                <div className="border-t pt-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="font-semibold">{formatCurrency(selectedOrder.subtotal, settings.currency)}</span>
-                  </div>
-                  {selectedOrder.discountAmount > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Discount</span>
-                      <span className="font-semibold text-green-600">-{formatCurrency(selectedOrder.discountAmount, settings.currency)}</span>
-                    </div>
-                  )}
-                  {selectedOrder.taxAmount > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Tax</span>
-                      <span className="font-semibold">{formatCurrency(selectedOrder.taxAmount, settings.currency)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                    <span>Total</span>
-                    <span className="text-primary">{formatCurrency(selectedOrder.totalAmount ?? selectedOrder.total, settings.currency)}</span>
-                  </div>
-                </div>
-
-                {selectedOrder.notes && (
-                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-                    <p className="text-xs text-yellow-800 font-semibold mb-1">Order Notes</p>
-                    <p className="text-sm text-yellow-700">{selectedOrder.notes}</p>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => setShowViewModal(false)}
-                  className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Payment Modal */}
-      <AnimatePresence>
-        {showPaymentModal && paymentOrder && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => !isProcessingPayment && setShowPaymentModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                    <DollarSign className="w-6 h-6 text-primary" />
-                    Collect Payment
-                  </h2>
-                  <p className="text-sm text-gray-500">
-                    Order #{paymentOrder.orderNumber || paymentOrder.id.slice(-6)}
-                  </p>
-                </div>
-                <button
-                  onClick={() => !isProcessingPayment && setShowPaymentModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
-              </div>
-
-              {/* Apply Discount Button */}
-              {!showDiscountInput && (
-                <button
-                  onClick={() => setShowDiscountInput(true)}
-                  className="w-full mb-4 flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-primary hover:text-primary transition-colors"
-                >
-                  <Tag className="w-5 h-5" />
-                  <span className="font-semibold">Apply Discount</span>
-                </button>
-              )}
-
-              {/* Discount Input */}
-              {showDiscountInput && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-semibold text-purple-900 flex items-center gap-2">
-                      <Percent className="w-4 h-4" />
-                      Apply Discount
-                    </span>
-                    <button
-                      onClick={() => {
-                        setShowDiscountInput(false);
-                        setDiscountPercent('');
-                        setDiscountAmount(0);
-                        setManagerPin('');
-                      }}
-                      className="text-sm text-purple-600 hover:text-purple-800"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          type="number"
-                          value={discountPercent}
-                          onChange={(e) => {
-                            const percent = parseFloat(e.target.value) || 0;
-                            setDiscountPercent(e.target.value);
-                            const subtotal = paymentOrder.subtotal || paymentOrder.totalAmount || 0;
-                            setDiscountAmount((subtotal * percent) / 100);
-                          }}
-                          className="w-full pl-4 pr-8 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                          placeholder="0"
-                          min="0"
-                          max="100"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
-                      </div>
-                      <div className="flex-1 flex items-center px-3 bg-white border border-purple-200 rounded-lg">
-                        <span className="text-purple-700 font-semibold">
-                          -{formatCurrency(discountAmount, settings.currency)}
-                        </span>
-                      </div>
-                    </div>
-                    
+              <div className="space-y-4">
+                <div className="rounded-[28px] border border-red-100 bg-white p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Search className="h-4 w-4 text-red-500" />
                     <input
-                      type="password"
-                      value={managerPin}
-                      onChange={(e) => setManagerPin(e.target.value)}
-                      className="w-full px-4 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                      placeholder="Enter Manager PIN to confirm"
-                      maxLength={6}
+                      value={menuSearch}
+                      onChange={(event) => setMenuSearch(event.target.value)}
+                      placeholder="Find menu item"
+                      className="w-full border-none bg-transparent text-sm outline-none"
                     />
                   </div>
-                </div>
-              )}
-
-              {/* Order Summary */}
-              <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="font-semibold">{formatCurrency(paymentOrder.subtotal, settings.currency)}</span>
-                  </div>
-                  {(paymentOrder.discountAmount > 0 || discountAmount > 0) && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Discount {discountPercent && `(${discountPercent}%)`}</span>
-                      <span className="font-semibold text-green-600">
-                        -{formatCurrency((paymentOrder.discountAmount || 0) + discountAmount, settings.currency)}
-                      </span>
-                    </div>
-                  )}
-                  {paymentOrder.taxAmount > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Tax</span>
-                      <span className="font-semibold">{formatCurrency(paymentOrder.taxAmount, settings.currency)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
-                    <span>Total Amount</span>
-                    <span className="text-primary">
-                      {formatCurrency(
-                        (paymentOrder.totalAmount ?? paymentOrder.total ?? 0) - discountAmount, 
-                        settings.currency
-                      )}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Method Selection */}
-              <div className="space-y-4 mb-6">
-                <p className="text-sm font-semibold text-gray-700">Payment Method</p>
-                <div className="grid grid-cols-3 gap-3">
-                  <button
-                    onClick={() => setPaymentMethod('CASH')}
-                    className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                      paymentMethod === 'CASH'
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <Banknote className="w-5 h-5" />
-                    <span className="font-semibold text-sm">Cash</span>
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod('CARD')}
-                    className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                      paymentMethod === 'CARD'
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <CreditCard className="w-5 h-5" />
-                    <span className="font-semibold text-sm">Card</span>
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod('ONLINE_TRANSFER')}
-                    className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                      paymentMethod === 'ONLINE_TRANSFER'
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <Smartphone className="w-5 h-5" />
-                    <span className="font-semibold text-sm">Transfer</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Cash Payment Fields */}
-              {paymentMethod === 'CASH' && (
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Cash Received
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                        {settings.currency === 'USD' ? '$' : settings.currency === 'EUR' ? '€' : ''}
-                      </span>
-                      <input
-                        type="number"
-                        value={cashReceived}
-                        onChange={(e) => setCashReceived(e.target.value)}
-                        className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-lg font-semibold"
-                        placeholder="0.00"
-                        min={paymentOrder.totalAmount}
-                        step="0.01"
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Quick Amount Buttons */}
-                  <div className="flex gap-2">
-                    {[10, 20, 50, 100].map((amount) => (
+                  <div className="max-h-[420px] space-y-2 overflow-y-auto">
+                    {menuItems.slice(0, 20).map((item: any) => (
                       <button
-                        key={amount}
-                        onClick={() => setCashReceived(amount.toString())}
-                        className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-semibold transition-colors"
+                        key={item.id}
+                        onClick={() => addMenuItemToEdit(item)}
+                        className="flex w-full items-center justify-between rounded-2xl border border-red-100 px-4 py-3 text-left transition-colors hover:bg-red-50"
                       >
-                        {formatCurrency(amount, settings.currency)}
+                        <div>
+                          <p className="font-bold text-gray-900">{item.name}</p>
+                          <p className="text-sm text-gray-500">{formatCurrency(item.price)}</p>
+                        </div>
+                        <span className="rounded-full bg-red-600 p-2 text-white">
+                          <Plus className="h-4 w-4" />
+                        </span>
                       </button>
                     ))}
-                    <button
-                      onClick={() => setCashReceived(paymentOrder.totalAmount?.toString() || '')}
-                      className="flex-1 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-sm font-semibold transition-colors"
-                    >
-                      Exact
-                    </button>
-                  </div>
-
-                  {/* Change Calculation */}
-                  {parseFloat(cashReceived) > paymentOrder.totalAmount && (
-                    <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-green-800 font-semibold">Change Due</span>
-                        <span className="text-lg font-bold text-green-600">
-                          {formatCurrency(parseFloat(cashReceived) - paymentOrder.totalAmount, settings.currency)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Card Payment Fields */}
-              {paymentMethod === 'CARD' && (
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Card Last 4 Digits (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={cardLastFour}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                        setCardLastFour(value);
-                      }}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-lg font-semibold tracking-widest"
-                      placeholder="••••"
-                      maxLength={4}
-                    />
-                  </div>
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                    <p className="text-sm text-blue-800">
-                      <span className="font-semibold">Card Payment</span> - Total amount {formatCurrency((paymentOrder.totalAmount ?? 0) - discountAmount, settings.currency)} will be charged.
-                    </p>
                   </div>
                 </div>
-              )}
-
-              {/* Online Transfer Payment Fields */}
-              {paymentMethod === 'ONLINE_TRANSFER' && (
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Transfer Reference Number *
-                    </label>
-                    <input
-                      type="text"
-                      value={transferReference}
-                      onChange={(e) => setTransferReference(e.target.value.toUpperCase())}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-lg font-semibold uppercase"
-                      placeholder="e.g., TRX123456"
-                    />
-                  </div>
-                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl">
-                    <p className="text-sm text-purple-800">
-                      <span className="font-semibold">Online Transfer</span> - Amount {formatCurrency((paymentOrder.totalAmount ?? 0) - discountAmount, settings.currency)} via bank/JazzCash/EasyPaisa.
-                    </p>
-                    <p className="text-xs text-purple-600 mt-1">
-                      Enter the transaction reference number from the transfer.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowPaymentModal(false)}
-                  disabled={isProcessingPayment}
-                  className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => {
-                    // Validate PIN if discount is being applied
-                    if (discountAmount > 0 && managerPin) {
-                      setIsValidatingPin(true);
-                      const result = await validatePinMutation.mutateAsync(managerPin);
-                      setIsValidatingPin(false);
-                      if (!result.data?.valid) {
-                        toast.error('Invalid manager PIN');
-                        return;
-                      }
-                    }
-                    
-                    setIsProcessingPayment(true);
-                    const finalAmount = (paymentOrder.totalAmount ?? paymentOrder.total ?? 0) - discountAmount;
-                    
-                    processPaymentMutation.mutate(
-                      {
-                        orderId: paymentOrder.id,
-                        paymentData: {
-                          method: paymentMethod,
-                          amount: finalAmount,
-                          cashReceived: paymentMethod === 'CASH' ? parseFloat(cashReceived) : undefined,
-                          cardLastFour: paymentMethod === 'CARD' ? cardLastFour : undefined,
-                          transferReference: paymentMethod === 'ONLINE_TRANSFER' ? transferReference : undefined,
-                          discountAmount: discountAmount > 0 ? discountAmount : undefined,
-                          discountPercent: discountPercent ? parseFloat(discountPercent) : undefined,
-                        },
-                      },
-                      {
-                        onSettled: () => setIsProcessingPayment(false),
-                      }
-                    );
-                  }}
-                  disabled={
-                    isProcessingPayment ||
-                    isValidatingPin ||
-                    (paymentMethod === 'CASH' && parseFloat(cashReceived) < ((paymentOrder.totalAmount ?? 0) - discountAmount)) ||
-                    (paymentMethod === 'ONLINE_TRANSFER' && !transferReference.trim()) ||
-                    (discountAmount > 0 && !managerPin.trim())
-                  }
-                  className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isProcessingPayment || isValidatingPin ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      {isValidatingPin ? 'Validating PIN...' : 'Processing...'}
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-5 h-5" />
-                      Complete Payment
-                    </>
-                  )}
-                </button>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </ModalShell>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showPaymentModal && selectedOrder && (
+          <ModalShell title={`Collect Payment • #${selectedOrder.orderNumber || selectedOrder.id.slice(-6)}`} onClose={() => setShowPaymentModal(false)} widthClass="max-w-lg">
+            <div className="space-y-5">
+              <div className="rounded-[28px] border border-red-100 bg-red-50 p-5">
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <span>Order total</span>
+                  <span className="font-bold text-gray-900">{formatCurrency(selectedOrder.totalAmount || 0)}</span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="mt-2 flex items-center justify-between text-sm text-red-700">
+                    <span>Discount</span>
+                    <span className="font-bold">-{formatCurrency(discountAmount)}</span>
+                  </div>
+                )}
+                <div className="mt-3 border-t border-red-100 pt-3">
+                  <p className="text-xs font-black uppercase tracking-[0.25em] text-red-500">Amount To Collect</p>
+                  <p className="mt-1 text-3xl font-black text-red-700">
+                    {formatCurrency(Math.max((selectedOrder.totalAmount || 0) - discountAmount, 0))}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <PaymentMethodButton icon={<Banknote className="h-5 w-5" />} active={paymentMethod === 'CASH'} label="Cash" onClick={() => setPaymentMethod('CASH')} />
+                <PaymentMethodButton icon={<CreditCard className="h-5 w-5" />} active={paymentMethod === 'CARD'} label="Card" onClick={() => setPaymentMethod('CARD')} />
+                <PaymentMethodButton icon={<Smartphone className="h-5 w-5" />} active={paymentMethod === 'ONLINE_TRANSFER'} label="Transfer" onClick={() => setPaymentMethod('ONLINE_TRANSFER')} />
+              </div>
+
+              <div className="rounded-[28px] border border-red-100 p-4">
+                <p className="mb-3 text-xs font-black uppercase tracking-[0.25em] text-red-500">Optional Discount</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input
+                    type="number"
+                    value={discountPercent}
+                    onChange={(event) => {
+                      const nextPercent = event.target.value;
+                      const numericPercent = Number(nextPercent || 0);
+                      setDiscountPercent(nextPercent);
+                      setDiscountAmount(((selectedOrder.totalAmount || 0) * numericPercent) / 100);
+                    }}
+                    placeholder="Discount %"
+                    className="rounded-xl border border-red-100 px-3 py-2 text-sm focus:border-red-400 focus:outline-none"
+                  />
+                  <input
+                    type="password"
+                    value={managerPin}
+                    onChange={(event) => setManagerPin(event.target.value)}
+                    placeholder="Manager PIN"
+                    className="rounded-xl border border-red-100 px-3 py-2 text-sm focus:border-red-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {paymentMethod === 'CASH' && (
+                <input
+                  type="number"
+                  value={cashReceived}
+                  onChange={(event) => setCashReceived(event.target.value)}
+                  placeholder="Cash received"
+                  className="w-full rounded-[24px] border border-red-100 px-4 py-3 text-lg font-bold focus:border-red-400 focus:outline-none"
+                />
+              )}
+
+              {paymentMethod === 'CARD' && (
+                <input
+                  type="text"
+                  maxLength={4}
+                  value={cardLastFour}
+                  onChange={(event) => setCardLastFour(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="Card last 4 digits"
+                  className="w-full rounded-[24px] border border-red-100 px-4 py-3 text-lg font-bold tracking-[0.3em] focus:border-red-400 focus:outline-none"
+                />
+              )}
+
+              {paymentMethod === 'ONLINE_TRANSFER' && (
+                <input
+                  type="text"
+                  value={transferReference}
+                  onChange={(event) => setTransferReference(event.target.value.toUpperCase())}
+                  placeholder="Transfer reference"
+                  className="w-full rounded-[24px] border border-red-100 px-4 py-3 text-lg font-bold focus:border-red-400 focus:outline-none"
+                />
+              )}
+
+              <button
+                onClick={() => processPaymentMutation.mutate()}
+                disabled={
+                  processPaymentMutation.isPending ||
+                  (paymentMethod === 'CASH' &&
+                    Number(cashReceived || 0) < Math.max((selectedOrder.totalAmount || 0) - discountAmount, 0)) ||
+                  (paymentMethod === 'ONLINE_TRANSFER' && !transferReference.trim()) ||
+                  (discountAmount > 0 && !managerPin.trim())
+                }
+                className="w-full rounded-[24px] bg-red-600 py-4 text-lg font-black text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {processPaymentMutation.isPending ? 'Processing Payment...' : 'Confirm Payment'}
+              </button>
+            </div>
+          </ModalShell>
         )}
       </AnimatePresence>
     </div>
   );
 };
+
+const SummaryCard: React.FC<{ label: string; value: number }> = ({ label, value }) => (
+  <div className="rounded-[24px] border border-red-100 bg-white px-4 py-3">
+    <p className="text-xs font-black uppercase tracking-[0.25em] text-red-500">{label}</p>
+    <p className="mt-1 text-2xl font-black text-gray-900">{value}</p>
+  </div>
+);
+
+const OrderSection: React.FC<{
+  title: string;
+  accent: string;
+  orders: ActiveOrder[];
+  renderOrderCard: (order: ActiveOrder) => React.ReactNode;
+}> = ({ title, accent, orders, renderOrderCard }) => {
+  if (orders.length === 0) {
+    return null;
+  }
+
+  return (
+    <section>
+      <div className="mb-4 flex items-center gap-3">
+        <span className={`h-3 w-3 rounded-full ${accent}`} />
+        <h2 className="text-xl font-black text-gray-900">{title}</h2>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">{orders.map((order) => renderOrderCard(order))}</div>
+    </section>
+  );
+};
+
+const ActionButton: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  variant?: 'default' | 'primary' | 'danger';
+}> = ({ icon, label, onClick, variant = 'default' }) => {
+  const variantClass =
+    variant === 'primary'
+      ? 'bg-red-600 text-white hover:bg-red-700'
+      : variant === 'danger'
+      ? 'bg-red-950 text-white hover:bg-black'
+      : 'bg-red-50 text-red-700 hover:bg-red-100';
+
+  return (
+    <button onClick={onClick} className={`inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-bold transition-colors ${variantClass}`}>
+      {icon}
+      {label}
+    </button>
+  );
+};
+
+const PaymentMethodButton: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}> = ({ icon, label, active, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`rounded-[24px] border px-4 py-4 text-sm font-bold transition-all ${
+      active ? 'border-red-600 bg-red-600 text-white' : 'border-red-100 bg-white text-red-700 hover:bg-red-50'
+    }`}
+  >
+    <span className="mb-2 flex justify-center">{icon}</span>
+    {label}
+  </button>
+);
+
+const ModalShell: React.FC<{
+  title: string;
+  onClose: () => void;
+  widthClass?: string;
+  children: React.ReactNode;
+}> = ({ title, onClose, widthClass = 'max-w-2xl', children }) => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+    onClick={onClose}
+  >
+    <motion.div
+      initial={{ scale: 0.96, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.96, opacity: 0 }}
+      className={`w-full ${widthClass} rounded-[36px] bg-white p-6 shadow-2xl`}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.25em] text-red-500">Live Action</p>
+          <h3 className="mt-2 text-2xl font-black text-gray-900">{title}</h3>
+        </div>
+        <button onClick={onClose} className="rounded-2xl bg-red-50 p-3 text-red-700 transition-colors hover:bg-red-100">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      {children}
+    </motion.div>
+  </motion.div>
+);
 
 export default CashierActiveOrders;

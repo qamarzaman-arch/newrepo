@@ -106,7 +106,11 @@ const POSScreen: React.FC = () => {
       };
 
       const response = await orderService.createOrder(orderData);
-      const order = response.data.data.order;
+      const order = response.data?.order;
+
+      if (!response.success || !order) {
+        throw new Error(response.error?.message || 'Failed to create order');
+      }
 
       // Process payment
       await orderService.processPayment(order.id, {

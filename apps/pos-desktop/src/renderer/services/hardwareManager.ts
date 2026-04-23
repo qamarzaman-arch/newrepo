@@ -57,6 +57,7 @@ export interface HardwareState {
 class HardwareManager {
   private state: HardwareState;
   private listeners: Map<string, Function[]> = new Map();
+  private keyboardBarcodeHandlers: Map<(barcode: string) => void, (event: KeyboardEvent) => void> = new Map();
 
   constructor() {
     this.state = {
@@ -292,6 +293,14 @@ class HardwareManager {
     } else {
       // Browser fallback: listen for keyboard input
       this.setupKeyboardBarcodeListener(callback);
+    }
+  }
+
+  offBarcodeScan(callback: (barcode: string) => void): void {
+    const handler = this.keyboardBarcodeHandlers.get(callback);
+    if (handler) {
+      document.removeEventListener('keydown', handler);
+      this.keyboardBarcodeHandlers.delete(callback);
     }
   }
 
@@ -582,29 +591,33 @@ class HardwareManager {
     let barcodeBuffer = '';
     let lastKeyTime = 0;
     const SCAN_TIMEOUT = 50; // ms between keystrokes
-    
-    document.addEventListener('keydown', (event) => {
+
+    const handler = (event: KeyboardEvent) => {
       const currentTime = Date.now();
-      
+
       // If too much time passed, reset buffer
       if (currentTime - lastKeyTime > SCAN_TIMEOUT) {
         barcodeBuffer = '';
       }
-      
+
       lastKeyTime = currentTime;
-      
+
+      if (event.key === 'Enter' && barcodeBuffer.length > 3) {
+        event.preventDefault();
+        callback(barcodeBuffer);
+        barcodeBuffer = '';
+        return;
+      }
+
       // Only capture alphanumeric keys
       if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
         barcodeBuffer += event.key;
-        
-        // If Enter is pressed, submit barcode
-        if (event.key === 'Enter' && barcodeBuffer.length > 3) {
-          event.preventDefault();
-          callback(barcodeBuffer);
-          barcodeBuffer = '';
-        }
       }
-    });
+    };
+
+    this.offBarcodeScan(callback);
+    this.keyboardBarcodeHandlers.set(callback, handler);
+    document.addEventListener('keydown', handler);
   }
 }
 

@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportService } from '../services/reportService';
-import { staffService } from '../services/staffService';
 import { inventoryService } from '../services/inventoryService';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
-import { Download, FileText, TrendingUp, TrendingDown, Users, Package, DollarSign, Percent } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, Users, Package, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ReportsScreen: React.FC = () => {
@@ -51,21 +50,12 @@ const ReportsScreen: React.FC = () => {
   });
 
   const { data: staffData } = useQuery({
-    queryKey: ['staff-performance', days],
+    queryKey: ['staff-performance'],
     queryFn: async () => {
-      const response = await staffService.getStaff();
+      const response = await reportService.getStaffPerformance(days);
       return response.data.data?.staff || [];
     },
     enabled: reportType === 'staff',
-  });
-
-  const { data: shiftData } = useQuery({
-    queryKey: ['shift-summary'],
-    queryFn: async () => {
-      const response = await reportService.getShiftSummary();
-      return response.data.data;
-    },
-    enabled: reportType === 'profit-loss' || reportType === 'tax',
   });
 
   const COLORS = ['#00513f', '#753229', '#60a5fa', '#f59e0b', '#10b981'];

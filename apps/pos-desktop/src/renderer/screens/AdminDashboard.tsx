@@ -29,6 +29,7 @@ import { inventoryService } from '../services/inventoryService';
 import { tableService } from '../services/tableService';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
+import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
 import {
   BarChart,
@@ -46,6 +47,9 @@ import {
 } from 'recharts';
 
 const AdminDashboard: React.FC = () => {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'ADMIN';
+
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('7d');
   const navigate = useNavigate();
   const { formatCurrency } = useCurrencyFormatter();
@@ -199,6 +203,18 @@ const AdminDashboard: React.FC = () => {
     { name: 'No Data', value: 1, color: '#e5e7eb' }
   ];
 
+  const getOrderTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      DINE_IN: 'Dine-In',
+      WALK_IN: 'Walk-In',
+      TAKEAWAY: 'Take Away',
+      PICKUP: 'Pickup',
+      DELIVERY: 'Delivery',
+      RESERVATION: 'Reservation',
+    };
+    return labels[type] || type.replace('_', ' ');
+  };
+
   // Calculate real peak hours from daily sales data
   const peakHoursData = React.useMemo(() => {
     if (!monthlySales?.dailySales || monthlySales.dailySales.length === 0) {
@@ -304,13 +320,14 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-1">Comprehensive business analytics and insights</p>
-        </div>
-        <div className="flex gap-2 bg-white rounded-xl p-1 shadow-sm border border-gray-200">
+      <div className="rounded-[32px] border border-red-100 bg-[linear-gradient(135deg,#fff5f5_0%,#ffffff_42%,#fff1f2_100%)] p-6 shadow-soft">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-red-500">Admin Control Center</p>
+            <h1 className="mt-2 text-3xl font-black text-gray-900">Admin Dashboard</h1>
+            <p className="mt-2 max-w-2xl text-sm text-gray-600">Business analytics, staffing pressure, and live operational risk in one screen.</p>
+          </div>
+          <div className="flex gap-2 rounded-2xl border border-red-100 bg-white p-1 shadow-sm">
           <button
             onClick={() => setTimeRange('7d')}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -335,6 +352,7 @@ const AdminDashboard: React.FC = () => {
           >
             90 Days
           </button>
+          </div>
         </div>
       </div>
 
@@ -350,7 +368,7 @@ const AdminDashboard: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100 hover:shadow-medium transition-all"
+              className="bg-white rounded-2xl p-6 shadow-soft border border-red-50 hover:shadow-medium transition-all"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.color}`}>
@@ -375,7 +393,7 @@ const AdminDashboard: React.FC = () => {
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Revenue Trend Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-soft border border-gray-100">
+        <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-soft border border-red-50">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -417,7 +435,7 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Order Type Distribution */}
-        <div className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100">
+        <div className="bg-white rounded-2xl p-6 shadow-soft border border-red-50">
           <div className="mb-6">
             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <PieChart className="w-5 h-5 text-primary" />
@@ -460,7 +478,7 @@ const AdminDashboard: React.FC = () => {
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Peak Hours */}
-        <div className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100">
+        <div className="bg-white rounded-2xl p-6 shadow-soft border border-red-50">
           <div className="mb-6">
             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
@@ -486,7 +504,7 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Top Products */}
-        <div className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100">
+        <div className="bg-white rounded-2xl p-6 shadow-soft border border-red-50">
           <div className="mb-6">
             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" />
@@ -547,7 +565,7 @@ const AdminDashboard: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-semibold text-gray-900 text-sm">{order.orderNumber}</p>
-                    <p className="text-xs text-gray-500">{order.orderType}</p>
+                    <p className="text-xs text-gray-500">{getOrderTypeLabel(order.orderType)}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-primary text-sm">${order.totalAmount.toFixed(2)}</p>
@@ -678,7 +696,7 @@ const AdminDashboard: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100"
+        className="bg-white rounded-2xl p-6 shadow-soft border border-red-50"
       >
         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
           <Plus className="w-5 h-5 text-primary" />
@@ -725,15 +743,17 @@ const AdminDashboard: React.FC = () => {
             <p className="text-xs font-semibold text-gray-700 text-center">Generate Report</p>
           </motion.button>
 
-          <motion.button
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleQuickAction('PRINT_Z')}
-            className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200 hover:border-green-400 transition-all group"
-          >
-            <Printer className="w-8 h-8 mx-auto mb-2 text-green-600 group-hover:scale-110 transition-transform" />
-            <p className="text-xs font-semibold text-gray-700 text-center">Print Z-Report</p>
-          </motion.button>
+          {isAdmin && (
+            <motion.button
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleQuickAction('PRINT_Z')}
+              className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200 hover:border-green-400 transition-all group"
+            >
+              <Printer className="w-8 h-8 mx-auto mb-2 text-green-600 group-hover:scale-110 transition-transform" />
+              <p className="text-xs font-semibold text-gray-700 text-center">Print Z-Report</p>
+            </motion.button>
+          )}
 
           <motion.button
             whileHover={{ scale: 1.05, y: -2 }}
@@ -752,7 +772,7 @@ const AdminDashboard: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100"
+        className="bg-white rounded-2xl p-6 shadow-soft border border-red-50"
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">

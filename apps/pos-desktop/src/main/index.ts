@@ -1,9 +1,10 @@
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, screen, safeStorage } from 'electron';
 import path from 'path';
 // import Database from 'better-sqlite3'; // Temporarily disabled - requires C++ build tools
 import Store from 'electron-store';
 import log from 'electron-log';
 import { setupHardwareHandlers } from './hardware-handlers';
+import fs from 'fs';
 
 // Configure logging
 log.transports.file.level = 'info';
@@ -12,6 +13,56 @@ log.transports.file.maxSize = 5 * 1024 * 1024; // 5MB
 const store = new Store();
 let mainWindow: BrowserWindow | null = null;
 // let db: Database.Database; // Temporarily disabled
+
+// Secure storage path
+const secureStoragePath = path.join(app.getPath('userData'), 'secure-storage');
+
+// Ensure secure storage directory exists
+if (!fs.existsSync(secureStoragePath)) {
+  fs.mkdirSync(secureStoragePath, { recursive: true });
+}
+
+// Helper function to get secure file path
+function getSecureFilePath(key: string): string {
+  // Sanitize key to prevent path traversal
+  const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, '_');
+  return path.join(secureStoragePath, `${sanitizedKey}.enc`);
+}
+
+// Secure storage functions using safeStorage
+async function secureSetItem(key: string, value: string): Promise<void> {
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('Encryption is not available on this system');
+  }
+  
+  const encrypted = safeStorage.encryptString(value);
+  const filePath = getSecureFilePath(key);
+  fs.writeFileSync(filePath, encrypted);
+}
+
+async function secureGetItem(key: string): Promise<string | null> {
+  const filePath = getSecureFilePath(key);
+  
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  
+  try {
+    const encrypted = fs.readFileSync(filePath);
+    return safeStorage.decryptString(encrypted);
+  } catch (error) {
+    log.error(`Failed to decrypt secure storage for key: ${key}`, error);
+    throw new Error('Failed to decrypt secure storage data');
+  }
+}
+
+async function secureRemoveItem(key: string): Promise<void> {
+  const filePath = getSecureFilePath(key);
+  
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+}
 
 // Initialize local database - TEMPORARILY DISABLED
 // function initializeDatabase() {
@@ -102,6 +153,37 @@ app.whenReady().then(() => {
       isPackaged: app.isPackaged,
       platform: process.platform,
     };
+  });
+
+  // Secure storage IPC handlers
+  ipcMain.handle('secure-set-item', async (event, key: string, value: string) => {
+    try {
+      await secureSetItem(key, value);
+      return { success: true };
+    } catch (error) {
+      log.error('secure-set-item error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('secure-get-item', async (event, key: string) => {
+    try {
+      const value = await secureGetItem(key);
+      return value;
+    } catch (error) {
+      log.error('secure-get-item error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('secure-remove-item', async (event, key: string) => {
+    try {
+      await secureRemoveItem(key);
+      return { success: true };
+    } catch (error) {
+      log.error('secure-remove-item error:', error);
+      throw error;
+    }
   });
 
   // initializeDatabase(); // Temporarily disabled - better-sqlite3 requires C++ build tools

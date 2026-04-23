@@ -210,7 +210,7 @@ const AdvancedCashierPOS: React.FC = () => {
   const handleOrderTypeSelect = (type: string) => {
     setLocalOrderType(type);
     setOrderType(type as any);
-    if (type === 'WALK_IN' || type === 'TAKEAWAY') {
+    if (type === 'PICKUP') {
       setCurrentStep('MENU_ORDERING');
     } else if (type === 'RESERVATION') {
       setCurrentStep('RESERVATION_DETAILS');
@@ -400,8 +400,8 @@ const AdvancedCashierPOS: React.FC = () => {
           const stepIndex = ['ORDER_TYPE', 'TABLE_CUSTOMER', 'RESERVATION_DETAILS', 'MENU_ORDERING', 'CHECKOUT', 'SUCCESS'].indexOf(currentStep);
           const isActive = step === currentStep;
           const isDone = i < stepIndex;
-          // Skip TABLE_CUSTOMER step indicator for walk-in/takeaway
-          if (step === 'TABLE_CUSTOMER' && (orderType === 'WALK_IN' || orderType === 'TAKEAWAY')) return null;
+          // Skip TABLE_CUSTOMER step indicator for pickup
+          if (step === 'TABLE_CUSTOMER' && orderType === 'PICKUP') return null;
           // Skip RESERVATION_DETAILS for non-reservation orders
           if (step === 'RESERVATION_DETAILS' && orderType !== 'RESERVATION') return null;
           // Skip MENU_ORDERING and CHECKOUT for reservation (it goes straight to success)

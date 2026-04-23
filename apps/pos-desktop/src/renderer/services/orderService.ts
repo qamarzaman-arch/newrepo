@@ -1,6 +1,17 @@
 import api from './api';
 import { getOfflineQueueManager } from './offlineQueueManager';
 
+export type OrderType =
+  | 'DINE_IN'
+  | 'WALK_IN'
+  | 'TAKEAWAY'
+  | 'DELIVERY'
+  | 'PICKUP'
+  | 'RESERVATION';
+
+export type PaymentMethod = 'CASH' | 'CARD' | 'SPLIT' | 'ONLINE_TRANSFER';
+export type SplitPaymentMethod = 'CASH' | 'CARD';
+
 export interface OrderItem {
   menuItemId: string;
   quantity: number;
@@ -9,7 +20,7 @@ export interface OrderItem {
 }
 
 export interface CreateOrderData {
-  orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'PICKUP' | 'RESERVATION';
+  orderType: OrderType;
   tableId?: string;
   customerId?: string;
   customerName?: string;
@@ -21,6 +32,16 @@ export interface CreateOrderData {
   tipAmount?: number;
   notes?: string;
   kitchenNotes?: string;
+}
+
+export interface PaymentPayload {
+  method: PaymentMethod;
+  amount: number;
+  cashReceived?: number;
+  cardLastFour?: string;
+  transferReference?: string;
+  splitPayments?: Array<{ method: SplitPaymentMethod; amount: number }>;
+  notes?: string;
 }
 
 export interface CreateOrderResponse {
@@ -51,45 +72,47 @@ function isRetryableError(error: any): boolean {
   return true;
 }
 
+function toQueuePaymentData(paymentData?: PaymentPayload) {
+  if (!paymentData) return undefined;
+
+  return {
+    method: paymentData.method === 'ONLINE_TRANSFER' ? 'CARD' : paymentData.method,
+    amount: paymentData.amount,
+    cashReceived: paymentData.cashReceived,
+    splitPayments: paymentData.splitPayments,
+    notes: paymentData.notes,
+  } as const;
+}
+
 export const orderService = {
   getOrders: (params?: { status?: string; orderType?: string; page?: number; limit?: number }) =>
     api.get('/orders', { params }),
+
   getOrder: (id: string) => api.get(`/orders/${id}`),
-  
-  createOrder: async (data: CreateOrderData, paymentData?: {
-    method: string;
-    amount: number;
-    cashReceived?: number;
-    cardLastFour?: string;
-    transferReference?: string;
-    splitPayments?: Array<{ method: string; amount: number }>;
-    notes?: string;
-  }): Promise<CreateOrderResponse> => {
+
+  createOrder: async (data: CreateOrderData, paymentData?: PaymentPayload): Promise<CreateOrderResponse> => {
     const offlineManager = getOfflineQueueManager();
     const queueStatus = offlineManager.getQueueStatus();
-    
+
     if (!queueStatus.isOnline) {
-      console.log('[OrderService] Offline - queueing order');
-      const queueId = offlineManager.addToQueue(data, paymentData ? {
-        method: paymentData.method as 'CASH' | 'CARD' | 'SPLIT',
-        amount: paymentData.amount,
-        cashReceived: paymentData.cashReceived,
-        splitPayments: paymentData.splitPayments,
-        notes: paymentData.notes,
-      } : undefined);
-      
+      const queueId = offlineManager.addToQueue(data, toQueuePaymentData(paymentData));
+
       return {
         success: true,
         queued: true,
         queueId,
+        data: {
+          queued: true,
+          queueId,
+          message: 'Order queued for sync when connection is restored',
+        },
         isOfflineQueued: true,
-        error: undefined,
       };
     }
-    
+
     try {
       const orderResponse = await api.post('/orders', data);
-      
+
       if (paymentData && orderResponse.data.data?.order?.id) {
         const orderId = orderResponse.data.data.order.id;
         await api.post(`/orders/${orderId}/payment`, {
@@ -101,7 +124,7 @@ export const orderService = {
           notes: paymentData.notes,
         });
       }
-      
+
       return {
         success: true,
         data: orderResponse.data.data,
@@ -110,19 +133,17 @@ export const orderService = {
       };
     } catch (error: any) {
       if (isRetryableError(error)) {
-        console.log('[OrderService] Retryable error - queueing order for later');
-        const queueId = offlineManager.addToQueue(data, paymentData ? {
-          method: paymentData.method as 'CASH' | 'CARD' | 'SPLIT',
-          amount: paymentData.amount,
-          cashReceived: paymentData.cashReceived,
-          splitPayments: paymentData.splitPayments,
-          notes: paymentData.notes,
-        } : undefined);
-        
+        const queueId = offlineManager.addToQueue(data, toQueuePaymentData(paymentData));
+
         return {
           success: true,
           queued: true,
           queueId,
+          data: {
+            queued: true,
+            queueId,
+            message: 'Order queued for sync when connection is restored',
+          },
           isOfflineQueued: true,
           error: {
             message: 'Order queued for sync when connection is restored',
@@ -130,7 +151,7 @@ export const orderService = {
           },
         };
       }
-      
+
       return {
         success: false,
         queued: false,
@@ -142,36 +163,58 @@ export const orderService = {
       };
     }
   },
-  
-  updateOrder: (id: string, data: Partial<CreateOrderData>) => api.put(`/orders/${id}`, data),
+
+  updateOrder: (id: string, data: Partial<CreateOrderData> & { notifyKitchen?: boolean }) =>
+    api.put(`/orders/${id}`, data),
+
+  modifyOrder: (id: string, data: { items?: OrderItem[]; notes?: string; notifyKitchen?: boolean }) =>
+    api.put(`/orders/${id}`, data),
+
   deleteOrder: (id: string) => api.delete(`/orders/${id}`),
+
   updateStatus: (id: string, status: string, cancelReason?: string) =>
     api.patch(`/orders/${id}/status`, { status, cancelReason }),
-  processPayment: (id: string, paymentData: { 
-    method: string; 
-    amount: number; 
-    reference?: string; 
-    notes?: string;
-    cashReceived?: number;
-    cardLastFour?: string;
-    transferReference?: string;
-    discountAmount?: number;
-    discountPercent?: number;
-  }) => api.post(`/orders/${id}/payment`, paymentData),
+
+  cancelOrder: (id: string, reason?: string) =>
+    api.patch(`/orders/${id}/status`, { status: 'CANCELLED', cancelReason: reason }),
+
+  processPayment: (
+    id: string,
+    paymentData: {
+      method: string;
+      amount: number;
+      reference?: string;
+      notes?: string;
+      cashReceived?: number;
+      cardLastFour?: string;
+      transferReference?: string;
+      discountAmount?: number;
+      discountPercent?: number;
+    }
+  ) => api.post(`/orders/${id}/payment`, paymentData),
+
   getReservations: (params?: { date?: string; status?: string }) =>
     api.get('/orders/reservations', { params }),
+
   createReservation: (data: any) => api.post('/orders/reservations', data),
+
   updateReservation: (id: string, data: any) => api.put(`/orders/reservations/${id}`, data),
+
   cancelReservation: (id: string) => api.delete(`/orders/reservations/${id}`),
-  refundOrder: (id: string, data: {
-    type: 'FULL' | 'PARTIAL';
-    reason: string;
-    amount: number;
-    items?: string[];
-    managerPin: string;
-    approvedBy: string;
-    processedBy?: string;
-    refundMethod?: string;
-    originalPaymentMethod?: string;
-  }) => api.post(`/orders/${id}/refund`, data),
+
+  refundOrder: (
+    id: string,
+    data: {
+      type: 'FULL' | 'PARTIAL';
+      reason: string;
+      amount: number;
+      items?: string[];
+      managerPin: string;
+      approvedBy: string;
+      processedBy?: string;
+      refundMethod?: string;
+      originalPaymentMethod?: string;
+    }
+  ) => api.post(`/orders/${id}/refund`, data),
 };
+

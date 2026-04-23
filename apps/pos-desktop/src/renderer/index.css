@@ -2,6 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   DISABLE FRAMER MOTION ANIMATIONS GLOBALLY
+   ============================================ */
+
+/* Force all elements to have no transform/opacity animations */
+[class*="framer"],
+[data-framer-name] {
+  transform: none !important;
+  opacity: 1 !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Ensure all content is visible immediately */
+* {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Re-enable transitions only for hover states on interactive elements */
+button:hover,
+a:hover,
+input:hover,
+select:hover,
+textarea:hover,
+.hover\\:bg-primary-600:hover,
+.hover\\:bg-gray-200:hover {
+  transition-duration: 150ms !important;
+}
+
 @layer base {
   * {
     @apply border-neutral-300;
@@ -397,11 +428,6 @@
   /* Skeleton loading */
   .skeleton {
     @apply bg-neutral-200 rounded-lg animate-pulse;
-  }
-
-  /* Glassmorphism - Subtle */
-  .glass {
-    @apply bg-neutral-0/90 backdrop-blur-lg border border-neutral-200/50;
   }
 
   /* Focus ring utility */

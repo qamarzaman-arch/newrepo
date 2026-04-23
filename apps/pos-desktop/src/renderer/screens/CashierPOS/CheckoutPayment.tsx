@@ -279,6 +279,9 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
       // Handle offline queue response
       if (orderResponse.queued || orderResponse.isOfflineQueued) {
         const queueId = orderResponse.queueId;
+        if (!queueId) {
+          throw new Error(orderResponse.error?.message || 'Queued order is missing a queue id');
+        }
         setCompletedOrderId(queueId);
         toast.success(orderResponse.error?.message || 'Order queued offline. Will sync when connection is restored.');
         onComplete(queueId, Math.max(0, change));

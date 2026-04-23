@@ -23,7 +23,9 @@ const KitchenDispatchConfirmation: React.FC<Props> = ({ isOpen, onClose, onConfi
       'DINE_IN': 'Dine-In',
       'WALK_IN': 'Walk-In',
       'TAKEAWAY': 'Take Away',
+      'PICKUP': 'Pickup',
       'DELIVERY': 'Delivery',
+      'RESERVATION': 'Reservation',
     };
     return labels[orderType] || orderType;
   };
@@ -53,7 +55,11 @@ const KitchenDispatchConfirmation: React.FC<Props> = ({ isOpen, onClose, onConfi
       };
 
       const response = await orderService.createOrder(orderData);
-      const createdOrder = response.data.data.order;
+      const createdOrder = response.data?.order;
+
+      if (!response.success || !createdOrder) {
+        throw new Error(response.error?.message || 'Failed to create order');
+      }
 
       // Store order ID in order store for later payment processing
       setOrderId(createdOrder.id);
@@ -152,6 +158,9 @@ const KitchenDispatchConfirmation: React.FC<Props> = ({ isOpen, onClose, onConfi
                     <span className="text-gray-900 font-semibold">{currentOrder.customerName}</span>
                   </div>
                 )}
+                <div className="col-span-2 rounded-2xl bg-red-50 p-3 text-sm text-red-900">
+                  Review this order once before sending. Kitchen receives it immediately after confirmation.
+                </div>
               </div>
             </div>
 

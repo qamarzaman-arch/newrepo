@@ -169,6 +169,13 @@ const TablesScreen: React.FC = () => {
       : 0,
   };
 
+  const floorSummary = [
+    { label: 'Live floor', value: `${stats.available + stats.reserved} open seats`, tone: 'text-green-700' },
+    { label: 'Busy tables', value: `${stats.occupied} occupied`, tone: 'text-red-700' },
+    { label: 'Service attention', value: `${stats.needsCleaning + stats.outOfOrder} pending`, tone: 'text-orange-700' },
+    { label: 'Utilization', value: `${stats.utilization}%`, tone: 'text-gray-900' },
+  ];
+
   const handleStatusChange = (tableId: string, newStatus: string) => {
     updateStatusMutation.mutate({ tableId, status: newStatus });
   };
@@ -248,14 +255,34 @@ const TablesScreen: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-[32px] border border-red-100 bg-[linear-gradient(135deg,#fff5f5_0%,#ffffff_45%,#fff1f2_100%)] p-6 shadow-soft">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-red-500">Dining Floor</p>
+            <h1 className="mt-2 text-3xl font-black text-gray-900">Table Management</h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Keep seating, reservations, and cleaning status visible in one place.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {floorSummary.map((item) => (
+              <div key={item.label} className="rounded-2xl border border-white/70 bg-white/90 px-4 py-3 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">{item.label}</p>
+                <p className={`mt-1 text-sm font-bold ${item.tone}`}>{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
             <LayoutGrid className="w-8 h-8 text-primary" />
-            Table Management
-          </h1>
-          <p className="text-gray-600 mt-1">Manage tables, seating, and reservations</p>
+            Floor Controls
+          </h2>
+          <p className="text-gray-600 mt-1">Refresh live status, add tables, and keep the floor responsive.</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -300,7 +327,7 @@ const TablesScreen: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
-            className={`${stat.color} rounded-xl p-4`}
+            className={`${stat.color} rounded-2xl p-4 shadow-sm border border-white`}
           >
             <p className="text-sm font-medium opacity-80">{stat.label}</p>
             <p className="text-2xl font-bold">{stat.value}</p>
@@ -368,17 +395,21 @@ const TablesScreen: React.FC = () => {
                   className={`bg-white rounded-2xl p-5 shadow-soft border-2 ${statusConfig.border} cursor-pointer hover:shadow-medium transition-all group relative overflow-hidden`}
                   onClick={() => setSelectedTable(table)}
                 >
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-200 via-red-500 to-red-200 opacity-80" />
                   {/* Status Badge */}
                   <div className={`absolute top-3 right-3 ${statusConfig.bg} ${statusConfig.color} px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1`}>
                     <StatusIcon className="w-3 h-3" />
                   </div>
 
                   {/* Table Shape Icon */}
-                  <div className={`w-16 h-16 mx-auto mb-3 ${statusConfig.bg} rounded-full flex items-center justify-center`}>
+                  <div className={`w-16 h-16 mx-auto mb-3 ${statusConfig.bg} rounded-full flex items-center justify-center ring-4 ring-white shadow-sm`}>
                     <span className={`text-2xl font-bold ${statusConfig.color}`}>T{table.number}</span>
                   </div>
 
                   <h3 className="text-lg font-bold text-center text-gray-900 mb-1">Table {table.number}</h3>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-center text-gray-400 mb-2">
+                    {table.shape || 'Round'} table
+                  </p>
                   
                   <div className="flex items-center justify-center gap-2 text-sm text-gray-600 mb-2">
                     <Users className="w-4 h-4" />
@@ -391,6 +422,11 @@ const TablesScreen: React.FC = () => {
                       {table.location}
                     </p>
                   )}
+                  <div className="mt-4 flex items-center justify-center">
+                    <span className="rounded-full bg-gray-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
+                      {table.isActive === false ? 'Inactive' : 'Active'}
+                    </span>
+                  </div>
 
                   {/* Quick Actions on Hover */}
                   <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-gray-900/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex justify-center gap-1">
@@ -515,15 +551,15 @@ const TablesScreen: React.FC = () => {
       )}
 
       {filteredTables.length === 0 && !isLoading && (
-        <div className="text-center py-16">
-          <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <LayoutGrid className="w-12 h-12 text-gray-400" />
+        <div className="text-center py-16 bg-white rounded-[28px] shadow-soft border border-red-100">
+          <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <LayoutGrid className="w-12 h-12 text-red-300" />
           </div>
           <p className="text-gray-500 text-lg">{searchQuery ? 'No tables match your search' : 'No tables configured yet'}</p>
           {!searchQuery && (
             <button
               onClick={handleAddTable}
-              className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              className="mt-4 px-5 py-2.5 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors"
             >
               Add Your First Table
             </button>

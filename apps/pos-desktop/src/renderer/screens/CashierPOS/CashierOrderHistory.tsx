@@ -107,6 +107,7 @@ const CashierOrderHistory: React.FC = () => {
       DINE_IN: 'Dine-In',
       WALK_IN: 'Walk-In',
       TAKEAWAY: 'Take Away',
+      PICKUP: 'Pickup',
       DELIVERY: 'Delivery',
     };
     return labels[type] || type;
@@ -142,6 +143,23 @@ const CashierOrderHistory: React.FC = () => {
     return labels[status] || status;
   };
 
+  const getJourneyLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      COMPLETED: 'Closed',
+      REFUNDED: 'Refunded',
+      PARTIALLY_REFUNDED: 'Partial refund',
+      CANCELLED: 'Stopped',
+    };
+    return labels[status] || 'Recorded';
+  };
+
+  const summaryCards = [
+    { label: 'Orders shown', value: filteredOrders.length },
+    { label: 'Refunded', value: orders.filter((order: any) => order.status === 'REFUNDED' || order.status === 'PARTIALLY_REFUNDED').length },
+    { label: 'Cancelled', value: orders.filter((order: any) => order.status === 'CANCELLED').length },
+    { label: 'Page', value: `${currentPage}/${Math.max(totalPages, 1)}` },
+  ];
+
   // Refund time limit check (24 hours)
   const canRefundOrder = (order: any) => {
     const orderDate = new Date(order.createdAt);
@@ -165,6 +183,15 @@ const CashierOrderHistory: React.FC = () => {
           >
             Refresh
           </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+          {summaryCards.map((item) => (
+            <div key={item.label} className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-red-400">{item.label}</p>
+              <p className="mt-1 text-lg font-black text-gray-900">{item.value}</p>
+            </div>
+          ))}
         </div>
 
         {/* Search & Filters */}
@@ -237,6 +264,7 @@ const CashierOrderHistory: React.FC = () => {
                     <option value="DINE_IN">Dine-In</option>
                     <option value="WALK_IN">Walk-In</option>
                     <option value="TAKEAWAY">Take Away</option>
+                    <option value="PICKUP">Pickup</option>
                     <option value="DELIVERY">Delivery</option>
                   </select>
                 </div>
@@ -271,9 +299,10 @@ const CashierOrderHistory: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <span className="font-bold text-gray-900">#{order.id.slice(-6)}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
                         order.orderType === 'DINE_IN' ? 'bg-blue-100 text-blue-700' :
                         order.orderType === 'TAKEAWAY' ? 'bg-amber-100 text-amber-700' :
+                        order.orderType === 'PICKUP' ? 'bg-amber-100 text-amber-700' :
                         order.orderType === 'DELIVERY' ? 'bg-purple-100 text-purple-700' :
                         'bg-green-100 text-green-700'
                       }`}>
@@ -281,6 +310,9 @@ const CashierOrderHistory: React.FC = () => {
                       </span>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
                         {getStatusLabel(order.status)}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700">
+                        Journey: {getJourneyLabel(order.status)}
                       </span>
                       {order.tableNumber && (
                         <span className="text-sm text-gray-500">Table {order.tableNumber}</span>
@@ -402,7 +434,7 @@ const CashierOrderHistory: React.FC = () => {
                 </button>
               </div>
 
-              <div className="space-y-6">
+                <div className="space-y-6">
                 {/* Order Info */}
                 <div className="bg-gray-50 rounded-2xl p-4">
                   <div className="grid grid-cols-2 gap-4 text-sm">
@@ -434,6 +466,17 @@ const CashierOrderHistory: React.FC = () => {
                         <p className="font-semibold text-gray-900">{selectedOrder.customerName}</p>
                       </div>
                     )}
+                  </div>
+                  <div className="mt-4 rounded-2xl bg-white p-3 ring-1 ring-red-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.25em] text-red-400">Order journey</p>
+                        <p className="mt-1 text-sm font-semibold text-gray-900">{getJourneyLabel(selectedOrder.status)}</p>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusColor(selectedOrder.status)}`}>
+                        {getStatusLabel(selectedOrder.status)}
+                      </span>
+                    </div>
                   </div>
                 </div>
 

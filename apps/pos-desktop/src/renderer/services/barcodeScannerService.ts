@@ -232,7 +232,7 @@ class BarcodeScannerService {
         resolve(true);
       });
 
-      toast.info('Please scan any barcode to test scanner...');
+      toast('Please scan any barcode to test scanner...');
     });
   }
 

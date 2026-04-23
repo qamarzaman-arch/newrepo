@@ -1,10 +1,160 @@
 import { Router, Response, NextFunction } from 'express';
+import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 
 const router = Router();
+
+// Validation schemas
+const createStaffSchema = z.object({
+  username: z.string().min(3),
+  fullName: z.string().min(1),
+  email: z.string().email().optional().or(z.literal('')),
+  phone: z.string().optional(),
+  role: z.enum(['STAFF', 'CASHIER', 'MANAGER', 'KITCHEN', 'RIDER', 'ADMIN']),
+  pin: z.string().optional(),
+  password: z.string().optional(),
+});
+
+const updateStaffSchema = z.object({
+  username: z.string().min(3).optional(),
+  fullName: z.string().min(1).optional(),
+  email: z.string().email().optional().or(z.literal('')).optional(),
+  phone: z.string().optional(),
+  role: z.enum(['STAFF', 'CASHIER', 'MANAGER', 'KITCHEN', 'RIDER', 'ADMIN']).optional(),
+  pin: z.string().optional(),
+  password: z.string().optional(),
+  isActive: z.boolean().optional(),
+});
+
+// Create staff
+router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const validatedData = createStaffSchema.parse(req.body);
+
+    // Check for duplicate username
+    const existing = await prisma.user.findUnique({
+      where: { username: validatedData.username },
+    });
+
+    if (existing) {
+      throw new AppError('Username already exists', 409);
+    }
+
+    // Hash password if provided (required for CASHIER, MANAGER, RIDER)
+    let passwordHash: string | undefined;
+    if (validatedData.password) {
+      passwordHash = await bcrypt.hash(validatedData.password, 10);
+    }
+
+    // Hash PIN if provided (required for CASHIER, MANAGER, RIDER)
+    let pinHash: string | undefined;
+    if (validatedData.pin) {
+      pinHash = await bcrypt.hash(validatedData.pin, 10);
+    }
+
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        username: validatedData.username,
+        fullName: validatedData.fullName,
+        email: validatedData.email,
+        phone: validatedData.phone,
+        role: validatedData.role,
+        passwordHash,
+        pin: pinHash,
+      },
+    });
+
+    logger.info(`Staff created: ${sanitize(validatedData.username)} with role ${validatedData.role} by ${sanitize(req.user!.username)}`);
+
+    res.status(201).json({
+      success: true,
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update staff
+router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const data = updateStaffSchema.parse(req.body);
+
+    // Check for duplicate username if updating username
+    if (data.username) {
+      const existing = await prisma.user.findFirst({
+        where: {
+          id: { not: req.params.id },
+          username: data.username,
+        },
+      });
+
+      if (existing) {
+        throw new AppError('Username already exists', 409);
+      }
+    }
+
+    // Hash password if provided
+    let passwordHash: string | undefined;
+    if (data.password) {
+      passwordHash = await bcrypt.hash(data.password, 10);
+    }
+
+    // Hash PIN if provided
+    let pinHash: string | undefined;
+    if (data.pin) {
+      pinHash = await bcrypt.hash(data.pin, 10);
+    }
+
+    // Update user
+    const user = await prisma.user.update({
+      where: { id: req.params.id },
+      data: {
+        ...(data.username && { username: data.username }),
+        ...(data.fullName && { fullName: data.fullName }),
+        ...(data.email !== undefined && { email: data.email }),
+        ...(data.phone !== undefined && { phone: data.phone }),
+        ...(data.role && { role: data.role }),
+        ...(passwordHash && { passwordHash }),
+        ...(pinHash && { pin: pinHash }),
+        ...(data.isActive !== undefined && { isActive: data.isActive }),
+      },
+    });
+
+    logger.info(`Staff updated: ${sanitize(data.username || req.params.id)} by ${sanitize(req.user!.username)}`);
+
+    res.json({
+      success: true,
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete staff (soft delete)
+router.delete('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    await prisma.user.update({
+      where: { id: req.params.id },
+      data: { isActive: false },
+    });
+
+    logger.info(`Staff deactivated: ${sanitize(req.params.id)} by ${sanitize(req.user!.username)}`);
+
+    res.json({
+      success: true,
+      message: 'Staff deactivated',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Get active shifts — MUST be before /:id route to avoid param conflict
 router.get('/active-shifts', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -26,13 +176,13 @@ router.get('/active-shifts', authenticate, async (req: AuthRequest, res: Respons
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const users = await prisma.user.findMany({
-      where: { isActive: true, role: { in: ['STAFF', 'KITCHEN', 'CASHIER', 'MANAGER'] } },
+      where: { isActive: true, role: { in: ['STAFF', 'KITCHEN', 'CASHIER', 'MANAGER', 'RIDER', 'ADMIN'] } },
       select: {
         id: true, username: true, fullName: true, role: true, email: true, phone: true, isActive: true,
       },
       orderBy: { fullName: 'asc' },
     });
-    res.json({ success: true, data: { users } });
+    res.json({ success: true, data: { staff: users } });
   } catch (error) {
     next(error);
   }

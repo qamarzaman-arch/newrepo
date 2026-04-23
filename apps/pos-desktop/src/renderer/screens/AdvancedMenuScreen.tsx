@@ -234,7 +234,13 @@ const AdvancedMenuScreen: React.FC = () => {
           const lines = text.split('\n').filter(line => line.trim());
           const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
           
-          const importedItems = [];
+          const importedItems: Array<{
+            name: string;
+            price: number;
+            categoryId?: string;
+            description: string;
+            isAvailable: boolean;
+          }> = [];
           for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
             const item: any = {};

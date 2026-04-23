@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Clock, AlertCircle, CheckCircle, PlayCircle, 
+import {
+  Clock, AlertCircle, CheckCircle, PlayCircle,
   TrendingUp, BarChart3, ListFilter, Timer,
   Flame, Snowflake, Utensils
 } from 'lucide-react';
@@ -9,32 +9,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { kitchenService, KotTicket } from '../services/kitchenService';
 import toast from 'react-hot-toast';
 import { useKitchenWebSocket } from '../hooks/useWebSocket';
-
-// Local order status utilities
-const ORDER_STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-700',
-  CONFIRMED: 'bg-blue-100 text-blue-700',
-  PREPARING: 'bg-purple-100 text-purple-700',
-  READY: 'bg-green-100 text-green-700',
-  SERVED: 'bg-teal-100 text-teal-700',
-  COMPLETED: 'bg-gray-100 text-gray-700',
-  CANCELLED: 'bg-red-100 text-red-700',
-};
-
-const getOrderStatusColor = (status: string): string => {
-  return ORDER_STATUS_COLORS[status] || ORDER_STATUS_COLORS.PENDING;
-};
-
-const getOrderTypeLabel = (type: string): string => {
-  const labels: Record<string, string> = {
-    DINE_IN: 'Dine-In',
-    TAKEAWAY: 'Takeaway',
-    WALK_IN: 'Walk-In',
-    DELIVERY: 'Delivery',
-    RESERVATION: 'Reservation',
-  };
-  return labels[type] || type;
-};
 
 interface PrepListItem {
   id: string;

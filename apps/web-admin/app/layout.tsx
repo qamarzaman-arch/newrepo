@@ -1,15 +1,12 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Inter } from 'next/font/google';
 import './globals.css';
 import { useRouter, usePathname } from 'next/navigation';
 import { Toaster } from 'react-hot-toast';
 import Sidebar from './components/Sidebar';
 import { apiClient } from './lib/api';
 import { clearAuth } from './lib/auth';
-
-const inter = Inter({ subsets: ['latin'] });
 
 function hasAuthCookie(): boolean {
   if (typeof document === 'undefined') return false;
@@ -94,7 +91,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gray-50 text-gray-900`}>
+      <body className="bg-gray-50 text-gray-900">
         <AuthWrapper>
           {children}
         </AuthWrapper>

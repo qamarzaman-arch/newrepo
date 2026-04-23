@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Users, Tag, PieChart, Search, Filter, Plus, 
+import {
+  Users, Tag, PieChart, Search, Filter, Plus,
   Crown, Mail, Phone, Calendar,
   DollarSign, ShoppingCart, Award, Target, Edit, Eye
 } from 'lucide-react';
@@ -9,12 +9,64 @@ import { useQuery } from '@tanstack/react-query';
 import { useCustomers } from '../hooks/useCustomers';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
 import { customerService } from '../services/customerService';
+import { useAuthStore } from '../stores/authStore';
+import toast from 'react-hot-toast';
 
 const AdvancedCustomersScreen: React.FC = () => {
+  const { user } = useAuthStore();
+  const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+
   const [activeTab, setActiveTab] = useState<'customers' | 'loyalty' | 'promotions' | 'segments'>('customers');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const { formatCurrency } = useCurrencyFormatter();
+
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [showTierModal, setShowTierModal] = useState(false);
+  const [showPromotionModal, setShowPromotionModal] = useState(false);
+  const [showSegmentModal, setShowSegmentModal] = useState(false);
+
+  const [customerFormData, setCustomerFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    dateOfBirth: '',
+    gender: '',
+    notes: '',
+    loyaltyPoints: 0,
+    isActive: true,
+  });
+
+  const [tierFormData, setTierFormData] = useState({
+    name: '',
+    minPoints: 0,
+    discount: 0,
+    color: '#00513f',
+  });
+
+  const [promotionFormData, setPromotionFormData] = useState({
+    name: '',
+    type: 'PERCENTAGE',
+    value: 0,
+    startDate: '',
+    endDate: '',
+    status: 'ACTIVE',
+    minOrderValue: 0,
+    maxUses: null as number | null,
+    applicableItems: [] as string[],
+  });
+
+  const [segmentFormData, setSegmentFormData] = useState({
+    name: '',
+    criteria: '',
+    minSpent: 0,
+    minOrders: 0,
+    minLoyaltyPoints: 0,
+    isActive: true,
+  });
 
   const { data: customersData } = useCustomers({
     search: searchQuery || undefined,
@@ -59,6 +111,116 @@ const AdvancedCustomersScreen: React.FC = () => {
     avgCustomerValue: 67.50,
   };
 
+  const handleAddCustomer = async () => {
+    if (!customerFormData.firstName || !customerFormData.lastName || !customerFormData.phone) {
+      toast.error('Please fill required fields (First Name, Last Name, Phone)');
+      return;
+    }
+    try {
+      await customerService.createCustomer({
+        firstName: customerFormData.firstName,
+        lastName: customerFormData.lastName,
+        email: customerFormData.email,
+        phone: customerFormData.phone,
+        address: customerFormData.address,
+        city: customerFormData.city,
+        dateOfBirth: customerFormData.dateOfBirth ? new Date(customerFormData.dateOfBirth).toISOString() : undefined,
+        gender: customerFormData.gender,
+        notes: customerFormData.notes,
+        loyaltyPoints: customerFormData.loyaltyPoints,
+        isActive: customerFormData.isActive,
+      });
+      toast.success('Customer added successfully');
+      setShowCustomerModal(false);
+      setCustomerFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        address: '',
+        city: '',
+        dateOfBirth: '',
+        gender: '',
+        notes: '',
+        loyaltyPoints: 0,
+        isActive: true,
+      });
+    } catch (error) {
+      toast.error('Failed to add customer');
+    }
+  };
+
+  const handleAddTier = async () => {
+    if (!tierFormData.name) {
+      toast.error('Please fill required fields');
+      return;
+    }
+    try {
+      await customerService.createLoyaltyTier(tierFormData);
+      toast.success('Loyalty Tier added successfully');
+      setShowTierModal(false);
+      setTierFormData({
+        name: '',
+        minPoints: 0,
+        discount: 0,
+        color: '#00513f',
+      });
+    } catch (error) {
+      toast.error('Failed to add loyalty tier');
+    }
+  };
+
+  const handleAddPromotion = async () => {
+    if (!promotionFormData.name || !promotionFormData.startDate || !promotionFormData.endDate) {
+      toast.error('Please fill required fields');
+      return;
+    }
+    try {
+      await customerService.createPromotion({
+        ...promotionFormData,
+        startDate: new Date(promotionFormData.startDate).toISOString(),
+        endDate: new Date(promotionFormData.endDate).toISOString(),
+      });
+      toast.success('Promotion added successfully');
+      setShowPromotionModal(false);
+      setPromotionFormData({
+        name: '',
+        type: 'PERCENTAGE',
+        value: 0,
+        startDate: '',
+        endDate: '',
+        status: 'ACTIVE',
+        minOrderValue: 0,
+        maxUses: null,
+        applicableItems: [],
+      });
+    } catch (error) {
+      toast.error('Failed to add promotion');
+    }
+  };
+
+  const handleAddSegment = async () => {
+    if (!segmentFormData.name || !segmentFormData.criteria) {
+      toast.error('Please fill required fields');
+      return;
+    }
+    try {
+      await customerService.createSegment(segmentFormData);
+      toast.success('Segment added successfully');
+      setShowSegmentModal(false);
+      setSegmentFormData({
+        name: '',
+        criteria: '',
+        minSpent: 0,
+        minOrders: 0,
+        minLoyaltyPoints: 0,
+        isActive: true,
+      });
+    } catch (error) {
+      toast.error('Failed to add segment');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -67,14 +229,54 @@ const AdvancedCustomersScreen: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 font-manrope">Customer CRM & Loyalty</h1>
           <p className="text-gray-600 mt-1">Manage customers, loyalty programs, and promotions</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
-        >
-          <Plus className="w-5 h-5" />
-          Add Customer
-        </motion.button>
+        {isAdminOrManager && (
+          <>
+            {activeTab === 'customers' && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowCustomerModal(true)}
+                className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+              >
+                <Plus className="w-5 h-5" />
+                Add Customer
+              </motion.button>
+            )}
+            {activeTab === 'loyalty' && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowTierModal(true)}
+                className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+              >
+                <Plus className="w-5 h-5" />
+                Add Tier
+              </motion.button>
+            )}
+            {activeTab === 'promotions' && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowPromotionModal(true)}
+                className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+              >
+                <Plus className="w-5 h-5" />
+                Add Promotion
+              </motion.button>
+            )}
+            {activeTab === 'segments' && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowSegmentModal(true)}
+                className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+              >
+                <Plus className="w-5 h-5" />
+                Add Segment
+              </motion.button>
+            )}
+          </>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -300,7 +502,7 @@ const AdvancedCustomersScreen: React.FC = () => {
         <div className="space-y-6">
           {/* Loyalty Tiers */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {loyaltyTiers.map((tier, index) => (
+            {loyaltyTiers.map((tier: any, index: number) => (
               <motion.div
                 key={tier.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -392,7 +594,7 @@ const AdvancedCustomersScreen: React.FC = () => {
             </motion.button>
           </div>
 
-          {promotions.map((promo, index) => (
+          {promotions.map((promo: any, index: number) => (
             <motion.div
               key={promo.id}
               initial={{ opacity: 0, y: 20 }}
@@ -442,7 +644,7 @@ const AdvancedCustomersScreen: React.FC = () => {
       {/* SEGMENTS TAB */}
       {activeTab === 'segments' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {segments.map((segment, index) => (
+          {segments.map((segment: any, index: number) => (
             <motion.div
               key={segment.id}
               initial={{ opacity: 0, y: 20 }}
@@ -482,6 +684,200 @@ const AdvancedCustomersScreen: React.FC = () => {
               </div>
             </motion.div>
           ))}
+        </div>
+      )}
+
+      {/* Customer Modal */}
+      {showCustomerModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Customer</h2>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">First Name *</label>
+                  <input type="text" value={customerFormData.firstName} onChange={(e) => setCustomerFormData({ ...customerFormData, firstName: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Last Name *</label>
+                  <input type="text" value={customerFormData.lastName} onChange={(e) => setCustomerFormData({ ...customerFormData, lastName: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Phone *</label>
+                <input type="tel" value={customerFormData.phone} onChange={(e) => setCustomerFormData({ ...customerFormData, phone: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                <input type="email" value={customerFormData.email} onChange={(e) => setCustomerFormData({ ...customerFormData, email: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Address</label>
+                <input type="text" value={customerFormData.address} onChange={(e) => setCustomerFormData({ ...customerFormData, address: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
+                <input type="text" value={customerFormData.city} onChange={(e) => setCustomerFormData({ ...customerFormData, city: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Date of Birth</label>
+                <input type="date" value={customerFormData.dateOfBirth} onChange={(e) => setCustomerFormData({ ...customerFormData, dateOfBirth: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Gender</label>
+                <select value={customerFormData.gender} onChange={(e) => setCustomerFormData({ ...customerFormData, gender: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                  <option value="">Select Gender</option>
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Loyalty Points</label>
+                <input type="number" value={customerFormData.loyaltyPoints} onChange={(e) => setCustomerFormData({ ...customerFormData, loyaltyPoints: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Notes</label>
+                <textarea value={customerFormData.notes} onChange={(e) => setCustomerFormData({ ...customerFormData, notes: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={3} />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="customerActive" checked={customerFormData.isActive} onChange={(e) => setCustomerFormData({ ...customerFormData, isActive: e.target.checked })} className="w-4 h-4" />
+                <label htmlFor="customerActive" className="text-sm text-gray-700">Active</label>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowCustomerModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleAddCustomer} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Add Customer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tier Modal */}
+      {showTierModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Loyalty Tier</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Tier Name *</label>
+                <input type="text" value={tierFormData.name} onChange={(e) => setTierFormData({ ...tierFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Min Points</label>
+                <input type="number" value={tierFormData.minPoints} onChange={(e) => setTierFormData({ ...tierFormData, minPoints: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Discount (%)</label>
+                <input type="number" value={tierFormData.discount} onChange={(e) => setTierFormData({ ...tierFormData, discount: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Color</label>
+                <input type="color" value={tierFormData.color} onChange={(e) => setTierFormData({ ...tierFormData, color: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl h-10" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowTierModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleAddTier} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Add Tier</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Promotion Modal */}
+      {showPromotionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Promotion</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Promotion Name *</label>
+                <input type="text" value={promotionFormData.name} onChange={(e) => setPromotionFormData({ ...promotionFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Type</label>
+                  <select value={promotionFormData.type} onChange={(e) => setPromotionFormData({ ...promotionFormData, type: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                    <option value="PERCENTAGE">Percentage</option>
+                    <option value="FIXED">Fixed Amount</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Value</label>
+                  <input type="number" value={promotionFormData.value} onChange={(e) => setPromotionFormData({ ...promotionFormData, value: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Start Date *</label>
+                  <input type="date" value={promotionFormData.startDate} onChange={(e) => setPromotionFormData({ ...promotionFormData, startDate: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">End Date *</label>
+                  <input type="date" value={promotionFormData.endDate} onChange={(e) => setPromotionFormData({ ...promotionFormData, endDate: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
+                <select value={promotionFormData.status} onChange={(e) => setPromotionFormData({ ...promotionFormData, status: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                  <option value="EXPIRED">Expired</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Min Order Value</label>
+                <input type="number" step="0.01" value={promotionFormData.minOrderValue} onChange={(e) => setPromotionFormData({ ...promotionFormData, minOrderValue: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Max Uses (null for unlimited)</label>
+                <input type="number" value={promotionFormData.maxUses || ''} onChange={(e) => setPromotionFormData({ ...promotionFormData, maxUses: e.target.value ? parseInt(e.target.value) : null })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowPromotionModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleAddPromotion} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Add Promotion</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Segment Modal */}
+      {showSegmentModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Segment</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Segment Name *</label>
+                <input type="text" value={segmentFormData.name} onChange={(e) => setSegmentFormData({ ...segmentFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Criteria *</label>
+                <textarea value={segmentFormData.criteria} onChange={(e) => setSegmentFormData({ ...segmentFormData, criteria: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={3} placeholder="e.g., Customers who spent more than $100 in the last month" required />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Min Spent</label>
+                <input type="number" step="0.01" value={segmentFormData.minSpent} onChange={(e) => setSegmentFormData({ ...segmentFormData, minSpent: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Min Orders</label>
+                <input type="number" value={segmentFormData.minOrders} onChange={(e) => setSegmentFormData({ ...segmentFormData, minOrders: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Min Loyalty Points</label>
+                <input type="number" value={segmentFormData.minLoyaltyPoints} onChange={(e) => setSegmentFormData({ ...segmentFormData, minLoyaltyPoints: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="segmentActive" checked={segmentFormData.isActive} onChange={(e) => setSegmentFormData({ ...segmentFormData, isActive: e.target.checked })} className="w-4 h-4" />
+                <label htmlFor="segmentActive" className="text-sm text-gray-700">Active</label>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowSegmentModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleAddSegment} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Add Segment</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

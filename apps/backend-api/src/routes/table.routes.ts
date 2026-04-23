@@ -141,7 +141,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
 });
 
 // Create table
-router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const validatedData = createTableSchema.parse(req.body);
 
@@ -179,7 +179,7 @@ router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRe
 });
 
 // Update table
-router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = updateTableSchema.parse(req.body);
 
@@ -241,7 +241,7 @@ router.put('/layout', authenticate, async (req: AuthRequest, res: Response, next
 });
 
 // Update table status
-router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = updateStatusSchema.parse(req.body);
 
@@ -281,7 +281,7 @@ router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER'), async (
 });
 
 // Delete table
-router.delete('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.delete('/:id', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const table = await prisma.table.findUnique({
       where: { id: req.params.id },

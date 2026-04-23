@@ -54,6 +54,8 @@ model User {
   auditLogs     AuditLog[]
   deliveries    Delivery[]       @relation("RiderDeliveries")
   sessions      Session[]
+  deliveryZones DeliveryZone[]  @relation("DeliveryZoneCreator")
+  tableLocks    TableLock[]
 
   @@index([username])
   @@index([email])
@@ -287,6 +289,7 @@ model Table {
   updatedAt   DateTime    @updatedAt
 
   orders Order[]
+  tableLocks TableLock[]
 
   @@index([status])
   @@index([location])
@@ -494,8 +497,8 @@ model Delivery {
   deliveryAddress String
   deliveryNotes   String?
 
-  latitude        Decimal?       
-  longitude       Decimal?       
+  latitude        Decimal?
+  longitude       Decimal?
 
   riderId         String?
 
@@ -518,6 +521,28 @@ model Delivery {
   @@index([riderId])
   @@index([deliveryNumber])
   @@index([status, createdAt])
+}
+
+model DeliveryZone {
+  id                        String   @id @default(uuid())
+  name                      String
+  description               String?
+  baseFee                   Float    @default(0)
+  minimumOrder              Float    @default(0)
+  freeDeliveryThreshold     Float?
+  estimatedTimeMin          Int
+  estimatedTimeMax          Int
+  isActive                  Boolean  @default(true)
+  color                     String?
+  coordinates               Json?
+  createdById               String
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  createdBy                 User     @relation("DeliveryZoneCreator", fields: [createdById], references: [id])
+
+  @@index([isActive])
+  @@index([createdById])
 }
 
 model Expense {

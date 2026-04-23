@@ -6,9 +6,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Database operations
   dbQuery: (sql: string, params?: any[]) => ipcRenderer.invoke('db-query', sql, params),
 
-  // Store operations
+  // Store operations (legacy - using electron-store)
   storeGet: (key: string) => ipcRenderer.invoke('store-get', key),
   storeSet: (key: string, value: any) => ipcRenderer.invoke('store-set', key, value),
+
+  // Secure storage operations (using safeStorage)
+  secureSetItem: (key: string, value: string) => ipcRenderer.invoke('secure-set-item', key, value),
+  secureGetItem: (key: string) => ipcRenderer.invoke('secure-get-item', key),
+  secureRemoveItem: (key: string) => ipcRenderer.invoke('secure-remove-item', key),
 
   // App info
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),

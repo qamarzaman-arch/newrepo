@@ -1,7 +1,7 @@
 import { orderService } from './orderService';
 import toast from 'react-hot-toast';
 
-interface QueuedOrder {
+export interface QueuedOrder {
   id: string;
   orderData: any;
   paymentData?: {
@@ -232,6 +232,9 @@ class OfflineQueueManager {
       }
 
       const orderId = queuedOrder.syncedOrderId;
+      if (!orderId) {
+        throw new Error('Synced order ID missing after order creation');
+      }
 
       // Step 2: Process payment (if exists and not already completed)
       if (queuedOrder.paymentData && queuedOrder.syncCheckpoint !== 'completed') {
@@ -254,7 +257,7 @@ class OfflineQueueManager {
                 amount: payment.amount,
                 notes: queuedOrder.paymentData.notes,
               });
-            } catch (paymentError) {
+            } catch (paymentError: any) {
               // Check if payment was already processed (idempotent)
               if (paymentError?.response?.status === 409) {
                 console.log(`Payment already processed for order ${orderId}, continuing...`);
@@ -276,7 +279,7 @@ class OfflineQueueManager {
                 notes: queuedOrder.paymentData.notes,
               });
               paymentSuccess = true;
-            } catch (paymentError) {
+            } catch (paymentError: any) {
               // Check if payment was already processed (idempotent)
               if (paymentError?.response?.status === 409) {
                 console.log(`Payment already processed for order ${orderId}`);

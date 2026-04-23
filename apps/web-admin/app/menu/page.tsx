@@ -19,7 +19,9 @@ interface MenuCategory {
 
 interface MenuItem {
   id: string;
+  categoryId?: string;
   name: string;
+  description?: string;
   price: number;
   isAvailable: boolean;
   category?: MenuCategory;
@@ -35,6 +37,7 @@ export default function MenuPage() {
   const [showItemModal, setShowItemModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [itemForm, setItemForm] = useState({
     name: '',
     price: 0,
@@ -81,20 +84,45 @@ export default function MenuPage() {
     }
   };
 
+  const handleEditItem = (item: MenuItem) => {
+    setEditingItemId(item.id);
+    setItemForm({
+      name: item.name,
+      price: item.price,
+      categoryId: item.category?.id || item.categoryId || '',
+      description: item.description || '',
+      isAvailable: item.isAvailable,
+    });
+    setShowItemModal(true);
+  };
+
+  const closeItemModal = () => {
+    setShowItemModal(false);
+    setEditingItemId(null);
+    setItemForm({ name: '', price: 0, categoryId: '', description: '', isAvailable: true });
+  };
+
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await apiClient.post('/menu/items', {
+      const payload = {
         ...itemForm,
         price: Number(itemForm.price),
-      });
-      toast.success('Menu item added!');
-      setShowItemModal(false);
-      setItemForm({ name: '', price: 0, categoryId: '', description: '', isAvailable: true });
+      };
+
+      if (editingItemId) {
+        await apiClient.put(`/menu/items/${editingItemId}`, payload);
+        toast.success('Menu item updated!');
+      } else {
+        await apiClient.post('/menu/items', payload);
+        toast.success('Menu item added!');
+      }
+
+      closeItemModal();
       fetchData();
     } catch (err: any) {
-      toast.error('Failed to add item');
+      toast.error(editingItemId ? 'Failed to update item' : 'Failed to add item');
     } finally {
       setIsSubmitting(false);
     }
@@ -218,7 +246,12 @@ export default function MenuPage() {
               </TableCell>
               <TableCell>
                 <div className="flex gap-2">
-                  <button className="p-2.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all">
+                  <button
+                    onClick={() => handleEditItem(item)}
+                    className="p-2.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all"
+                    title="Edit"
+                    type="button"
+                  >
                     <Edit2 size={18} />
                   </button>
                   <button 
@@ -265,8 +298,8 @@ export default function MenuPage() {
       {/* Add Item Modal */}
       <Modal
         isOpen={showItemModal}
-        onClose={() => setShowItemModal(false)}
-        title="Add New Menu Item"
+        onClose={closeItemModal}
+        title={editingItemId ? 'Edit Menu Item' : 'Add New Menu Item'}
       >
         <form onSubmit={handleAddItem} className="space-y-6">
           <div className="space-y-2">
@@ -278,6 +311,15 @@ export default function MenuPage() {
               onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
               className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl focus:outline-none transition-all"
               placeholder="e.g. Classic Burger"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700">Description</label>
+            <textarea
+              value={itemForm.description}
+              onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })}
+              className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl focus:outline-none transition-all min-h-[96px]"
+              placeholder="Brief item description"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -306,13 +348,27 @@ export default function MenuPage() {
                 ))}
               </select>
             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700">Availability</label>
+              <button
+                type="button"
+                onClick={() => setItemForm({ ...itemForm, isAvailable: !itemForm.isAvailable })}
+                className={`w-full px-4 py-3 rounded-xl border-2 text-left font-semibold transition-all ${
+                  itemForm.isAvailable
+                    ? 'bg-green-50 border-green-200 text-green-700'
+                    : 'bg-gray-50 border-gray-200 text-gray-500'
+                }`}
+              >
+                {itemForm.isAvailable ? 'Available on menu' : 'Hidden from menu'}
+              </button>
+            </div>
           </div>
           <div className="flex gap-4">
             <Button
               variant="outline"
               type="button"
               className="flex-1"
-              onClick={() => setShowItemModal(false)}
+              onClick={closeItemModal}
             >
               Cancel
             </Button>
@@ -321,7 +377,7 @@ export default function MenuPage() {
               className="flex-1"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Adding...' : 'Add Item'}
+              {isSubmitting ? (editingItemId ? 'Saving...' : 'Adding...') : editingItemId ? 'Save Changes' : 'Add Item'}
             </Button>
           </div>
         </form>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Settings, Store, Shield, Printer, Bell, 
@@ -6,12 +6,16 @@ import {
   AlertCircle, Smartphone, Monitor
 } from 'lucide-react';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
 
 const AdvancedSettingsScreen: React.FC = () => {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'ADMIN';
+
   const [activeTab, setActiveTab] = useState<'general' | 'business' | 'payment' | 'hardware' | 'notifications' | 'security' | 'appearance'>('general');
   const [saving, setSaving] = useState(false);
-  const { settings, updateSettings, resetSettings } = useSettingsStore();
+  const { settings, updateSettings, resetSettings, saveToDatabase, loadFromDatabase } = useSettingsStore();
 
   const setSetting = <K extends keyof typeof settings>(key: K, value: (typeof settings)[K]) => {
     updateSettings({ [key]: value } as Pick<typeof settings, K>);
@@ -19,11 +23,20 @@ const AdvancedSettingsScreen: React.FC = () => {
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast.success('Settings saved successfully!');
-    setSaving(false);
+    try {
+      await saveToDatabase();
+      toast.success('Settings saved successfully!');
+    } catch (error) {
+      toast.error('Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  // Load settings from database on mount
+  useEffect(() => {
+    loadFromDatabase();
+  }, [loadFromDatabase]);
 
   const handleReset = () => {
     if (window.confirm('Are you sure you want to reset all settings to defaults?')) {
@@ -54,15 +67,17 @@ const AdvancedSettingsScreen: React.FC = () => {
           <p className="text-gray-600 mt-1">Configure your POS system preferences and behavior</p>
         </div>
         <div className="flex gap-3">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleReset}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors flex items-center gap-2"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Reset Defaults
-          </motion.button>
+          {isAdmin && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleReset}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors flex items-center gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset Defaults
+            </motion.button>
+          )}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

@@ -88,7 +88,30 @@ const DashboardScreen: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+      <div className="rounded-[32px] border border-red-100 bg-[linear-gradient(135deg,#fff5f5_0%,#ffffff_42%,#fff1f2_100%)] p-6 shadow-soft">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-red-500">Operations Overview</p>
+            <h1 className="mt-2 text-3xl font-black text-gray-900">Dashboard</h1>
+            <p className="mt-2 max-w-2xl text-sm text-gray-600">
+              A compact view of revenue, orders, table pressure, and stock attention.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { label: 'Revenue', value: formatCurrency(dailySales?.totalRevenue || 0) },
+              { label: 'Orders', value: dailySales?.totalOrders || 0 },
+              { label: 'Tables', value: occupiedTables?.length || 0 },
+              { label: 'Alerts', value: lowStockItems?.length || 0 },
+            ].map((item) => (
+              <div key={item.label} className="rounded-2xl border border-white/70 bg-white/90 px-4 py-3 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">{item.label}</p>
+                <p className="mt-1 text-sm font-bold text-gray-900">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -100,7 +123,7 @@ const DashboardScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-surface-lowest rounded-2xl p-6 shadow-soft"
+              className="bg-white rounded-2xl p-6 shadow-soft border border-red-50"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className={`${stat.color} p-3 rounded-xl`}>
@@ -117,7 +140,7 @@ const DashboardScreen: React.FC = () => {
       {/* Charts and Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sales Chart */}
-        <div className="bg-surface-lowest rounded-2xl p-6 shadow-soft">
+        <div className="bg-white rounded-2xl p-6 shadow-soft border border-red-50">
           <h3 className="text-lg font-bold text-gray-900 mb-4">Sales Trend (Last 7 Days)</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={monthlySales?.dailySales || []}>
@@ -131,7 +154,7 @@ const DashboardScreen: React.FC = () => {
         </div>
 
         {/* Top Products */}
-        <div className="bg-surface-lowest rounded-2xl p-6 shadow-soft">
+        <div className="bg-white rounded-2xl p-6 shadow-soft border border-red-50">
           <h3 className="text-lg font-bold text-gray-900 mb-4">Top Selling Items</h3>
           <div className="space-y-3">
             {topProducts?.map((item: any, index: number) => (
@@ -151,14 +174,14 @@ const DashboardScreen: React.FC = () => {
                 </div>
               </div>
             ))}
-            {!topProducts || topProducts.length === 0 && (
+            {(!topProducts || topProducts.length === 0) && (
               <p className="text-center text-gray-500 py-8">No sales data yet</p>
             )}
           </div>
         </div>
 
         {/* Pending Orders - Enhanced */}
-        <div className="bg-surface-lowest rounded-2xl p-6 shadow-soft">
+        <div className="bg-white rounded-2xl p-6 shadow-soft border border-red-50">
           <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary" />
             Current Orders
@@ -168,6 +191,7 @@ const DashboardScreen: React.FC = () => {
               const orderTypeConfig = {
                 DINE_IN: { icon: Users, color: 'bg-blue-100 text-blue-700', label: 'Dine-in' },
                 TAKEAWAY: { icon: Package, color: 'bg-orange-100 text-orange-700', label: 'Takeaway' },
+                PICKUP: { icon: Package, color: 'bg-orange-100 text-orange-700', label: 'Pickup' },
                 DELIVERY: { icon: Truck, color: 'bg-purple-100 text-purple-700', label: 'Delivery' },
                 RESERVATION: { icon: Calendar, color: 'bg-green-100 text-green-700', label: 'Reservation' },
               };
@@ -219,7 +243,7 @@ const DashboardScreen: React.FC = () => {
         </div>
 
         {/* Table Status */}
-        <div className="bg-surface-lowest rounded-2xl p-6 shadow-soft">
+        <div className="bg-white rounded-2xl p-6 shadow-soft border border-red-50">
           <h3 className="text-lg font-bold text-gray-900 mb-4">Occupied Tables</h3>
           <div className="space-y-2">
             {occupiedTables?.map((table: any) => (

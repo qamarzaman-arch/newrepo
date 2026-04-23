@@ -27,6 +27,11 @@ export const settingsService = {
   async updateSetting(key: string, value: string, category?: string): Promise<void> {
     await api.put(`/settings/${key}`, { value, category });
   },
+
+  async bulkSyncSettings(settings: Array<{ key: string; value: string; category?: string }>): Promise<{ updated: number }> {
+    const response = await api.post('/settings/bulk-sync', { settings });
+    return response.data.data;
+  },
 };
 
 export default settingsService;

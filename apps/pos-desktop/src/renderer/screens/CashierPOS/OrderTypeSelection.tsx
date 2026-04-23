@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Users, ShoppingBag, Truck, UtensilsCrossed, Calendar } from 'lucide-react';
+import { Users, ShoppingBag, Truck, UtensilsCrossed, Calendar, ChevronRight } from 'lucide-react';
 
 // Static Tailwind classes — dynamic strings get purged in production
 const orderTypes = [
@@ -15,19 +15,9 @@ const orderTypes = [
     hoverIconBg: 'group-hover:bg-blue-500',
   },
   {
-    id: 'WALK_IN',
-    name: 'Walk-In',
-    description: 'Instant checkout',
-    icon: Users,
-    iconBg: 'bg-green-100',
-    iconText: 'text-green-600',
-    hoverBorder: 'hover:border-green-500',
-    hoverIconBg: 'group-hover:bg-green-500',
-  },
-  {
-    id: 'TAKEAWAY',
-    name: 'Take Away',
-    description: 'Pickup ready',
+    id: 'PICKUP',
+    name: 'Pickup',
+    description: 'Walk-in or takeaway',
     icon: ShoppingBag,
     iconBg: 'bg-amber-100',
     iconText: 'text-amber-600',
@@ -43,16 +33,6 @@ const orderTypes = [
     iconText: 'text-purple-600',
     hoverBorder: 'hover:border-purple-500',
     hoverIconBg: 'group-hover:bg-purple-500',
-  },
-  {
-    id: 'RESERVATION',
-    name: 'Reservation',
-    description: 'Table booking',
-    icon: Calendar,
-    iconBg: 'bg-rose-100',
-    iconText: 'text-rose-600',
-    hoverBorder: 'hover:border-rose-500',
-    hoverIconBg: 'group-hover:bg-rose-500',
   },
 ];
 
@@ -75,7 +55,7 @@ const OrderTypeSelection: React.FC<{
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {orderTypes.map((type, index) => {
           const Icon = type.icon;
           return (
@@ -97,6 +77,18 @@ const OrderTypeSelection: React.FC<{
             </motion.button>
           );
         })}
+      </div>
+
+      <div className="flex items-center justify-center">
+        <button
+          type="button"
+          onClick={() => onSelect('RESERVATION')}
+          className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 shadow-sm transition-colors hover:border-rose-300 hover:text-rose-600"
+        >
+          <Calendar className="w-4 h-4" />
+          Reservation
+          <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
     </div>
   </div>

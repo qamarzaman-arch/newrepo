@@ -190,6 +190,7 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
               <h2 className="text-2xl font-bold text-gray-900 font-manrope">Menu</h2>
               <p className="text-sm text-gray-500 mt-1">
                 {tableNumber ? `Table ${tableNumber}` :
+                  orderType === 'PICKUP' ? 'Pickup Order' :
                   orderType === 'TAKEAWAY' ? 'Takeaway Order' :
                   orderType === 'DELIVERY' ? 'Delivery Order' :
                   orderType === 'DINE_IN' ? 'Dine-In Order' : 'Order'}
@@ -397,6 +398,29 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
                 <BarChart3 className="w-4 h-4" />
               </motion.button>
             )}
+
+            <div className="mt-3 rounded-2xl border border-red-900/30 bg-gradient-to-r from-red-950 to-gray-900 p-3 text-xs text-red-100">
+              <div className="flex items-center justify-between">
+                <span className="font-black uppercase tracking-[0.25em] text-red-300">Journey</span>
+                <span className="rounded-full bg-red-500/20 px-2 py-1 font-bold text-red-200">
+                  {currentOrder.items.length} item{currentOrder.items.length === 1 ? '' : 's'}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-white/5 px-2 py-2 text-center">
+                  <p className="font-bold text-white">1. Build</p>
+                  <p className="text-[10px] text-red-200">Add items and notes</p>
+                </div>
+                <div className="rounded-xl bg-white/5 px-2 py-2 text-center">
+                  <p className="font-bold text-white">2. Review</p>
+                  <p className="text-[10px] text-red-200">Check totals and voids</p>
+                </div>
+                <div className="rounded-xl bg-white/5 px-2 py-2 text-center">
+                  <p className="font-bold text-white">3. Send</p>
+                  <p className="text-[10px] text-red-200">Kitchen or payment</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Held Orders Panel */}
@@ -447,8 +471,14 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
                   animate={{ opacity: 1 }}
                   className="text-center py-12 text-gray-400"
                 >
-                  <Bell className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm font-semibold">Cart is empty</p>
+                  <Bell className="w-12 h-12 mx-auto mb-3 text-red-300" />
+                  <p className="text-lg font-black">Cart is empty</p>
+                  <p className="mt-2 text-sm text-red-100/80">Start by picking a category, then tap items to build the order.</p>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-red-200">
+                    <span className="rounded-full bg-white/10 px-3 py-1">Fast add</span>
+                    <span className="rounded-full bg-white/10 px-3 py-1">Notes</span>
+                    <span className="rounded-full bg-white/10 px-3 py-1">Hold order</span>
+                  </div>
                 </motion.div>
               ) : (
                 currentOrder.items.map((item) => (
@@ -577,7 +607,7 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
                 className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <CookingPot className="w-5 h-5" />
-                Send to Kitchen
+                Review & Send to Kitchen
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.02 }}

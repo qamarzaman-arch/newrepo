@@ -60,12 +60,14 @@ async function main() {
   
   console.log('✅ Cleanup completed');
 
-  // Create admin user only
-  const adminPassword = await bcrypt.hash(SEED_ADMIN_PASSWORD, 12);
-  const adminPin = await bcrypt.hash(SEED_ADMIN_PIN, 12);
+  // Create demo users with credentials matching the frontend LoginScreen
+  
+  // Admin user: admin / admin123 / PIN: 0000
+  const adminPassword = await bcrypt.hash('admin123', 12);
+  const adminPin = await bcrypt.hash('0000', 12);
   await prisma.user.upsert({
     where: { username: 'admin' },
-    update: { 
+    update: {
       pin: adminPin,
       passwordHash: adminPassword,
       isActive: true,
@@ -80,8 +82,97 @@ async function main() {
       pin: adminPin,
     },
   });
-  console.log('✅ Created admin user (PIN: ****) - CHANGE PASSWORD IMMEDIATELY');
+  console.log('✅ Created admin user (admin / admin123 / PIN: 0000)');
 
+  // Cashier user: cashier1 / cashier123 / PIN: 1234
+  const cashierPassword = await bcrypt.hash('cashier123', 12);
+  const cashierPin = await bcrypt.hash('1234', 12);
+  await prisma.user.upsert({
+    where: { username: 'cashier1' },
+    update: {
+      pin: cashierPin,
+      passwordHash: cashierPassword,
+      isActive: true,
+    },
+    create: {
+      username: 'cashier1',
+      email: 'cashier1@restaurant.com',
+      passwordHash: cashierPassword,
+      fullName: 'Cashier One',
+      role: 'CASHIER',
+      phone: '+1234567891',
+      pin: cashierPin,
+    },
+  });
+  console.log('✅ Created cashier1 user (cashier1 / cashier123 / PIN: 1234)');
+
+  // Manager user: manager1 / manager123 / PIN: 5678
+  const managerPassword = await bcrypt.hash('manager123', 12);
+  const managerPin = await bcrypt.hash('5678', 12);
+  await prisma.user.upsert({
+    where: { username: 'manager1' },
+    update: {
+      pin: managerPin,
+      passwordHash: managerPassword,
+      isActive: true,
+    },
+    create: {
+      username: 'manager1',
+      email: 'manager@restaurant.com',
+      passwordHash: managerPassword,
+      fullName: 'Manager One',
+      role: 'MANAGER',
+      phone: '+1234567892',
+      pin: managerPin,
+    },
+  });
+  console.log('✅ Created manager1 user (manager1 / manager123 / PIN: 5678)');
+
+  // Kitchen user: kitchen1 / kitchen123 / PIN: 9999
+  const kitchenPassword = await bcrypt.hash('kitchen123', 12);
+  const kitchenPin = await bcrypt.hash('9999', 12);
+  await prisma.user.upsert({
+    where: { username: 'kitchen1' },
+    update: {
+      pin: kitchenPin,
+      passwordHash: kitchenPassword,
+      isActive: true,
+    },
+    create: {
+      username: 'kitchen1',
+      email: 'kitchen@restaurant.com',
+      passwordHash: kitchenPassword,
+      fullName: 'Kitchen Staff',
+      role: 'KITCHEN',
+      phone: '+1234567893',
+      pin: kitchenPin,
+    },
+  });
+  console.log('✅ Created kitchen1 user (kitchen1 / kitchen123 / PIN: 9999)');
+
+  // Rider user: rider1 / rider123 / PIN: 8888
+  const riderPassword = await bcrypt.hash('rider123', 12);
+  const riderPin = await bcrypt.hash('8888', 12);
+  await prisma.user.upsert({
+    where: { username: 'rider1' },
+    update: {
+      pin: riderPin,
+      passwordHash: riderPassword,
+      isActive: true,
+    },
+    create: {
+      username: 'rider1',
+      email: 'rider@restaurant.com',
+      passwordHash: riderPassword,
+      fullName: 'Delivery Rider',
+      role: 'RIDER',
+      phone: '+1234567894',
+      pin: riderPin,
+    },
+  });
+  console.log('✅ Created rider1 user (rider1 / rider123 / PIN: 8888)');
+
+  console.log('\n⚠️  WARNING: These are demo credentials. Change them immediately in production!');
   console.log('🎉 Database seeding completed!');
 }
 
