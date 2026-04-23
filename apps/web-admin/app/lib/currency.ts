@@ -6,7 +6,6 @@ export {
   DEFAULT_CURRENCY_CODE as DEFAULT_CURRENCY,
   getCurrency,
   formatCurrency,
-  formatCurrencyLocale,
 } from '@restaurant-pos/shared-types';
 
 export type { CurrencyConfig } from '@restaurant-pos/shared-types';

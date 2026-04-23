@@ -9,6 +9,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { kitchenService, KotTicket } from '../services/kitchenService';
 import toast from 'react-hot-toast';
 import { useKitchenWebSocket } from '../hooks/useWebSocket';
+import { 
+  getOrderStatusColor,
+  ORDER_STATUS_COLORS,
+  getOrderTypeLabel
+} from '@restaurant-pos/shared-types';
 
 interface PrepListItem {
   id: string;
@@ -95,31 +100,10 @@ const AdvancedKitchenScreen: React.FC = () => {
                   (item.currentStock || 0) < (item.minStock || 10) ? 'MEDIUM' : 'LOW',
           completed: false,
         }));
-      } catch {
-        // Fallback: generate from menu items that appear frequently in tickets
-        const itemCounts: Record<string, { count: number; station: string }> = {};
-        ticketsData?.forEach((ticket: any) => {
-          ticket.order?.items?.forEach((item: any) => {
-            const name = item.menuItem?.name;
-            if (name) {
-              if (!itemCounts[name]) {
-                itemCounts[name] = { count: 0, station: item.menuItem?.category?.name || 'Kitchen' };
-              }
-              itemCounts[name].count += item.quantity || 1;
-            }
-          });
-        });
-        
-        return Object.entries(itemCounts)
-          .filter(([_, data]) => data.count > 2)
-          .map(([name, data], index) => ({
-            id: `prep-${index}`,
-            item: name,
-            station: data.station,
-            quantity: `${data.count} needed`,
-            urgency: data.count > 10 ? 'HIGH' : data.count > 5 ? 'MEDIUM' : 'LOW',
-            completed: false,
-          }));
+      } catch (error) {
+        // Re-throw to trigger error UI - never fabricate inventory data
+        console.error('Failed to fetch prep list:', error);
+        throw new Error('Unable to load inventory data. Please check connection and retry.');
       }
     },
     enabled: !!ticketsData,

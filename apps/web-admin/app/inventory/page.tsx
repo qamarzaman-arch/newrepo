@@ -8,6 +8,7 @@ import {
 import { Button, Table, TableRow, TableCell, Badge, Modal } from '@poslytic/ui-components';
 import apiClient from '../lib/api';
 import toast from 'react-hot-toast';
+import { formatCurrency } from '../lib/currency';
 
 interface InventoryItem {
   id: string;
@@ -152,7 +153,7 @@ export default function InventoryPage() {
         </div>
         <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-2">Total Valuation</p>
-          <h3 className="text-3xl font-black text-gray-900">${totalValue.toFixed(2)}</h3>
+          <h3 className="text-3xl font-black text-gray-900">{formatCurrency(totalValue)}</h3>
           <p className="text-xs text-gray-500 font-medium mt-2 flex items-center gap-1">
             <DollarSign size={12} /> Stock value
           </p>
@@ -219,7 +220,7 @@ export default function InventoryPage() {
                   {item.status.replace('_', ' ')}
                 </Badge>
               </TableCell>
-              <TableCell className="font-black text-indigo-600">${item.costPerUnit.toFixed(2)}</TableCell>
+              <TableCell className="font-black text-indigo-600">{formatCurrency(item.costPerUnit)}</TableCell>
               <TableCell>
                 <button 
                   onClick={() => handleDeleteItem(item.id, item.name)}

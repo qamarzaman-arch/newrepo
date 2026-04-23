@@ -29,6 +29,7 @@ const createOrderSchema = z.object({
   tipAmount: z.number().min(0).optional().nullable(),
   notes: z.string().optional().nullable(),
   kitchenNotes: z.string().optional().nullable(),
+  idempotencyKey: z.string().optional(),
 });
 
 // Get all orders with filters
@@ -216,33 +217,70 @@ router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, r
   try {
     const data = createOrderSchema.parse(req.body);
 
-    // Generate unique order number with retry logic
-    const today = new Date();
-    const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
-    let orderNumber: string;
-    let attempts = 0;
-    const maxAttempts = 5;
-
-    while (attempts < maxAttempts) {
-      const timestamp = Date.now().toString(36).slice(-4).toUpperCase();
-      const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-      orderNumber = `ORD-${dateStr}-${timestamp}${random}`;
-
-      // Check if order number already exists
-      const existing = await prisma.order.findUnique({
-        where: { orderNumber },
-        select: { id: true },
+    // Check idempotency key to prevent duplicate orders
+    const idempotencyKey = req.headers['idempotency-key'] as string || data.idempotencyKey;
+    
+    if (idempotencyKey) {
+      const existingKey = await prisma.idempotencyKey.findUnique({
+        where: { key: idempotencyKey },
       });
 
-      if (!existing) {
-        break;
-      }
-
-      attempts++;
-      if (attempts >= maxAttempts) {
-        throw new AppError('Failed to generate unique order number, please retry', 500);
+      if (existingKey) {
+        // Return cached response
+        logger.info(`Idempotency hit for key: ${idempotencyKey}`);
+        const cachedOrder = await prisma.order.findUnique({
+          where: { id: existingKey.orderId || '' },
+          include: {
+            items: { include: { menuItem: true } },
+            table: true,
+            customer: true,
+            payments: true,
+          },
+        });
+        
+        if (cachedOrder) {
+          return res.status(201).json({
+            success: true,
+            data: { order: cachedOrder, cached: true },
+          });
+        }
       }
     }
+
+    // Generate unique order number using atomic counter
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+    
+    const orderNumber = await prisma.$transaction(async (tx) => {
+      // Get or create counter for today
+      let counter = await tx.orderCounter.findUnique({
+        where: { id: 'global' },
+      });
+      
+      const todayStr = today.toISOString().split('T')[0];
+      
+      if (!counter || counter.date !== todayStr) {
+        // Reset counter for new day
+        counter = await tx.orderCounter.upsert({
+          where: { id: 'global' },
+          update: { count: 1, date: todayStr },
+          create: { id: 'global', count: 1, date: todayStr },
+        });
+        return `ORD-${dateStr}-${String(1).padStart(4, '0')}`;
+      } else {
+        // Increment counter
+        const newCount = counter.count + 1;
+        await tx.orderCounter.update({
+          where: { id: 'global' },
+          data: { count: newCount },
+        });
+        return `ORD-${dateStr}-${String(newCount).padStart(4, '0')}`;
+      }
+    }, { 
+      isolationLevel: 'Serializable',
+      maxWait: 5000,
+      timeout: 10000,
+    });
 
     // Calculate totals
     let subtotal = 0;
@@ -406,23 +444,34 @@ router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, r
                 const requiredQty = ingredient.quantity * item.quantity;
                 const inventoryItem = ingredient.inventoryItem;
 
-                // Check if sufficient stock
-                if (inventoryItem.currentStock < requiredQty) {
-                  logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available: ${inventoryItem.currentStock}`);
-                }
-
-                // Deduct from inventory
-                const newStock = Math.max(0, inventoryItem.currentStock - requiredQty);
+                // Atomically deduct from inventory with stock check
+                // This prevents race conditions by ensuring stock >= required in the update
+                const previousStock = inventoryItem.currentStock;
+                const newStock = Math.max(0, previousStock - requiredQty);
                 const status = newStock === 0 ? 'OUT_OF_STOCK' :
                               newStock <= inventoryItem.minStock ? 'LOW_STOCK' : 'IN_STOCK';
 
-                await (tx as any).inventoryItem.update({
-                  where: { id: inventoryItem.id },
+                const updateResult = await (tx as any).inventoryItem.updateMany({
+                  where: { 
+                    id: inventoryItem.id,
+                    currentStock: { gte: requiredQty } // Only update if enough stock
+                  },
                   data: {
-                    currentStock: newStock,
+                    currentStock: { decrement: requiredQty },
                     status,
                   },
                 });
+
+                // Verify update happened - if not, stock was insufficient due to race condition
+                if (updateResult.count === 0) {
+                  logger.error(`Race condition detected: ${inventoryItem.name} - Required: ${requiredQty} but stock was taken by concurrent order`);
+                  throw new AppError(`Insufficient stock for ${inventoryItem.name}. Please check inventory and retry.`, 409);
+                }
+
+                // Log low stock warning if applicable
+                if (previousStock < requiredQty * 2) {
+                  logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available before deduction: ${previousStock}`);
+                }
 
                 // Record stock movement
                 try {
@@ -453,23 +502,34 @@ router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, r
           for (const inventoryItem of inventoryItems) {
             const requiredQty = item.quantity;
 
-            // Check if sufficient stock
-            if (inventoryItem.currentStock < requiredQty) {
-              logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available: ${inventoryItem.currentStock}`);
-            }
-
-            // Deduct from inventory
-            const newStock = Math.max(0, inventoryItem.currentStock - requiredQty);
+            // Atomically deduct from inventory with stock check
+            // This prevents race conditions by ensuring stock >= required in the update
+            const previousStock = inventoryItem.currentStock;
+            const newStock = Math.max(0, previousStock - requiredQty);
             const status = newStock === 0 ? 'OUT_OF_STOCK' :
                           newStock <= inventoryItem.minStock ? 'LOW_STOCK' : 'IN_STOCK';
 
-            await (tx as any).inventoryItem.update({
-              where: { id: inventoryItem.id },
+            const updateResult = await (tx as any).inventoryItem.updateMany({
+              where: { 
+                id: inventoryItem.id,
+                currentStock: { gte: requiredQty } // Only update if enough stock
+              },
               data: {
-                currentStock: newStock,
+                currentStock: { decrement: requiredQty },
                 status,
               },
             });
+
+            // Verify update happened - if not, stock was insufficient due to race condition
+            if (updateResult.count === 0) {
+              logger.error(`Race condition detected: ${inventoryItem.name} - Required: ${requiredQty} but stock was taken by concurrent order`);
+              throw new AppError(`Insufficient stock for ${inventoryItem.name}. Please check inventory and retry.`, 409);
+            }
+
+            // Log low stock warning if applicable
+            if (previousStock < requiredQty * 2) {
+              logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available before deduction: ${previousStock}`);
+            }
 
             // Record stock movement
             try {
@@ -510,6 +570,25 @@ router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, r
 
       return newOrder;
     });
+
+    // Save idempotency key if provided
+    if (idempotencyKey) {
+      try {
+        await (prisma as any).idempotencyKey.create({
+          data: {
+            key: idempotencyKey,
+            requestPath: req.path,
+            requestBody: JSON.stringify(data),
+            responseBody: JSON.stringify({ order }),
+            orderId: order.id,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours TTL
+          },
+        });
+      } catch (e) {
+        // Non-critical error, log but don't fail
+        logger.warn(`Failed to save idempotency key: ${e}`);
+      }
+    }
 
     // Emit real-time event via WebSocket
     const ws = getWebSocketManager();
@@ -600,87 +679,70 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
       discountPercent,
     } = req.body;
 
-    const order = await prisma.order.findUnique({
-      where: { id: req.params.id },
-    });
+    // Wrap entire payment processing in a database transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Get order with lock
+      const order = await tx.order.findUnique({
+        where: { id: req.params.id },
+      });
 
-    if (!order) {
-      throw new AppError('Order not found', 404);
-    }
+      if (!order) {
+        throw new AppError('Order not found', 404);
+      }
 
-    // Handle discount if applied
-    let finalTotalAmount = Number(order.totalAmount);
-    let finalDiscountAmount = Number(order.discountAmount || 0);
-    
-    if (discountAmount && discountAmount > 0) {
-      finalDiscountAmount = discountAmount;
-      finalTotalAmount = Number(order.subtotal || order.totalAmount) - discountAmount + Number(order.taxAmount || 0);
-    }
+      // Handle discount if applied
+      let finalTotalAmount = Number(order.totalAmount);
+      let finalDiscountAmount = Number(order.discountAmount || 0);
+      
+      if (discountAmount && discountAmount > 0) {
+        finalDiscountAmount = discountAmount;
+        finalTotalAmount = Number(order.subtotal || order.totalAmount) - discountAmount + Number(order.taxAmount || 0);
+      }
 
-    const paidAmount = Number(order.paidAmount) + amount;
+      const paidAmount = Number(order.paidAmount) + amount;
 
-    // Build payment notes with additional details
-    let paymentNotes = notes || '';
-    if (method === 'CASH' && cashReceived) {
-      const change = Number(cashReceived) - amount;
-      paymentNotes = `${paymentNotes} Cash: ${cashReceived}, Change: ${change}`.trim();
-    }
-    if (method === 'CARD' && cardLastFour) {
-      paymentNotes = `${paymentNotes} Card ending: ${cardLastFour}`.trim();
-    }
-    if (method === 'ONLINE_TRANSFER' && transferReference) {
-      paymentNotes = `${paymentNotes} Transfer Ref: ${transferReference}`.trim();
-    }
+      // Build payment notes with additional details
+      let paymentNotes = notes || '';
+      if (method === 'CASH' && cashReceived) {
+        const change = Number(cashReceived) - amount;
+        paymentNotes = `${paymentNotes} Cash: ${cashReceived}, Change: ${change}`.trim();
+      }
+      if (method === 'CARD' && cardLastFour) {
+        paymentNotes = `${paymentNotes} Card ending: ${cardLastFour}`.trim();
+      }
+      if (method === 'ONLINE_TRANSFER' && transferReference) {
+        paymentNotes = `${paymentNotes} Transfer Ref: ${transferReference}`.trim();
+      }
 
-    // Create payment record
-    const payment = await prisma.payment.create({
-      data: {
-        orderId: order.id,
-        method,
-        amount,
-        reference: transferReference || reference,
-        notes: paymentNotes || undefined,
-        status: 'PAID',
-      },
-    });
-
-    // Update order with discount if applied
-    const updateData: any = {
-      paidAmount,
-      paymentStatus: paidAmount >= finalTotalAmount ? 'PAID' : 'PARTIAL',
-      paymentMethod: method,
-    };
-    
-    // Only update discount fields if new discount is applied
-    if (discountAmount && discountAmount > 0) {
-      updateData.discountAmount = finalDiscountAmount;
-      updateData.discountPercent = discountPercent || 0;
-      updateData.totalAmount = finalTotalAmount;
-    }
-
-    const updatedOrder = await prisma.order.update({
-      where: { id: order.id },
-      data: updateData,
-      include: {
-        payments: true,
-        items: {
-          include: {
-            menuItem: true,
-          },
-        },
-      },
-    });
-
-    let finalOrder = updatedOrder;
-    
-    // If fully paid and not completed, mark as completed
-    if (paidAmount >= finalTotalAmount && order.status !== 'COMPLETED') {
-      finalOrder = await prisma.order.update({
-        where: { id: order.id },
+      // Create payment record
+      const payment = await tx.payment.create({
         data: {
-          status: 'COMPLETED',
-          completedAt: new Date(),
+          orderId: order.id,
+          method,
+          amount,
+          reference: transferReference || reference,
+          notes: paymentNotes || undefined,
+          status: 'PAID',
         },
+      });
+
+      // Update order with discount if applied
+      const updateData: any = {
+        paidAmount,
+        paymentStatus: paidAmount >= finalTotalAmount ? 'PAID' : 'PARTIAL',
+        paymentMethod: method,
+      };
+      
+      // Only update discount fields if new discount is applied
+      if (discountAmount && discountAmount > 0) {
+        updateData.discountAmount = finalDiscountAmount;
+        updateData.discountPercent = discountPercent || 0;
+        updateData.totalAmount = finalTotalAmount;
+      }
+
+      let finalOrder = await tx.order.update({
+        where: { id: order.id },
+        data: updateData,
         include: {
           payments: true,
           items: {
@@ -691,32 +753,58 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
         },
       });
 
-      // Free up table
-      if (order.tableId) {
-        await prisma.table.update({
-          where: { id: order.tableId },
+      // If fully paid and not completed, mark as completed
+      if (paidAmount >= finalTotalAmount && order.status !== 'COMPLETED') {
+        finalOrder = await tx.order.update({
+          where: { id: order.id },
           data: {
-            status: 'NEEDS_CLEANING',
-            currentOrderId: null,
+            status: 'COMPLETED',
+            completedAt: new Date(),
+          },
+          include: {
+            payments: true,
+            items: {
+              include: {
+                menuItem: true,
+              },
+            },
           },
         });
+
+        // Free up table
+        if (order.tableId) {
+          await tx.table.update({
+            where: { id: order.tableId },
+            data: {
+              status: 'NEEDS_CLEANING',
+              currentOrderId: null,
+            },
+          });
+        }
       }
-      
-      // Emit WebSocket event for status change to COMPLETED
-      const ws = getWebSocketManager();
+
+      return { order: finalOrder, payment, paidAmount, finalTotalAmount };
+    }, {
+      isolationLevel: 'Serializable',
+      maxWait: 5000,
+      timeout: 10000,
+    });
+
+    const { order: finalOrder, payment } = result;
+
+    // Emit WebSocket events outside transaction
+    const ws = getWebSocketManager();
+    if (result.paidAmount >= result.finalTotalAmount) {
       ws.emitOrderStatusChanged(finalOrder.id, 'COMPLETED');
     }
-
-    // Emit real-time event via WebSocket for payment update
-    const ws = getWebSocketManager();
     ws.emitOrderStatusChanged(finalOrder.id, finalOrder.status);
 
-    logger.info(`Payment processed for order ${sanitize(order.orderNumber)}: ${amount}`);
+    logger.info(`Payment processed for order ${sanitize(finalOrder.orderNumber)}: ${amount}`);
 
     res.json({
       success: true,
       data: {
-        order: updatedOrder,
+        order: finalOrder,
         payment,
       },
     });

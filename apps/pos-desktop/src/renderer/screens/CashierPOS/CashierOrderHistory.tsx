@@ -87,7 +87,7 @@ const CashierOrderHistory: React.FC = () => {
         })),
         subtotal: order.subtotal || 0,
         tax: order.tax || 0,
-        taxRate: settings.taxRate || 8.5,
+        taxRate: settings.taxRate || 0,
         discount: order.discount || 0,
         total: order.total,
         paymentMethod: order.payments?.[0]?.method || 'CASH',

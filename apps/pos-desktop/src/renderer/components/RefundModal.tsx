@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, AlertTriangle, Shield, DollarSign, Printer } from 'lucide-react';
+import { X, AlertTriangle, Shield, DollarSign } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderService } from '../services/orderService';
 import { validationService } from '../services/validationService';
@@ -30,7 +30,6 @@ const RefundModal: React.FC<RefundModalProps> = ({ isOpen, onClose, order, onSuc
   const [customReason, setCustomReason] = useState('');
   const [managerPin, setManagerPin] = useState('');
   const [showPinInput, setShowPinInput] = useState(false);
-  const [managerName, setManagerName] = useState('');
   const [partialAmount, setPartialAmount] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [refundToOriginalMethod, setRefundToOriginalMethod] = useState(true);
@@ -85,7 +84,7 @@ const RefundModal: React.FC<RefundModalProps> = ({ isOpen, onClose, order, onSuc
         })),
         subtotal: order.subtotal || 0,
         tax: order.tax || 0,
-        taxRate: settings.taxRate || 8.5,
+        taxRate: settings.taxRate || 0,
         discount: order.discount || 0,
         total: refundType === 'FULL' ? order.total : parseFloat(partialAmount) || 0,
         paymentMethod: 'REFUND',
@@ -107,7 +106,7 @@ const RefundModal: React.FC<RefundModalProps> = ({ isOpen, onClose, order, onSuc
     });
     
     // Add proportional tax
-    const taxRate = settings.taxRate || 8.5;
+    const taxRate = settings.taxRate || 0;
     total += total * (taxRate / 100);
     
     return total;
@@ -147,7 +146,7 @@ const RefundModal: React.FC<RefundModalProps> = ({ isOpen, onClose, order, onSuc
     // Validate manager PIN
     const isValid = await validationService.validateManagerPin(
       managerPin,
-      `refund-${order.id}`
+      'refund'
     );
 
     if (!isValid) {

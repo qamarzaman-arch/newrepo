@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Lock, LogIn, Sparkles, Hash, Delete } from 'lucide-react';
+import { User, Lock, LogIn, Sparkles, Hash, Delete, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { authService } from '../services/authService';
 import toast from 'react-hot-toast';
+import { Button, Input, Card, Badge, Spinner } from '../components/ui';
 
 type LoginMode = 'password' | 'pin';
 
@@ -35,7 +36,6 @@ const LoginScreen: React.FC = () => {
       } else if (e.key === 'Escape') {
         clearPin();
       } else if (e.key === 'Enter') {
-        // Auto-submit if PIN is complete
         if (pin.length >= 4 && pinUsername) {
           const form = document.querySelector('form');
           if (form) form.dispatchEvent(new Event('submit', { cancelable: true }));
@@ -109,7 +109,7 @@ const LoginScreen: React.FC = () => {
     setPin(prev => prev.slice(0, -1));
   };
 
-  // Floating particles animation
+  // Background particles
   const particles = Array.from({ length: 20 }, (_, i) => ({
     id: i,
     x: Math.random() * 100,
@@ -119,7 +119,7 @@ const LoginScreen: React.FC = () => {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary-container to-secondary relative overflow-hidden flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-500 to-primary-700 relative overflow-hidden flex items-center justify-center p-4">
       {/* Animated Background Particles */}
       <AnimatePresence>
         {mounted && particles.map((particle) => (
@@ -148,22 +148,22 @@ const LoginScreen: React.FC = () => {
         ))}
       </AnimatePresence>
 
-      {/* Gradient Orbs */}
+      {/* Gradient Orbs - Red Theme */}
       <motion.div
         animate={{
           scale: [1, 1.2, 1],
-          opacity: [0.3, 0.5, 0.3],
+          opacity: [0.2, 0.4, 0.2],
         }}
         transition={{ duration: 8, repeat: Infinity }}
-        className="absolute top-20 left-20 w-72 h-72 bg-accent/20 rounded-full blur-3xl"
+        className="absolute top-20 left-20 w-72 h-72 bg-primary-300/30 rounded-full blur-3xl"
       />
       <motion.div
         animate={{
           scale: [1.2, 1, 1.2],
-          opacity: [0.3, 0.5, 0.3],
+          opacity: [0.2, 0.4, 0.2],
         }}
         transition={{ duration: 10, repeat: Infinity }}
-        className="absolute bottom-20 right-20 w-96 h-96 bg-primary/20 rounded-full blur-3xl"
+        className="absolute bottom-20 right-20 w-96 h-96 bg-primary-400/20 rounded-full blur-3xl"
       />
 
       {/* Login Card */}

@@ -12,7 +12,7 @@ interface ShiftManagerProps {
 }
 
 const ShiftManager: React.FC<ShiftManagerProps> = ({ children }) => {
-  const { user, logout } = useAuthStore();
+  const { logout } = useAuthStore();
   const { formatCurrency } = useCurrencyFormatter();
   const [cashDrawer, setCashDrawer] = useState<CashDrawer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -118,7 +118,27 @@ const ShiftManager: React.FC<ShiftManagerProps> = ({ children }) => {
         return;
       }
 
-      if (!cashDrawer) return;
+      if (!cashDrawer) {
+        toast.error('No active cash drawer found');
+        return;
+      }
+
+      // Check if drawer is already closed before attempting to close
+      const currentStatus = await cashDrawerService.getCurrent();
+      if (!currentStatus.data.data?.drawer || currentStatus.data.data.drawer.status === 'closed') {
+        toast('Cash drawer is already closed', {
+          icon: '⚠️',
+          style: { background: '#FEF3C7', color: '#92400E' }
+        });
+        setCashDrawer(null);
+        localStorage.removeItem('pos_cash_drawer_id');
+        setShowEndModal(false);
+        setShowStartModal(true);
+        setClosingBalance('');
+        setClosingNotes('');
+        setEndShiftManagerPin('');
+        return;
+      }
 
       const closing = parseFloat(closingBalance);
       const response = await cashDrawerService.close(cashDrawer.id, {
@@ -138,13 +158,30 @@ const ShiftManager: React.FC<ShiftManagerProps> = ({ children }) => {
         toast.success('Shift ended successfully! Balanced.');
       }
 
+      // Clear state and localStorage
       setCashDrawer(null);
+      localStorage.removeItem('pos_cash_drawer_id');
       setShowEndModal(false);
       setShowStartModal(true);
       setClosingBalance('');
       setClosingNotes('');
       setEndShiftManagerPin('');
     } catch (error: any) {
+      // Handle "already closed" error gracefully
+      if (error.response?.data?.message === 'Cash drawer is already closed') {
+        toast('Cash drawer was already closed', {
+          icon: '⚠️',
+          style: { background: '#FEF3C7', color: '#92400E' }
+        });
+        setCashDrawer(null);
+        localStorage.removeItem('pos_cash_drawer_id');
+        setShowEndModal(false);
+        setShowStartModal(true);
+        setClosingBalance('');
+        setClosingNotes('');
+        setEndShiftManagerPin('');
+        return;
+      }
       toast.error(error.response?.data?.message || 'Failed to end shift');
     } finally {
       setIsValidatingPin(false);

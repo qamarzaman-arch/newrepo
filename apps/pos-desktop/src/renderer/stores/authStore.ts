@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authService } from '../services/authService';
+import { getSecureStorageService } from '../services/secureStorageService';
 
 interface User {
   id: string;
@@ -28,17 +29,17 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
 
-      login: (user, token) => {
+      login: async (user, token) => {
         set({
           user,
           token,
           isAuthenticated: true,
         });
 
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('token', token);
-          localStorage.setItem('user', JSON.stringify(user));
-        }
+        // Use secure storage for auth data
+        const secureStorage = getSecureStorageService();
+        await secureStorage.setToken(token);
+        await secureStorage.setUser(user);
       },
 
       logout: async () => {
@@ -48,10 +49,9 @@ export const useAuthStore = create<AuthState>()(
           console.error('Logout error:', error);
         }
 
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-        }
+        // Clear secure storage
+        const secureStorage = getSecureStorageService();
+        await secureStorage.clearAuth();
 
         set({
           user: null,
@@ -61,14 +61,12 @@ export const useAuthStore = create<AuthState>()(
       },
 
       initialize: async () => {
-        const storedToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-        const token = storedToken || useAuthStore.getState().token;
+        // Use secure storage
+        const secureStorage = getSecureStorageService();
+        const token = await secureStorage.getToken() || useAuthStore.getState().token;
 
         if (!token) {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-          }
+          await secureStorage.clearAuth();
           set({
             user: null,
             token: null,
@@ -87,16 +85,12 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
           });
 
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify(user));
-          }
+          // Re-store in secure storage (in case it was in localStorage before migration)
+          await secureStorage.setToken(token);
+          await secureStorage.setUser(user);
         } catch (error) {
           console.error('Token verification failed:', error);
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-          }
+          await secureStorage.clearAuth();
           set({
             user: null,
             token: null,
@@ -107,10 +101,11 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated,
+      // Don't persist token in zustand storage - use secure storage instead
+      partialize: (_state) => ({
+        user: null,
+        token: null,
+        isAuthenticated: false, // Will be rehydrated from secure storage on init
       }),
     }
   )

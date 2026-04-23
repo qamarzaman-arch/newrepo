@@ -244,49 +244,84 @@ router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Respons
       throw new AppError('PIN is required', 400);
     }
 
-    // Get the authenticated user's PIN from database
-    const user = await prisma.user.findUnique({
+    // Get the authenticated user from database
+    const currentUser = await prisma.user.findUnique({
       where: { id: req.user!.userId },
       select: { id: true, pin: true, role: true, fullName: true, username: true },
     });
 
-    if (!user) {
+    if (!currentUser) {
       throw new AppError('User not found', 404);
     }
 
-    // Check if user has PIN configured
-    if (!user.pin) {
-      logger.warn(`PIN validation attempted by ${user.username} but no PIN configured`);
-      return res.json({
-        success: false,
-        valid: false,
-        message: 'No PIN configured for your account. Please contact administrator.',
+    let isValid = false;
+    let authorizedUser = null;
+
+    // For sensitive operations (shift management, refunds), check if any MANAGER/ADMIN has this PIN
+    const sensitiveOperations = ['shift_management', 'refund', 'void', 'cash_opening', 'cash_closing'];
+    const isSensitiveOperation = sensitiveOperations.includes(operation);
+
+    if (isSensitiveOperation) {
+      // Find a manager/admin user with matching PIN
+      const managers = await prisma.user.findMany({
+        where: {
+          role: { in: ['MANAGER', 'ADMIN'] },
+          isActive: true,
+          pin: { not: null },
+        },
+        select: { id: true, pin: true, role: true, fullName: true, username: true },
       });
+
+      // Check each manager's PIN
+      for (const manager of managers) {
+        if (manager.pin && await bcrypt.compare(pin, manager.pin)) {
+          isValid = true;
+          authorizedUser = manager;
+          break;
+        }
+      }
+
+      if (!isValid) {
+        logger.warn(`Failed ${operation} PIN validation attempt by ${currentUser.fullName} (${currentUser.username})`);
+        return res.json({
+          success: true,
+          data: { valid: false },
+        });
+      }
+    } else {
+      // For non-sensitive operations, validate current user's PIN
+      if (!currentUser.pin) {
+        logger.warn(`PIN validation attempted by ${currentUser.username} but no PIN configured`);
+        return res.json({
+          success: false,
+          valid: false,
+          message: 'No PIN configured for your account. Please contact administrator.',
+        });
+      }
+
+      isValid = await bcrypt.compare(pin, currentUser.pin);
+      authorizedUser = currentUser;
+
+      if (!isValid) {
+        logger.warn(`Failed PIN validation attempt by ${currentUser.fullName} (${currentUser.username}) for operation: ${operation}`);
+        return res.json({
+          success: true,
+          data: { valid: false },
+        });
+      }
     }
 
-    // Compare provided PIN with user's stored PIN hash
-    const isValid = await bcrypt.compare(pin, user.pin);
-
-    if (!isValid) {
-      logger.warn(`Failed PIN validation attempt by ${user.fullName} (${user.username}) for operation: ${operation}`);
-      // Return false instead of error to prevent information leakage
-      return res.json({
-        success: true,
-        data: { valid: false },
-      });
-    }
-
-    logger.info(`PIN validated successfully for ${user.fullName} (${user.username}) - Operation: ${operation}`);
+    logger.info(`PIN validated successfully for ${authorizedUser.fullName} (${authorizedUser.username}, Role: ${authorizedUser.role}) - Operation: ${operation} (requested by ${currentUser.username})`);
 
     res.json({
       success: true,
       data: { 
         valid: true,
         user: {
-          id: user.id,
-          name: user.fullName,
-          username: user.username,
-          role: user.role,
+          id: authorizedUser.id,
+          name: authorizedUser.fullName,
+          username: authorizedUser.username,
+          role: authorizedUser.role,
         }
       },
     });

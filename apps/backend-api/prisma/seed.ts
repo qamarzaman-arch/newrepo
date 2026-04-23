@@ -3,15 +3,29 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+const SEED_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'ChangeMe123!';
+const SEED_ADMIN_PIN = process.env.SEED_ADMIN_PIN || '9876';
+const SEED_CASHIER_PASSWORD = process.env.SEED_CASHIER_PASSWORD || 'ChangeMe123!';
+const SEED_CASHIER_PIN = process.env.SEED_CASHIER_PIN || '5678';
+const SEED_MANAGER_PASSWORD = process.env.SEED_MANAGER_PASSWORD || 'ChangeMe123!';
+const SEED_MANAGER_PIN = process.env.SEED_MANAGER_PIN || '4567';
+
 async function main() {
   console.log('🌱 Seeding database...');
+  console.log('⚠️  WARNING: Change default passwords after first login!');
+
+  const requirePasswordChange = true;
 
   // Create admin user
-  const adminPassword = await bcrypt.hash('admin123', 12);
-  const adminPin = await bcrypt.hash('9876', 12); // Hashed PIN
+  const adminPassword = await bcrypt.hash(SEED_ADMIN_PASSWORD, 12);
+  const adminPin = await bcrypt.hash(SEED_ADMIN_PIN, 12);
   await prisma.user.upsert({
     where: { username: 'admin' },
-    update: { pin: adminPin },
+    update: { 
+      pin: adminPin,
+      passwordHash: adminPassword,
+      isActive: true,
+    },
     create: {
       username: 'admin',
       email: 'admin@restaurant.com',
@@ -22,14 +36,17 @@ async function main() {
       pin: adminPin,
     },
   });
-  console.log('✅ Created admin user (PIN: 9876)');
+  console.log('✅ Created admin user (PIN: ****) - CHANGE PASSWORD IMMEDIATELY');
 
   // Create cashier users
-  const cashierPassword = await bcrypt.hash('cashier123', 12);
-  const cashierPin1 = await bcrypt.hash('5678', 12); // Hashed PIN
+  const cashierPassword = await bcrypt.hash(SEED_CASHIER_PASSWORD, 12);
+  const cashierPin1 = await bcrypt.hash(SEED_CASHIER_PIN, 12);
   await prisma.user.upsert({
     where: { username: 'cashier' },
-    update: { pin: cashierPin1 },
+    update: { 
+      pin: cashierPin1,
+      passwordHash: cashierPassword,
+    },
     create: {
       username: 'cashier',
       email: 'cashier@restaurant.com',
@@ -40,7 +57,7 @@ async function main() {
       pin: cashierPin1,
     },
   });
-  console.log('✅ Created cashier user (PIN: 5678)');
+  console.log('✅ Created cashier user (PIN: ****) - CHANGE PASSWORD IMMEDIATELY');
 
   await prisma.user.upsert({
     where: { username: 'cashier1' },
@@ -54,7 +71,7 @@ async function main() {
       phone: '+1234567891',
     },
   });
-  console.log('✅ Created cashier1 user (No PIN)');
+  console.log('✅ Created cashier1 user (No PIN - requires setup)');
 
   await prisma.user.upsert({
     where: { username: 'cashier2' },
@@ -68,14 +85,17 @@ async function main() {
       phone: '+1234567892',
     },
   });
-  console.log('✅ Created cashier2 user (No PIN)');
+  console.log('✅ Created cashier2 user (No PIN - requires setup)');
 
   // Create manager user
-  const managerPassword = await bcrypt.hash('manager123', 12);
-  const managerPin = await bcrypt.hash('4567', 12); // Hashed PIN for manager
+  const managerPassword = await bcrypt.hash(SEED_MANAGER_PASSWORD, 12);
+  const managerPin = await bcrypt.hash(SEED_MANAGER_PIN, 12);
   await prisma.user.upsert({
     where: { username: 'manager' },
-    update: { pin: managerPin },
+    update: { 
+      pin: managerPin,
+      passwordHash: managerPassword,
+    },
     create: {
       username: 'manager',
       email: 'manager@restaurant.com',
@@ -86,9 +106,11 @@ async function main() {
       pin: managerPin,
     },
   });
-  console.log('✅ Created manager user (PIN: 4567)');
+  console.log('✅ Created manager user (PIN: ****) - CHANGE PASSWORD IMMEDIATELY');
 
   // Create kitchen staff user
+  const SEED_KITCHEN_PASSWORD = process.env.SEED_KITCHEN_PASSWORD || 'ChangeMe123!';
+  const kitchenPassword = await bcrypt.hash(SEED_KITCHEN_PASSWORD, 12);
   const kitchenPassword = await bcrypt.hash('kitchen123', 12);
   await prisma.user.upsert({
     where: { username: 'kitchen' },

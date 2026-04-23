@@ -137,6 +137,14 @@ export class WebSocketManager {
   }
 
   /**
+   * Generic broadcast to all connected clients
+   */
+  broadcast(event: string, data: any) {
+    this.io.emit(event, data);
+    logger.info(`WebSocket: Broadcast ${event}`);
+  }
+
+  /**
    * Send real-time analytics updates
    */
   emitAnalyticsUpdate(data: any) {
