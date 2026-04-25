@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { settingsService, CurrentRates } from '../services/settingsService';
+import { useSettingsStore } from './settingsStore';
 
 export interface OrderItem {
   id: string;
@@ -112,6 +113,19 @@ const EMPTY_ORDER = {
   discountPercent: 0,
   discountAmount: 0,
   tipAmount: 0,
+};
+
+const getEffectiveRates = (backendRates: CurrentRates | null): CurrentRates => {
+  if (backendRates) {
+    return backendRates;
+  }
+
+  const settings = useSettingsStore.getState().settings;
+  return {
+    taxRate: settings.taxRate || 0,
+    serviceChargeRate: settings.serviceCharge || 0,
+    surcharges: [],
+  };
 };
 
 export const useOrderStore = create<OrderState>()(
@@ -397,7 +411,7 @@ persist(
     const subtotal = get().getSubtotal();
     const discount = get().getDiscount();
     const afterDiscount = subtotal - discount;
-    const rates = get().backendRates;
+    const rates = getEffectiveRates(get().backendRates);
     // Use backend tax rate, fallback to 0 if not loaded
     const taxRate = rates?.taxRate ?? 0;
     return afterDiscount * (taxRate / 100);
@@ -407,7 +421,7 @@ persist(
     const subtotal = get().getSubtotal();
     const discount = get().getDiscount();
     const afterDiscount = subtotal - discount;
-    const rates = get().backendRates;
+    const rates = getEffectiveRates(get().backendRates);
     // Use backend service charge rate, fallback to 0 if not loaded
     const serviceChargeRate = rates?.serviceChargeRate ?? 0;
     return afterDiscount * (serviceChargeRate / 100);
@@ -419,7 +433,7 @@ persist(
     const subtotal = get().getSubtotal();
     const discount = get().getDiscount();
     const afterDiscount = subtotal - discount;
-    const rates = get().backendRates;
+    const rates = getEffectiveRates(get().backendRates);
 
     // Calculate tax from backend rate
     const taxRate = rates?.taxRate ?? 0;

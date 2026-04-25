@@ -2,7 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../config/database';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 
@@ -31,7 +31,7 @@ const updateStaffSchema = z.object({
 });
 
 // Create staff
-router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const validatedData = createStaffSchema.parse(req.body);
 
@@ -81,7 +81,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
 });
 
 // Update staff
-router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = updateStaffSchema.parse(req.body);
 
@@ -138,7 +138,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
 });
 
 // Delete staff (soft delete)
-router.delete('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.delete('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.user.update({
       where: { id: req.params.id },

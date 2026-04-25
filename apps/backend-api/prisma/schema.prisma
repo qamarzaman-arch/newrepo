@@ -56,6 +56,7 @@ model User {
   sessions      Session[]
   deliveryZones DeliveryZone[]  @relation("DeliveryZoneCreator")
   tableLocks    TableLock[]
+  orderModifications OrderModificationHistory[]
 
   @@index([username])
   @@index([email])
@@ -216,6 +217,7 @@ model Order {
   server          User?         @relation("ServerOrders", fields: [serverId], references: [id])
   delivery        Delivery?
   kotTickets      KotTicket[]
+  modificationHistory OrderModificationHistory[]
 
   @@index([orderNumber])
   @@index([status])
@@ -270,6 +272,21 @@ model Payment {
   @@index([paidAt])
   @@index([status, paidAt])          // Financial reporting queries
   @@index([method, paidAt])          // Payment method reporting
+}
+
+model PaymentValidation {
+  id              String   @id @default(uuid())
+  transactionId   String   @unique
+  amount          Decimal  @db.Decimal(10, 2)
+  method          String   @default("CARD")
+  status          String
+  cardLastFour    String?
+  gatewayResponse String?  @db.LongText
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([status])
 }
 
 model Table {
@@ -844,6 +861,25 @@ model AuditLog {
   @@index([entity])
   @@index([entityId])
   @@index([createdAt])
+}
+
+model OrderModificationHistory {
+  id           String   @id @default(uuid())
+  orderId      String
+  fieldName    String
+  oldValue     String?  @db.LongText
+  newValue     String?  @db.LongText
+  reason       String?  @db.LongText
+  modifiedById String
+  modifiedAt   DateTime @default(now())
+
+  order      Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  modifiedBy User  @relation(fields: [modifiedById], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([modifiedById])
+  @@index([fieldName])
+  @@index([modifiedAt])
 }
 
 model ReportCache {

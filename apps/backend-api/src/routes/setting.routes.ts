@@ -17,7 +17,7 @@ const updateManagerPinSchema = z.object({
 });
 
 // Get all settings
-router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { category } = req.query;
     const where: any = {};
@@ -65,7 +65,7 @@ router.get('/current-rates', authenticate, async (req: AuthRequest, res: Respons
 });
 
 // Get settings by category
-router.get('/category/:category', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/category/:category', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const settings = await prisma.setting.findMany({
       where: { category: req.params.category },
@@ -78,7 +78,7 @@ router.get('/category/:category', authenticate, async (req: AuthRequest, res: Re
 });
 
 // Get setting by key
-router.get('/:key', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/:key', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const setting = await prisma.setting.findUnique({ where: { key: req.params.key } });
     if (!setting) throw new AppError('Setting not found', 404);
@@ -110,7 +110,7 @@ router.put('/manager-pin', authenticate, authorize('ADMIN', 'MANAGER'), async (r
 });
 
 // Bulk update settings (for POS sync)
-router.post('/bulk-sync', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/bulk-sync', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { settings } = req.body as { settings: Array<{ key: string; value: string; category?: string }> };
 
@@ -137,7 +137,7 @@ router.post('/bulk-sync', authenticate, async (req: AuthRequest, res: Response, 
 });
 
 // Update setting
-router.put('/:key', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/:key', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { value } = updateSettingSchema.parse(req.body);
 

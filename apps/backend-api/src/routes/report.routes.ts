@@ -5,6 +5,20 @@ import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
+const getOrderNetPaidAmount = (order: { payments?: Array<{ amount: number }> }) =>
+  (order.payments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
+
+const getPaymentBreakdown = (orders: Array<{ payments?: Array<{ amount: number; method: string | null }> }>) =>
+  orders.reduce((acc, order) => {
+    for (const payment of order.payments || []) {
+      if (!payment.method || Number(payment.amount) <= 0) {
+        continue;
+      }
+      acc[payment.method] = (acc[payment.method] || 0) + Number(payment.amount);
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
 // Query validation schemas
 const dateQuerySchema = z.object({
   date: z.string().optional(),
@@ -33,16 +47,14 @@ router.get('/sales/daily', authenticate, async (req: AuthRequest, res: Response,
       include: { payments: true, items: { include: { menuItem: true } } },
     });
 
-    const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
+    const totalRevenue = orders.reduce((sum, order) => sum + getOrderNetPaidAmount(order), 0);
     const totalOrders = orders.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-    const paymentMethodBreakdown = orders.reduce((acc, order) => {
-      if (order.paymentMethod) {
-        acc[order.paymentMethod] = (acc[order.paymentMethod] || 0) + Number(order.totalAmount);
-      }
-      return acc;
-    }, {} as Record<string, number>);
+    const paymentMethodBreakdown = getPaymentBreakdown(orders);
+    const refundTotal = orders.reduce((sum, order) => {
+      const refunds = (order.payments || []).filter((payment) => Number(payment.amount) < 0);
+      return sum + refunds.reduce((paymentSum, payment) => paymentSum + Math.abs(Number(payment.amount)), 0);
+    }, 0);
 
     res.json({
       success: true,
@@ -52,6 +64,7 @@ router.get('/sales/daily', authenticate, async (req: AuthRequest, res: Response,
         totalOrders,
         avgOrderValue,
         paymentMethodBreakdown,
+        refundTotal,
         orders,
       },
     });
@@ -75,6 +88,7 @@ router.get('/sales/monthly', authenticate, async (req: AuthRequest, res: Respons
         status: { notIn: ['CANCELLED'] },
       },
       orderBy: { orderedAt: 'asc' },
+      include: { payments: true },
     });
 
     // Group by date
@@ -83,12 +97,12 @@ router.get('/sales/monthly', authenticate, async (req: AuthRequest, res: Respons
       if (!acc[date]) {
         acc[date] = { date, revenue: 0, orders: 0 };
       }
-      acc[date].revenue += Number(order.totalAmount);
+      acc[date].revenue += getOrderNetPaidAmount(order);
       acc[date].orders++;
       return acc;
     }, {} as Record<string, { date: string; revenue: number; orders: number }>);
 
-    const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
+    const totalRevenue = orders.reduce((sum, order) => sum + getOrderNetPaidAmount(order), 0);
 
     res.json({
       success: true,
@@ -307,16 +321,18 @@ router.get('/daily', authenticate, async (req: AuthRequest, res: Response, next:
       include: { payments: true },
     });
 
-    const totalRevenue = orders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    const totalRevenue = orders.reduce((sum, o) => sum + getOrderNetPaidAmount(o), 0);
     const totalOrders = orders.length;
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-    const cashSales = orders
-      .filter(o => o.paymentMethod === 'CASH')
-      .reduce((sum, o) => sum + Number(o.totalAmount), 0);
-    const cardSales = orders
-      .filter(o => o.paymentMethod !== 'CASH' && o.paymentMethod)
-      .reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    const cashSales = orders.reduce((sum, order) => {
+      const cashPayments = order.payments?.filter(payment => payment.method === 'CASH' && Number(payment.amount) > 0) || [];
+      return sum + cashPayments.reduce((paymentSum, payment) => paymentSum + Number(payment.amount), 0);
+    }, 0);
+    const cardSales = orders.reduce((sum, order) => {
+      const cardPayments = order.payments?.filter(payment => payment.method !== 'CASH' && Number(payment.amount) > 0) || [];
+      return sum + cardPayments.reduce((paymentSum, payment) => paymentSum + Number(payment.amount), 0);
+    }, 0);
 
     res.json({
       success: true,
@@ -379,6 +395,7 @@ router.get('/profit-loss', authenticate, authorize('ADMIN', 'MANAGER'), async (r
         status: { notIn: ['CANCELLED', 'VOIDED'] },
       },
       include: {
+        payments: true,
         items: {
           include: {
             menuItem: {
@@ -400,7 +417,7 @@ router.get('/profit-loss', authenticate, authorize('ADMIN', 'MANAGER'), async (r
     });
 
     // Calculate revenue
-    const totalRevenue = orders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    const totalRevenue = orders.reduce((sum, o) => sum + getOrderNetPaidAmount(o), 0);
 
     // Calculate COGS based on recipe ingredients
     let totalCOGS = 0;

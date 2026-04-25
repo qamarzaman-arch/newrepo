@@ -2,7 +2,12 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../stores/authStore';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
+const getSocketUrl = () => {
+  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
+  return env?.VITE_SOCKET_URL || 'http://localhost:3001';
+};
+
+const SOCKET_URL = getSocketUrl();
 
 type MessageHandler = (data: any) => void;
 

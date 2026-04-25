@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/database';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
@@ -28,7 +28,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
   }
 });
 
-router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = vendorSchema.parse(req.body);
     const vendor = await prisma.vendor.create({
@@ -49,7 +49,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
   }
 });
 
-router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = vendorSchema.parse(req.body);
     const vendor = await prisma.vendor.update({
@@ -71,7 +71,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
   }
 });
 
-router.delete('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.delete('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.vendor.update({
       where: { id: req.params.id },

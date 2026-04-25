@@ -5,6 +5,7 @@ import { prisma } from '../config/database';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { verifyAndUpgradeSecret } from '../utils/pinSecurity';
 import { getWebSocketManager } from '../utils/websocket';
 import { rateLimiters } from '../middleware/rateLimiter';
 
@@ -403,7 +404,7 @@ router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, r
           orderNumber,
           orderType: data.orderType,
           tableId: data.tableId,
-          customerId: data.customerId,
+          customerId,
           customerName: data.customerName,
           customerPhone: data.customerPhone,
           subtotal,
@@ -703,12 +704,12 @@ router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER'), async (
     }
 
     // Log status change to audit trail
-    await (prisma as any).orderModificationHistory.create({
+    await prisma.orderModificationHistory.create({
       data: {
         orderId: req.params.id,
         fieldName: 'status',
-        oldValue: order.status,
-        newValue: status,
+        oldValue: String(order.status),
+        newValue: String(status),
         reason: cancelReason || `Status changed from ${order.status} to ${status}`,
         modifiedById: req.user!.userId,
         modifiedAt: new Date(),
@@ -954,22 +955,10 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
   try {
     const { type, reason, amount, items, managerPin, approvedBy, refundMethod, originalPaymentMethod } = req.body;
 
-    const order = await prisma.order.findUnique({
-      where: { id: req.params.id },
-      include: { payments: true },
-    });
-
-    if (!order) {
-      throw new AppError('Order not found', 404);
+    if (!managerPin) {
+      throw new AppError('Manager PIN is required for refunds', 400);
     }
 
-    // Verify order was paid
-    if (order.paymentStatus !== 'PAID') {
-      throw new AppError('Cannot refund unpaid order', 400);
-    }
-
-    // Validate manager authorization
-    // Check if requesting user has manager/admin role
     if (req.user?.role !== 'MANAGER' && req.user?.role !== 'ADMIN') {
       logger.warn(`Unauthorized refund attempt by ${req.user?.username} (role: ${req.user?.role})`);
       throw new AppError('Manager or Admin authorization required for refunds', 403);
@@ -987,36 +976,112 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
     }
 
     // Validate provided PIN against user's stored PIN hash
-    const isValidPin = await bcrypt.compare(managerPin, requestingUser.pin);
+    const isValidPin = await verifyAndUpgradeSecret(managerPin, requestingUser.pin, async (hashedPin) => {
+      await prisma.user.update({
+        where: { id: req.user!.userId },
+        data: { pin: hashedPin },
+      });
+    });
     if (!isValidPin) {
       logger.warn(`Failed refund PIN validation for user ${requestingUser.fullName} (${req.user?.username})`);
       throw new AppError('Invalid manager PIN', 401);
     }
 
-    // Create refund record (using Payment model with negative amount for tracking)
-// Duplicate payment create removed to fix double refund accounting
-// Only one payment record for refund
+    const result = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id: req.params.id },
+        include: { payments: true },
+      });
 
-    // Update order with refund info
-    const updatedOrder = await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        status: type === 'FULL' ? 'REFUNDED' : 'PARTIALLY_REFUNDED',
-      },
-      include: {
-        items: { include: { menuItem: true } },
-        table: true,
-        customer: true,
-        payments: true,
-      },
+      if (!order) {
+        throw new AppError('Order not found', 404);
+      }
+
+      if (order.paymentStatus !== 'PAID' && order.paymentStatus !== 'PARTIAL') {
+        throw new AppError('Cannot refund unpaid order', 400);
+      }
+
+      const totalPaid = order.payments.reduce((sum, payment) => sum + Number(payment.amount), 0);
+      const maxRefundableAmount = Math.max(totalPaid, 0);
+      const requestedRefundAmount = type === 'FULL'
+        ? maxRefundableAmount
+        : Number(amount);
+
+      if (!Number.isFinite(requestedRefundAmount) || requestedRefundAmount <= 0) {
+        throw new AppError('Refund amount must be greater than zero', 400);
+      }
+
+      if (requestedRefundAmount > maxRefundableAmount) {
+        throw new AppError('Refund amount exceeds collected payments', 400);
+      }
+
+      const refundReference = `refund-${order.orderNumber}-${Date.now()}`;
+      const refundNotes = [
+        reason ? `Reason: ${reason}` : null,
+        approvedBy ? `Approved By: ${approvedBy}` : null,
+        originalPaymentMethod ? `Original Method: ${originalPaymentMethod}` : null,
+        items?.length ? `Items: ${JSON.stringify(items)}` : null,
+      ].filter(Boolean).join(' | ');
+
+      await tx.payment.create({
+        data: {
+          orderId: order.id,
+          method: refundMethod || originalPaymentMethod || 'REFUND',
+          amount: -requestedRefundAmount,
+          reference: refundReference,
+          notes: refundNotes || undefined,
+          status: 'REFUNDED',
+        },
+      });
+
+      const remainingPaidAmount = Math.max(Number(order.paidAmount) - requestedRefundAmount, 0);
+      const refundStatus = type === 'FULL' || remainingPaidAmount === 0
+        ? 'REFUNDED'
+        : 'PARTIALLY_REFUNDED';
+      const paymentStatus = remainingPaidAmount <= 0
+        ? 'REFUNDED'
+        : remainingPaidAmount < Number(order.totalAmount)
+          ? 'PARTIAL'
+          : 'PAID';
+
+      const updatedOrder = await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: refundStatus,
+          paidAmount: remainingPaidAmount,
+          paymentStatus,
+        },
+        include: {
+          items: { include: { menuItem: true } },
+          table: true,
+          customer: true,
+          payments: true,
+        },
+      });
+
+      if (order.tableId && refundStatus === 'REFUNDED') {
+        await tx.table.update({
+          where: { id: order.tableId },
+          data: {
+            status: 'AVAILABLE',
+            currentOrderId: null,
+          },
+        }).catch(() => undefined);
+      }
+
+      return { updatedOrder, refundAmount: requestedRefundAmount, refundType: type };
+    }, {
+      isolationLevel: 'Serializable',
+      maxWait: 5000,
+      timeout: 10000,
     });
 
     // Update daily stats for reporting
-    logger.info(`Refund processed for order ${order.id}: ${amount} (${type})`);
+    logger.info(`Refund processed for order ${req.params.id}: ${result.refundAmount} (${result.refundType})`);
 
     res.json({
       success: true,
-      data: { order: updatedOrder, refundAmount: amount, refundType: type },
+      data: { order: result.updatedOrder, refundAmount: result.refundAmount, refundType: result.refundType },
     });
   } catch (error) {
     next(error);

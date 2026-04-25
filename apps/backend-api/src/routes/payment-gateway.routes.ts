@@ -6,6 +6,7 @@ import { AppError } from '../middleware/errorHandler';
 import { paymentGatewayService } from '../services/paymentGateway.service';
 import { prisma } from '../config/database';
 import { logger, sanitize } from '../utils/logger';
+import { verifyAndUpgradeSecret } from '../utils/pinSecurity';
 
 const router = Router();
 
@@ -107,7 +108,12 @@ router.post('/refund', authenticate, async (req: AuthRequest, res: Response, nex
       throw new AppError('Manager PIN not configured', 500);
     }
 
-    const isValidPin = await bcrypt.compare(managerPin, managerPinSetting.value);
+    const isValidPin = await verifyAndUpgradeSecret(managerPin, managerPinSetting.value, async (hashedPin) => {
+      await prisma.setting.update({
+        where: { key: managerPinSetting.key },
+        data: { value: hashedPin },
+      });
+    });
     if (!isValidPin) {
       logger.warn(`Failed refund PIN validation for payment ${data.paymentIntentId}`);
       throw new AppError('Invalid manager PIN', 401);

@@ -16,4 +16,6 @@ export const reportService = {
   getInventoryValuation: () => api.get('/reports/inventory/valuation'),
   getExpenseSummary: (days?: number) =>
     api.get('/reports/expenses/summary', { params: { days } }),
+  getProfitLoss: (params?: { startDate?: string; endDate?: string }) =>
+    api.get('/reports/profit-loss', { params }),
 };

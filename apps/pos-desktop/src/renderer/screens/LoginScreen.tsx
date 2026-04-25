@@ -409,21 +409,9 @@ const LoginScreen: React.FC = () => {
           transition={{ delay: 0.8 }}
           className="mt-8 text-center text-sm text-gray-600 space-y-2"
         >
-          <p className="font-semibold">Demo Credentials:</p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-gray-50 p-2 rounded-lg">
-              <p className="font-mono text-primary font-semibold">cashier1</p>
-              <p className="text-gray-500">Pass: cashier123</p>
-              <p className="text-gray-400">or PIN: 1234</p>
-            </div>
-            <div className="bg-gray-50 p-2 rounded-lg">
-              <p className="font-mono text-primary font-semibold">admin</p>
-              <p className="text-gray-500">Pass: admin123</p>
-              <p className="text-gray-400">or PIN: 0000</p>
-            </div>
-          </div>
+          <p className="font-semibold">Secure Access</p>
           <p className="text-xs text-gray-400 mt-2">
-            All roles can login with PIN - just enter PIN and click Login
+            Sign in with the credentials assigned to your account.
           </p>
         </motion.div>
       </motion.div>

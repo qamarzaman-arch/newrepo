@@ -74,10 +74,6 @@ router.post('/validate-card', authenticate, rateLimiters.moderate, async (req: A
     // Log successful validation
     logger.info(`Card payment validated successfully: ${sanitize(paymentResult.transactionId)}`);
 
-    // Note: PaymentValidation table is optional for audit trail
-    // If you want to track validations, add the table to your Prisma schema
-    // and uncomment the code below:
-    /*
     await prisma.paymentValidation.create({
       data: {
         transactionId: paymentResult.transactionId,
@@ -90,7 +86,6 @@ router.post('/validate-card', authenticate, rateLimiters.moderate, async (req: A
     }).catch((err) => {
       logger.warn('Could not store payment validation record:', err.message);
     });
-    */
 
     res.json({
       success: true,
@@ -118,18 +113,9 @@ router.post('/validate-card', authenticate, rateLimiters.moderate, async (req: A
 /**
  * Get payment validation history
  * For audit and reconciliation purposes
- * Note: Requires PaymentValidation table in Prisma schema
  */
 router.get('/validations', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    // This endpoint requires the PaymentValidation table
-    // If not using audit trail, you can remove this endpoint
-    res.status(501).json({
-      success: false,
-      message: 'Payment validation history requires PaymentValidation table. See migration file.',
-    });
-
-    /* Uncomment when PaymentValidation table is added to schema:
     const { startDate, endDate, status } = req.query;
 
     const where: any = {};
@@ -152,7 +138,6 @@ router.get('/validations', authenticate, async (req: AuthRequest, res: Response,
       success: true,
       data: { validations },
     });
-    */
   } catch (error) {
     next(error);
   }

@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { settingsService } from '../services/settingsService';
 
 export const CURRENCY_OPTIONS = [
   { value: 'USD', label: 'USD - US Dollar ($)' },
@@ -228,6 +227,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       loadFromDatabase: async () => {
         try {
+          const { settingsService } = await import('../services/settingsService');
           const { settings: dbSettings } = await settingsService.getSettings();
           if (dbSettings && dbSettings.length > 0) {
             const settings = dbFormatToSettings(dbSettings);
@@ -240,6 +240,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       saveToDatabase: async () => {
         try {
+          const { settingsService } = await import('../services/settingsService');
           const { settings } = get();
           const dbSettings = settingsToDbFormat(settings);
           await settingsService.bulkSyncSettings(dbSettings);

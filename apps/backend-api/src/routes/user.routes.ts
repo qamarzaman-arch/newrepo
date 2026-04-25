@@ -8,6 +8,10 @@ import { logger, sanitize } from '../utils/logger';
 
 const router = Router();
 
+function canManageCredential(req: AuthRequest, targetUserId: string) {
+  return req.user?.userId === targetUserId || req.user?.role === 'ADMIN' || req.user?.role === 'MANAGER';
+}
+
 const createUserSchema = z.object({
   username: z.string().min(3),
   email: z.string().email().optional(),
@@ -111,7 +115,7 @@ router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRe
         passwordHash,
         fullName: data.fullName,
         role: data.role,
-        pin: data.pin,
+        pin: data.pin ? await bcrypt.hash(data.pin, 12) : undefined,
         phone: data.phone,
       },
       select: {
@@ -148,10 +152,21 @@ router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: Auth
 // Reset password
 router.patch('/:id/reset-password', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    if (!canManageCredential(req, req.params.id)) {
+      throw new AppError('Insufficient permissions', 403);
+    }
+
     const { newPassword } = req.body;
 
-    if (!newPassword || newPassword.length < 6) {
-      throw new AppError('Password must be at least 6 characters', 400);
+    if (
+      !newPassword ||
+      newPassword.length < 8 ||
+      !/[A-Z]/.test(newPassword) ||
+      !/[a-z]/.test(newPassword) ||
+      !/[0-9]/.test(newPassword) ||
+      !/[^A-Za-z0-9]/.test(newPassword)
+    ) {
+      throw new AppError('Password must be at least 8 characters and include upper, lower, number, and special character', 400);
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
@@ -171,6 +186,10 @@ router.patch('/:id/reset-password', authenticate, async (req: AuthRequest, res: 
 // Set/change PIN
 router.patch('/:id/pin', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    if (!canManageCredential(req, req.params.id)) {
+      throw new AppError('Insufficient permissions', 403);
+    }
+
     const { pin } = req.body;
 
     if (!pin || pin.length !== 4) {

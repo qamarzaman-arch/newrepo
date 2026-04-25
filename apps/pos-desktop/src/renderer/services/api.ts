@@ -2,7 +2,12 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
+const getConfiguredApiBaseUrl = () => {
+  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
+  return env?.VITE_API_URL || 'http://localhost:3001/api/v1';
+};
+
+export const API_BASE_URL = getConfiguredApiBaseUrl();
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

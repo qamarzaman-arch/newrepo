@@ -1,20 +1,20 @@
 import { Router, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { prisma } from '../config/database';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { verifyAndUpgradeSecret } from '../utils/pinSecurity';
 
-const prisma = new PrismaClient();
 const router = Router();
 
 // Get modification history for an order
-router.get('/order/:orderId', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/order/:orderId', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { orderId } = req.params;
     const { limit = '50', offset = '0' } = req.query;
 
-    const modifications = await (prisma as any).orderModificationHistory.findMany({
+    const modifications = await prisma.orderModificationHistory.findMany({
       where: { orderId },
       take: parseInt(limit as string),
       skip: parseInt(offset as string),
@@ -24,7 +24,7 @@ router.get('/order/:orderId', authenticate, async (req: AuthRequest, res: Respon
       },
     });
 
-    const total = await (prisma as any).orderModificationHistory.count({
+    const total = await prisma.orderModificationHistory.count({
       where: { orderId },
     });
 
@@ -38,7 +38,7 @@ router.get('/order/:orderId', authenticate, async (req: AuthRequest, res: Respon
 });
 
 // Get all modifications with filtering
-router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { orderId, modifiedBy, fieldName, limit = '50', offset = '0' } = req.query;
 
@@ -47,7 +47,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
     if (modifiedBy) where.modifiedById = modifiedBy as string;
     if (fieldName) where.fieldName = fieldName as string;
 
-    const modifications = await (prisma as any).orderModificationHistory.findMany({
+    const modifications = await prisma.orderModificationHistory.findMany({
       where,
       take: parseInt(limit as string),
       skip: parseInt(offset as string),
@@ -58,7 +58,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
       },
     });
 
-    const total = await (prisma as any).orderModificationHistory.count({ where });
+    const total = await prisma.orderModificationHistory.count({ where });
 
     res.json({
       success: true,
@@ -70,11 +70,11 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
 });
 
 // Create modification log (internal use)
-router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { orderId, fieldName, oldValue, newValue, reason } = req.body;
 
-    const modification = await (prisma as any).orderModificationHistory.create({
+    const modification = await prisma.orderModificationHistory.create({
       data: {
         orderId,
         fieldName,
@@ -101,7 +101,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
 });
 
 // Rollback a modification (manager only)
-router.post('/:id/rollback', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/:id/rollback', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const { managerPin } = req.body;
@@ -116,13 +116,18 @@ router.post('/:id/rollback', authenticate, async (req: AuthRequest, res: Respons
       throw new AppError('Only managers can rollback modifications', 403);
     }
 
-    const pinMatch = await bcrypt.compare(managerPin, user.pin || '');
+    const pinMatch = await verifyAndUpgradeSecret(managerPin, user.pin, async (hashedPin) => {
+      await prisma.user.update({
+        where: { id: req.user!.userId },
+        data: { pin: hashedPin },
+      });
+    });
     if (!pinMatch) {
       throw new AppError('Invalid manager PIN', 401);
     }
 
     // Get the modification
-    const modification = await (prisma as any).orderModificationHistory.findUnique({
+    const modification = await prisma.orderModificationHistory.findUnique({
       where: { id },
     });
 
@@ -131,7 +136,7 @@ router.post('/:id/rollback', authenticate, async (req: AuthRequest, res: Respons
     }
 
     // Rollback the change
-    await (prisma as any).order.update({
+    await prisma.order.update({
       where: { id: modification.orderId },
       data: {
         [modification.fieldName]: modification.oldValue,
@@ -139,7 +144,7 @@ router.post('/:id/rollback', authenticate, async (req: AuthRequest, res: Respons
     });
 
     // Log the rollback
-    await (prisma as any).orderModificationHistory.create({
+    await prisma.orderModificationHistory.create({
       data: {
         orderId: modification.orderId,
         fieldName: modification.fieldName,

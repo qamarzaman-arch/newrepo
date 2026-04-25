@@ -42,18 +42,9 @@ const FinancialManagementScreen: React.FC = () => {
   };
 
   const expenses = expenseData?.expenses || [];
-
-  const taxRecords = [
-    { id: 'TAX-001', period: 'Q4 2023', type: 'Sales Tax', amount: (dailySales?.totalRevenue || 0) * 0.1, status: 'FILED', dueDate: '2024-01-31', filedDate: '2024-01-15' },
-  ];
-
-  const budgets = [
-    { category: 'Inventory', allocated: 15000, spent: 12450, remaining: 2550, percentage: 83 },
-    { category: 'Staff', allocated: 20000, spent: 18200, remaining: 1800, percentage: 91 },
-    { category: 'Utilities', allocated: 2000, spent: 1450, remaining: 550, percentage: 72.5 },
-    { category: 'Marketing', allocated: 1000, spent: 650, remaining: 350, percentage: 65 },
-    { category: 'Maintenance', allocated: 1500, spent: 890, remaining: 610, percentage: 59.3 },
-  ];
+  const paymentBreakdownEntries = Object.entries(dailySales?.paymentMethodBreakdown || {});
+  const taxRecords = [];
+  const budgets: Array<{ category: string; allocated: number; spent: number; remaining: number; percentage: number }> = [];
 
   return (
     <div className="space-y-6">
@@ -280,29 +271,31 @@ const FinancialManagementScreen: React.FC = () => {
               Payment Methods
             </h3>
             <div className="space-y-3">
-              {[
-                { method: 'Cash', amount: 18450.00, percentage: 40.4, color: 'bg-green-500' },
-                { method: 'Credit Card', amount: 15230.50, percentage: 33.3, color: 'bg-blue-500' },
-                { method: 'Debit Card', amount: 8920.40, percentage: 19.5, color: 'bg-purple-500' },
-                { method: 'Digital Wallet', amount: 3078.00, percentage: 6.8, color: 'bg-orange-500' },
-              ].map((payment, index) => (
+              {paymentBreakdownEntries.length > 0 ? paymentBreakdownEntries.map(([method, amount], index) => {
+                const numericAmount = Number(amount);
+                const percentage = financialStats.totalRevenue > 0 ? (numericAmount / financialStats.totalRevenue) * 100 : 0;
+                const color = ['bg-green-500', 'bg-blue-500', 'bg-purple-500', 'bg-orange-500'][index % 4];
+                return (
                 <div key={index} className="flex items-center gap-4">
-                  <div className={`w-3 h-3 rounded-full ${payment.color}`}></div>
+                  <div className={`w-3 h-3 rounded-full ${color}`}></div>
                   <div className="flex-1">
                     <div className="flex justify-between mb-1">
-                      <span className="text-sm font-semibold text-gray-700">{payment.method}</span>
-                      <span className="text-sm font-bold text-gray-900">{formatCurrency(payment.amount)}</span>
+                      <span className="text-sm font-semibold text-gray-700">{method}</span>
+                      <span className="text-sm font-bold text-gray-900">{formatCurrency(numericAmount)}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
-                        className={`${payment.color} h-2 rounded-full`}
-                        style={{ width: `${payment.percentage}%` }}
+                        className={`${color} h-2 rounded-full`}
+                        style={{ width: `${percentage}%` }}
                       ></div>
                     </div>
                   </div>
-                  <span className="text-sm text-gray-500 w-12 text-right">{payment.percentage}%</span>
+                  <span className="text-sm text-gray-500 w-12 text-right">{percentage.toFixed(1)}%</span>
                 </div>
-              ))}
+              );
+              }) : (
+                <div className="text-sm text-gray-500">No payment data available</div>
+              )}
             </div>
           </motion.div>
         </div>
@@ -349,7 +342,7 @@ const FinancialManagementScreen: React.FC = () => {
       {/* TAXES TAB */}
       {activeTab === 'taxes' && (
         <div className="space-y-4">
-          {taxRecords.map((tax, index) => (
+          {taxRecords.length > 0 ? taxRecords.map((tax, index) => (
             <motion.div
               key={tax.id}
               initial={{ opacity: 0, y: 20 }}
@@ -385,14 +378,18 @@ const FinancialManagementScreen: React.FC = () => {
                 </div>
               </div>
             </motion.div>
-          ))}
+          )) : (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-gray-500">
+              No tax filings available from live data.
+            </div>
+          )}
         </div>
       )}
 
       {/* BUDGET TAB */}
       {activeTab === 'budget' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {budgets.map((budget, index) => (
+          {budgets.length > 0 ? budgets.map((budget, index) => (
             <motion.div
               key={budget.category}
               initial={{ opacity: 0, y: 20 }}
@@ -441,7 +438,11 @@ const FinancialManagementScreen: React.FC = () => {
                 </div>
               </div>
             </motion.div>
-          ))}
+          )) : (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-gray-500">
+              Budget tracking is not configured yet.
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/database';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 
@@ -233,7 +233,7 @@ router.get('/loyalty/tiers', authenticate, async (_req: AuthRequest, res: Respon
   }
 });
 
-router.post('/loyalty/tiers', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/loyalty/tiers', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = loyaltyTierSchema.parse(req.body);
     const tiers = await readSettingsArray<LoyaltyTier>(LOYALTY_TIERS_SETTING_KEY, []);
@@ -253,7 +253,7 @@ router.post('/loyalty/tiers', authenticate, async (req: AuthRequest, res: Respon
   }
 });
 
-router.put('/loyalty/tiers/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/loyalty/tiers/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = loyaltyTierSchema.parse(req.body);
     const tiers = await readSettingsArray<LoyaltyTier>(LOYALTY_TIERS_SETTING_KEY, []);
@@ -279,7 +279,7 @@ router.put('/loyalty/tiers/:id', authenticate, async (req: AuthRequest, res: Res
   }
 });
 
-router.delete('/loyalty/tiers/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.delete('/loyalty/tiers/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const tiers = await readSettingsArray<LoyaltyTier>(LOYALTY_TIERS_SETTING_KEY, []);
     const nextTiers = tiers.filter((tier) => tier.id !== req.params.id);
@@ -316,7 +316,7 @@ router.get('/promotions', authenticate, async (_req: AuthRequest, res: Response,
   }
 });
 
-router.post('/promotions', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/promotions', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = promotionSchema.parse(req.body);
 
@@ -343,7 +343,7 @@ router.post('/promotions', authenticate, async (req: AuthRequest, res: Response,
   }
 });
 
-router.put('/promotions/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/promotions/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = promotionSchema.partial().parse(req.body);
 
@@ -371,7 +371,7 @@ router.put('/promotions/:id', authenticate, async (req: AuthRequest, res: Respon
   }
 });
 
-router.delete('/promotions/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.delete('/promotions/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.discount.update({
       where: { id: req.params.id },
@@ -415,7 +415,7 @@ router.get('/segments', authenticate, async (_req: AuthRequest, res: Response, n
   }
 });
 
-router.post('/segments', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/segments', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = segmentSchema.parse(req.body);
     const segments = await readSettingsArray<CustomerSegment>(CUSTOMER_SEGMENTS_SETTING_KEY, []);
@@ -434,7 +434,7 @@ router.post('/segments', authenticate, async (req: AuthRequest, res: Response, n
   }
 });
 
-router.delete('/segments/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.delete('/segments/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const segments = await readSettingsArray<CustomerSegment>(CUSTOMER_SEGMENTS_SETTING_KEY, []);
     const nextSegments = segments.filter((segment) => segment.id !== req.params.id);

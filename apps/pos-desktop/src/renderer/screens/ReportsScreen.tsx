@@ -39,6 +39,21 @@ const ReportsScreen: React.FC = () => {
     enabled: reportType === 'expenses',
   });
 
+  const { data: profitLossData } = useQuery({
+    queryKey: ['profit-loss', days],
+    queryFn: async () => {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - days);
+      const response = await reportService.getProfitLoss({
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      });
+      return response.data.data;
+    },
+    enabled: reportType === 'profit-loss',
+  });
+
   // Additional report queries
   const { data: inventoryData } = useQuery({
     queryKey: ['inventory-valuation'],
@@ -53,7 +68,7 @@ const ReportsScreen: React.FC = () => {
     queryKey: ['staff-performance'],
     queryFn: async () => {
       const response = await reportService.getStaffPerformance(days);
-      return response.data.data?.staff || [];
+      return response.data.data?.performances || [];
     },
     enabled: reportType === 'staff',
   });
@@ -61,29 +76,11 @@ const ReportsScreen: React.FC = () => {
   const COLORS = ['#00513f', '#753229', '#60a5fa', '#f59e0b', '#10b981'];
 
   // Calculate profit/loss data
-  const calculateProfitLoss = () => {
-    if (!salesData || !expenseData) return null;
-    const revenue = salesData.totalRevenue || 0;
-    const expenses = expenseData.totalExpenses || 0;
-    const costOfGoods = (salesData.totalOrders || 0) * 5; // Estimated COGS
-    const grossProfit = revenue - costOfGoods;
-    const netProfit = grossProfit - expenses;
-    return {
-      revenue,
-      costOfGoods,
-      grossProfit,
-      expenses,
-      netProfit,
-      grossMargin: revenue > 0 ? (grossProfit / revenue) * 100 : 0,
-      netMargin: revenue > 0 ? (netProfit / revenue) * 100 : 0,
-    };
-  };
-
   // Calculate inventory valuation
   const calculateInventoryValue = () => {
     if (!inventoryData) return 0;
     return inventoryData.reduce((sum: number, item: any) => {
-      return sum + (item.currentStock * (item.unitCost || 0));
+      return sum + (item.currentStock * (item.costPerUnit || 0));
     }, 0);
   };
 
@@ -231,7 +228,15 @@ const ReportsScreen: React.FC = () => {
 
       {/* Profit & Loss Report */}
       {reportType === 'profit-loss' && (() => {
-        const pl = calculateProfitLoss();
+        const pl = profitLossData ? {
+          revenue: profitLossData.revenue?.total || 0,
+          costOfGoods: profitLossData.cogs?.total || 0,
+          grossProfit: profitLossData.grossProfit?.total || 0,
+          expenses: profitLossData.expenses?.total || 0,
+          netProfit: profitLossData.netProfit?.total || 0,
+          grossMargin: profitLossData.grossProfit?.margin || 0,
+          netMargin: profitLossData.netProfit?.margin || 0,
+        } : null;
         if (!pl) return <div className="text-center py-8 text-gray-500">Loading P&L data...</div>;
         return (
           <div className="space-y-6">
@@ -289,7 +294,7 @@ const ReportsScreen: React.FC = () => {
             <div className="space-y-3">
               {Object.entries(inventoryData.reduce((acc: any, item: any) => {
                 const cat = item.category || 'Uncategorized';
-                acc[cat] = (acc[cat] || 0) + (item.currentStock * (item.unitCost || 0));
+                acc[cat] = (acc[cat] || 0) + (item.currentStock * (item.costPerUnit || 0));
                 return acc;
               }, {})).map(([category, value]: [string, any]) => (
                 <div key={category} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">

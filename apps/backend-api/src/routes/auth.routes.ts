@@ -6,6 +6,7 @@ import { prisma } from '../config/database';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { verifyAndUpgradeSecret } from '../utils/pinSecurity';
 import { rateLimiters } from '../middleware/rateLimiter';
 
 const router = Router();
@@ -54,8 +55,12 @@ router.post('/login', rateLimiters.strict, async (req: Request, res: Response, n
         throw new AppError('Invalid PIN', 401);
       }
 
-      // `user.pin` is treated as a bcrypt hash.
-      const isValidPin = await bcrypt.compare(pin, user.pin);
+      const isValidPin = await verifyAndUpgradeSecret(pin, user.pin, async (hashedPin) => {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { pin: hashedPin },
+        });
+      });
       if (!isValidPin) {
         throw new AppError('Invalid PIN', 401);
       }
@@ -274,7 +279,14 @@ router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Respons
 
       // Check each manager's PIN
       for (const manager of managers) {
-        if (manager.pin && await bcrypt.compare(pin, manager.pin)) {
+        const pinMatched = await verifyAndUpgradeSecret(pin, manager.pin, async (hashedPin) => {
+          await prisma.user.update({
+            where: { id: manager.id },
+            data: { pin: hashedPin },
+          });
+        });
+
+        if (pinMatched) {
           isValid = true;
           authorizedUser = manager;
           break;
@@ -299,7 +311,12 @@ router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Respons
         });
       }
 
-      isValid = await bcrypt.compare(pin, currentUser.pin);
+      isValid = await verifyAndUpgradeSecret(pin, currentUser.pin, async (hashedPin) => {
+        await prisma.user.update({
+          where: { id: currentUser.id },
+          data: { pin: hashedPin },
+        });
+      });
       authorizedUser = currentUser;
 
       if (!isValid) {

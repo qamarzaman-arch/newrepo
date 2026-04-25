@@ -3,16 +3,15 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+const SEED_ADMIN_USERNAME = process.env.SEED_ADMIN_USERNAME || 'admin';
+const SEED_ADMIN_FULL_NAME = process.env.SEED_ADMIN_FULL_NAME || 'System Administrator';
+const SEED_ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || 'admin@restaurant.local';
 const SEED_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'ChangeMe123!';
 const SEED_ADMIN_PIN = process.env.SEED_ADMIN_PIN || '9876';
+const SEED_INCLUDE_DEMO_USERS = process.env.SEED_INCLUDE_DEMO_USERS === 'true';
+const ALLOW_DESTRUCTIVE_SEED = process.env.ALLOW_DESTRUCTIVE_SEED === 'true';
 
-async function main() {
-  console.log('🌱 Seeding database...');
-  console.log('⚠️  WARNING: Change default password after first login!');
-
-  // Delete all data from all tables (cascade deletes)
-  console.log('🗑️  Cleaning up existing data...');
-  
+async function cleanupData() {
   await prisma.kotTicket.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.orderItem.deleteMany();
@@ -52,133 +51,114 @@ async function main() {
   await prisma.syncQueue.deleteMany();
   await prisma.syncLog.deleteMany();
   await prisma.reportCache.deleteMany();
-  
-  // Delete all users except admin (will be recreated)
   await prisma.user.deleteMany({
-    where: { username: { not: 'admin' } }
+    where: { username: { not: SEED_ADMIN_USERNAME } },
   });
-  
-  console.log('✅ Cleanup completed');
+}
 
-  // Create demo users with credentials matching the frontend LoginScreen
-  
-  // Admin user: admin / admin123 / PIN: 0000
-  const adminPassword = await bcrypt.hash('admin123', 12);
-  const adminPin = await bcrypt.hash('0000', 12);
+async function ensureUser(input: {
+  username: string;
+  email: string;
+  fullName: string;
+  role: 'ADMIN' | 'MANAGER' | 'CASHIER' | 'KITCHEN' | 'RIDER';
+  password: string;
+  pin: string;
+}) {
+  const passwordHash = await bcrypt.hash(input.password, 12);
+  const pinHash = await bcrypt.hash(input.pin, 12);
+
   await prisma.user.upsert({
-    where: { username: 'admin' },
+    where: { username: input.username },
     update: {
-      pin: adminPin,
-      passwordHash: adminPassword,
+      email: input.email,
+      fullName: input.fullName,
+      role: input.role,
+      passwordHash,
+      pin: pinHash,
       isActive: true,
     },
     create: {
-      username: 'admin',
-      email: 'admin@restaurant.com',
-      passwordHash: adminPassword,
-      fullName: 'Admin User',
-      role: 'ADMIN',
-      phone: '+1234567890',
-      pin: adminPin,
-    },
-  });
-  console.log('✅ Created admin user (admin / admin123 / PIN: 0000)');
-
-  // Cashier user: cashier1 / cashier123 / PIN: 1234
-  const cashierPassword = await bcrypt.hash('cashier123', 12);
-  const cashierPin = await bcrypt.hash('1234', 12);
-  await prisma.user.upsert({
-    where: { username: 'cashier1' },
-    update: {
-      pin: cashierPin,
-      passwordHash: cashierPassword,
+      username: input.username,
+      email: input.email,
+      fullName: input.fullName,
+      role: input.role,
+      passwordHash,
+      pin: pinHash,
       isActive: true,
     },
-    create: {
-      username: 'cashier1',
-      email: 'cashier1@restaurant.com',
-      passwordHash: cashierPassword,
-      fullName: 'Cashier One',
-      role: 'CASHIER',
-      phone: '+1234567891',
-      pin: cashierPin,
-    },
   });
-  console.log('✅ Created cashier1 user (cashier1 / cashier123 / PIN: 1234)');
+}
 
-  // Manager user: manager1 / manager123 / PIN: 5678
-  const managerPassword = await bcrypt.hash('manager123', 12);
-  const managerPin = await bcrypt.hash('5678', 12);
-  await prisma.user.upsert({
-    where: { username: 'manager1' },
-    update: {
-      pin: managerPin,
-      passwordHash: managerPassword,
-      isActive: true,
-    },
-    create: {
-      username: 'manager1',
-      email: 'manager@restaurant.com',
-      passwordHash: managerPassword,
-      fullName: 'Manager One',
-      role: 'MANAGER',
-      phone: '+1234567892',
-      pin: managerPin,
-    },
+async function main() {
+  console.log('Seeding database...');
+  console.log('WARNING: Use unique credentials outside development.');
+
+  if (ALLOW_DESTRUCTIVE_SEED) {
+    console.log('ALLOW_DESTRUCTIVE_SEED=true detected. Cleaning existing data...');
+    await cleanupData();
+    console.log('Cleanup completed');
+  }
+
+  await ensureUser({
+    username: SEED_ADMIN_USERNAME,
+    email: SEED_ADMIN_EMAIL,
+    fullName: SEED_ADMIN_FULL_NAME,
+    role: 'ADMIN',
+    password: SEED_ADMIN_PASSWORD,
+    pin: SEED_ADMIN_PIN,
   });
-  console.log('✅ Created manager1 user (manager1 / manager123 / PIN: 5678)');
 
-  // Kitchen user: kitchen1 / kitchen123 / PIN: 9999
-  const kitchenPassword = await bcrypt.hash('kitchen123', 12);
-  const kitchenPin = await bcrypt.hash('9999', 12);
-  await prisma.user.upsert({
-    where: { username: 'kitchen1' },
-    update: {
-      pin: kitchenPin,
-      passwordHash: kitchenPassword,
-      isActive: true,
-    },
-    create: {
-      username: 'kitchen1',
-      email: 'kitchen@restaurant.com',
-      passwordHash: kitchenPassword,
-      fullName: 'Kitchen Staff',
-      role: 'KITCHEN',
-      phone: '+1234567893',
-      pin: kitchenPin,
-    },
-  });
-  console.log('✅ Created kitchen1 user (kitchen1 / kitchen123 / PIN: 9999)');
+  console.log(`Admin user ensured: ${SEED_ADMIN_USERNAME}`);
 
-  // Rider user: rider1 / rider123 / PIN: 8888
-  const riderPassword = await bcrypt.hash('rider123', 12);
-  const riderPin = await bcrypt.hash('8888', 12);
-  await prisma.user.upsert({
-    where: { username: 'rider1' },
-    update: {
-      pin: riderPin,
-      passwordHash: riderPassword,
-      isActive: true,
-    },
-    create: {
-      username: 'rider1',
-      email: 'rider@restaurant.com',
-      passwordHash: riderPassword,
-      fullName: 'Delivery Rider',
-      role: 'RIDER',
-      phone: '+1234567894',
-      pin: riderPin,
-    },
-  });
-  console.log('✅ Created rider1 user (rider1 / rider123 / PIN: 8888)');
+  if (SEED_INCLUDE_DEMO_USERS) {
+    const demoUsers = [
+      {
+        username: 'cashier1',
+        email: 'cashier1@restaurant.local',
+        fullName: 'Cashier One',
+        role: 'CASHIER' as const,
+        password: 'cashier123',
+        pin: '1234',
+      },
+      {
+        username: 'manager1',
+        email: 'manager1@restaurant.local',
+        fullName: 'Manager One',
+        role: 'MANAGER' as const,
+        password: 'manager123',
+        pin: '5678',
+      },
+      {
+        username: 'kitchen1',
+        email: 'kitchen1@restaurant.local',
+        fullName: 'Kitchen Staff',
+        role: 'KITCHEN' as const,
+        password: 'kitchen123',
+        pin: '9999',
+      },
+      {
+        username: 'rider1',
+        email: 'rider1@restaurant.local',
+        fullName: 'Delivery Rider',
+        role: 'RIDER' as const,
+        password: 'rider123',
+        pin: '8888',
+      },
+    ];
 
-  console.log('\n⚠️  WARNING: These are demo credentials. Change them immediately in production!');
-  console.log('🎉 Database seeding completed!');
+    for (const demoUser of demoUsers) {
+      await ensureUser(demoUser);
+    }
+
+    console.log('Demo users seeded because SEED_INCLUDE_DEMO_USERS=true');
+  }
+
+  console.log('Database seeding completed');
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Seeding failed:', e);
+  .catch((error) => {
+    console.error('Seeding failed:', error);
     process.exit(1);
   })
   .finally(async () => {
