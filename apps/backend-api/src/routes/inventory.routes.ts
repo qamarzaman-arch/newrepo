@@ -4,6 +4,7 @@ import { prisma } from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { validatePagination, createPaginationResponse } from '../utils/pagination';
 
 const router = Router();
 
@@ -57,10 +58,10 @@ const stockAdjustmentSchema = z.object({
 // Get all inventory items with filters
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { category, status, warehouseId, lowStock, page = '1', limit = '50', search } = req.query;
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    const { category, status, warehouseId, lowStock, page, limit, search } = req.query;
+
+    // Validate pagination
+    const pagination = validatePagination(page || 1, limit || 50);
 
     const where: any = { isActive: true };
 
@@ -91,8 +92,8 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
           warehouse: true,
         },
         orderBy: { name: 'asc' },
-        skip,
-        take: limitNum,
+        skip: pagination.skip,
+        take: pagination.limit,
       }),
       prisma.inventoryItem.count({ where }),
     ]);
@@ -101,12 +102,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
       success: true,
       data: { 
         items,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total,
-          totalPages: Math.ceil(total / limitNum),
-        }
+        pagination: createPaginationResponse(total, pagination.page, pagination.limit),
       },
     });
   } catch (error) {
@@ -144,7 +140,10 @@ router.get('/low-stock', authenticate, async (req: AuthRequest, res: Response, n
 // Get stock movements
 router.get('/movements', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { itemId, type, startDate, endDate, page = 1, limit = 50 } = req.query;
+    const { itemId, type, startDate, endDate, page, limit } = req.query;
+
+    // Validate pagination
+    const pagination = validatePagination(page || 1, limit || 50);
 
     const where: any = {};
 
@@ -163,8 +162,8 @@ router.get('/movements', authenticate, async (req: AuthRequest, res: Response, n
           inventoryItem: true,
         },
         orderBy: { createdAt: 'desc' },
-        skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit),
+        skip: pagination.skip,
+        take: pagination.limit,
       }),
       prisma.stockMovement.count({ where }),
     ]);
@@ -173,12 +172,7 @@ router.get('/movements', authenticate, async (req: AuthRequest, res: Response, n
       success: true,
       data: {
         movements,
-        pagination: {
-          total,
-          page: Number(page),
-          limit: Number(limit),
-          totalPages: Math.ceil(total / Number(limit)),
-        },
+        pagination: createPaginationResponse(total, pagination.page, pagination.limit),
       },
     });
   } catch (error) {

@@ -41,7 +41,7 @@ export default function StaffPage() {
     email: '',
     phone: '',
     role: 'STAFF',
-    password: 'password123',
+    password: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -79,7 +79,7 @@ export default function StaffPage() {
         email: '',
         phone: '',
         role: 'STAFF',
-        password: 'password123',
+        password: '',
       });
       fetchData();
     } catch (err: any) {
@@ -348,9 +348,11 @@ export default function StaffPage() {
               <input
                 required
                 type="text"
+                minLength={8}
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl focus:outline-none transition-all"
+                placeholder="Secure password (min 8 chars)"
               />
             </div>
           </div>

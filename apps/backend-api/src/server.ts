@@ -14,8 +14,12 @@ import { errorHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
 import { initializeWebSocketManager } from './utils/websocket';
 import { initSessionCleanupJob, initAuditLogCleanupJob } from './jobs/sessionCleanup';
+import { validateAndExitIfInvalid } from './config/configValidator';
 
 dotenv.config();
+
+// Validate configuration BEFORE starting server
+validateAndExitIfInvalid();
 
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET is required. Set it in apps/backend-api/.env');
@@ -47,7 +51,10 @@ global.socketIO = io;
 initializeWebSocketManager(io);
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable for Electron app compatibility
+  crossOriginEmbedderPolicy: false,
+}));
 
 // CORS configuration - support multiple origins and reflect the request origin
 const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(origin => origin.trim()).filter(Boolean) || [];
@@ -82,7 +89,7 @@ app.use(express.urlencoded({ extended: true }));
 // General rate limiting
 const limiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
-  max: Number(process.env.RATE_LIMIT_MAX_REQUESTS || 1000),
+  max: Number(process.env.RATE_LIMIT_MAX_REQUESTS || 100),
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -92,22 +99,44 @@ app.use('/api/', limiter);
 // Stricter rate limiting for auth endpoints (brute force protection)
 const authLimiter = rateLimit({
   windowMs: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
-  max: Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 10),
-  skipSuccessfulRequests: true,
+  max: Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 5),
+  skipSuccessfulRequests: false,
   message: 'Too many login attempts, please try again after 15 minutes.',
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const username = req.body?.username || 'anonymous';
+    return `${ip}:${username}`;
+  },
 });
 app.use('/api/v1/auth/login', authLimiter);
 app.use('/api/v1/auth/validate-pin', authLimiter);
 
 // Health check
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  });
+app.get('/health', async (_req: Request, res: Response) => {
+  try {
+    // Check database connection
+    await prisma.$queryRaw`SELECT 1`;
+    
+    res.json({
+      status: 'OK',
+      healthy: true,
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      checks: {
+        database: 'connected',
+        memory: (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2) + ' MB',
+      },
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'UNHEALTHY',
+      healthy: false,
+      timestamp: new Date().toISOString(),
+      error: 'Database connection failed',
+    });
+  }
 });
 
 // API Routes

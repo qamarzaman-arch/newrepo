@@ -7,7 +7,7 @@ import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 import { verifyAndUpgradeSecret } from '../utils/pinSecurity';
 import { getWebSocketManager } from '../utils/websocket';
-import { rateLimiters } from '../middleware/rateLimiter';
+import { orderLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -74,19 +74,18 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
           ...where,
           ...(paymentMethod && paymentMethod !== 'all' ? { payments: paymentFilter } : {}),
         },
-        include: {
-          items: {
-            include: {
-              menuItem: true,
-            },
-          },
-          table: true,
-          customer: true,
-          cashier: {
-            select: { id: true, fullName: true },
-          },
-          delivery: true,
-          payments: true,
+        select: {
+          id: true,
+          orderNumber: true,
+          orderType: true,
+          status: true,
+          subtotal: true,
+          totalAmount: true,
+          paidAmount: true,
+          orderedAt: true,
+          table: { select: { number: true, status: true } },
+          customer: { select: { firstName: true, lastName: true } },
+          cashier: { select: { fullName: true } }
         },
         orderBy: { orderedAt: 'desc' },
         skip: (Number(page) - 1) * Number(limit),
@@ -273,7 +272,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
   }
 });
 
-router.post('/', authenticate, rateLimiters.moderate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createOrderSchema.parse(req.body);
 
@@ -732,6 +731,18 @@ router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER'), async (
 // Process payment
 router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    const paymentSchema = z.object({
+      method: z.string(),
+      amount: z.number().positive('Payment amount must be greater than zero'),
+      reference: z.string().optional().nullable(),
+      notes: z.string().optional().nullable(),
+      cashReceived: z.union([z.number(), z.string().transform(v => Number(v))]).optional().nullable(),
+      cardLastFour: z.string().optional().nullable(),
+      transferReference: z.string().optional().nullable(),
+      discountAmount: z.number().optional().nullable(),
+      discountPercent: z.number().optional().nullable(),
+    });
+    
     const { 
       method, 
       amount, 
@@ -742,7 +753,7 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
       transferReference,
       discountAmount,
       discountPercent,
-    } = req.body;
+    } = paymentSchema.parse(req.body);
 
     // Wrap entire payment processing in a database transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -765,6 +776,10 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
       }
 
       const paidAmount = Number(order.paidAmount) + amount;
+
+      if (paidAmount > finalTotalAmount && method !== 'CASH') {
+        throw new AppError('Payment amount exceeds order total', 400);
+      }
 
       // Build payment notes with additional details
       let paymentNotes = notes || '';

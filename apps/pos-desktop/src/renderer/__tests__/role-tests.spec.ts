@@ -1,12 +1,14 @@
 import { test, expect } from '@playwright/test';
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '.env.test' });
 
 const BASE_URL = 'http://localhost:5176';
 
 const ROLES = {
-  admin: { username: 'admin', password: 'admin123', expectedRedirect: '/dashboard' },
-  cashier: { username: 'cashier1', password: 'cashier123', expectedRedirect: '/cashier-pos' },
-  kitchen: { username: 'kitchen', password: 'kitchen123', expectedRedirect: '/kitchen' },
-  manager: { username: 'manager', password: 'manager123', expectedRedirect: '/dashboard' },
+  admin: { username: 'admin', password: process.env.TEST_ADMIN_PASSWORD as string, expectedRedirect: '/dashboard' },
+  cashier: { username: 'cashier1', password: process.env.TEST_CASHIER_PASSWORD as string, expectedRedirect: '/cashier-pos' },
+  kitchen: { username: 'kitchen', password: process.env.TEST_KITCHEN_PASSWORD as string, expectedRedirect: '/kitchen' },
+  manager: { username: 'manager', password: process.env.TEST_MANAGER_PASSWORD as string, expectedRedirect: '/dashboard' },
 };
 
 test.describe('Role-Based Access Control Tests', () => {
@@ -72,7 +74,7 @@ test.describe('Screen Functionality Tests', () => {
     // Login as admin
     await page.goto(`${BASE_URL}/login`);
     await page.fill('input[type="text"]', 'admin');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[type="password"]', process.env.TEST_ADMIN_PASSWORD as string);
     await page.click('button[type="submit"]');
     await page.waitForTimeout(2000);
     
@@ -93,7 +95,7 @@ test.describe('Screen Functionality Tests', () => {
   test('Cashier POS screen loads without errors', async ({ page }) => {
     await page.goto(`${BASE_URL}/login`);
     await page.fill('input[type="text"]', 'cashier1');
-    await page.fill('input[type="password"]', 'cashier123');
+    await page.fill('input[type="password"]', process.env.TEST_CASHIER_PASSWORD as string);
     await page.click('button[type="submit"]');
     await page.waitForTimeout(2000);
     
@@ -121,7 +123,7 @@ test.describe('Screen Functionality Tests', () => {
   test('Kitchen screen loads and shows orders', async ({ page }) => {
     await page.goto(`${BASE_URL}/login`);
     await page.fill('input[type="text"]', 'kitchen');
-    await page.fill('input[type="password"]', 'kitchen123');
+    await page.fill('input[type="password"]', process.env.TEST_KITCHEN_PASSWORD as string);
     await page.click('button[type="submit"]');
     await page.waitForTimeout(2000);
     

@@ -4,7 +4,7 @@ import { prisma } from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
-import { rateLimiters } from '../middleware/rateLimiter';
+import { paymentLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -25,7 +25,7 @@ const validateCardSchema = z.object({
  * - PayPal
  * - Authorize.net
  */
-router.post('/validate-card', authenticate, rateLimiters.moderate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/validate-card', authenticate, paymentLimiter, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { amount, cardDetails } = validateCardSchema.parse(req.body);
 

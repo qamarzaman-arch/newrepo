@@ -21,7 +21,7 @@ const closeDrawerSchema = z.object({
 // Get current open cash drawer
 router.get('/current', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const drawer = await (prisma as any).cashDrawer.findFirst({
+    const drawer = await prisma.cashDrawer.findFirst({
       where: { status: 'open' },
       orderBy: { openedAt: 'desc' },
     });
@@ -40,7 +40,7 @@ router.get('/history', authenticate, async (req: AuthRequest, res: Response, nex
   try {
     const { limit = '10', offset = '0' } = req.query;
 
-    const drawers = await (prisma as any).cashDrawer.findMany({
+    const drawers = await prisma.cashDrawer.findMany({
       take: parseInt(limit as string),
       skip: parseInt(offset as string),
       orderBy: { openedAt: 'desc' },
@@ -63,7 +63,7 @@ router.post('/open', authenticate, async (req: AuthRequest, res: Response, next:
     const { openingBalance } = openDrawerSchema.parse(req.body);
 
     // Check if there's already an open drawer
-    const existingOpen = await (prisma as any).cashDrawer.findFirst({
+    const existingOpen = await prisma.cashDrawer.findFirst({
       where: { status: 'open' },
     });
 
@@ -74,7 +74,7 @@ router.post('/open', authenticate, async (req: AuthRequest, res: Response, next:
     const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
     const sessionNumber = `SHIFT-${dateStr}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
 
-    const drawer = await (prisma as any).cashDrawer.create({
+    const drawer = await prisma.cashDrawer.create({
       data: {
         sessionNumber,
         openedById: req.user!.userId,
@@ -99,7 +99,7 @@ router.post('/:id/close', authenticate, async (req: AuthRequest, res: Response, 
   try {
     const { closingBalance, expectedBalance, notes } = closeDrawerSchema.parse(req.body);
 
-    const drawer = await (prisma as any).cashDrawer.findUnique({
+    const drawer = await prisma.cashDrawer.findUnique({
       where: { id: req.params.id },
     });
 
@@ -111,15 +111,40 @@ router.post('/:id/close', authenticate, async (req: AuthRequest, res: Response, 
       throw new AppError('Cash drawer is already closed', 400);
     }
 
-    const expectedBalanceNum = expectedBalance || drawer.openingBalance;
-    const discrepancy = closingBalance - expectedBalanceNum;
+    // Recalculate expected balance on server side based on cash payments
+    const orders = await prisma.order.findMany({
+      where: {
+        cashierId: drawer.openedById,
+        orderedAt: { gte: drawer.openedAt },
+        status: { notIn: ['CANCELLED', 'VOIDED'] },
+      },
+      include: { payments: true },
+    });
 
-    const updatedDrawer = await (prisma as any).cashDrawer.update({
+    let cashSales = 0;
+    let refunds = 0;
+    for (const order of orders) {
+      for (const payment of order.payments) {
+        if (payment.method === 'CASH') {
+          if (Number(payment.amount) > 0) {
+            cashSales += Number(payment.amount);
+          } else {
+            refunds += Math.abs(Number(payment.amount));
+          }
+        }
+      }
+    }
+    
+    // Ignoring the client-provided expectedBalance intentionally
+    const recalculatedExpectedBalance = drawer.openingBalance + cashSales - refunds;
+    const discrepancy = closingBalance - recalculatedExpectedBalance;
+
+    const updatedDrawer = await prisma.cashDrawer.update({
       where: { id: req.params.id },
       data: {
         closedById: req.user!.userId,
         closingBalance,
-        expectedBalance: expectedBalanceNum,
+        expectedBalance: recalculatedExpectedBalance,
         discrepancy,
         closedAt: new Date(),
         closingNotes: notes || '',
@@ -143,7 +168,7 @@ router.patch('/:id/transaction', authenticate, async (req: AuthRequest, res: Res
   try {
     const { type, amount } = req.body;
 
-    const drawer = await (prisma as any).cashDrawer.findUnique({
+    const drawer = await prisma.cashDrawer.findUnique({
       where: { id: req.params.id },
     });
 
@@ -163,7 +188,7 @@ router.patch('/:id/transaction', authenticate, async (req: AuthRequest, res: Res
       updateData.totalCashOut = { increment: amountNum };
     }
 
-    const updatedDrawer = await (prisma as any).cashDrawer.update({
+    const updatedDrawer = await prisma.cashDrawer.update({
       where: { id: req.params.id },
       data: updateData,
     });

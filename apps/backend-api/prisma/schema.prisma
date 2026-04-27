@@ -12,32 +12,22 @@ datasource db {
 
 // Enums
 
-
-
-
-
-
-
-
-
-
-
 // Models
 model User {
-  id            String    @id @default(uuid())
-  username      String    @unique
-  email         String?   @unique
-  passwordHash  String
-  fullName      String
-  role          String  @default("STAFF")
-  pin           String?
-  phone         String?
-  avatar        String?
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime?
-  
+  id           String    @id @default(uuid())
+  username     String    @unique
+  email        String?   @unique
+  passwordHash String
+  fullName     String
+  role         String    @default("STAFF")
+  pin          String?
+  phone        String?
+  avatar       String?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLoginAt  DateTime?
+
   // Rider-specific fields
   status          String?   @default("ACTIVE")
   isAvailable     Boolean   @default(true)
@@ -47,16 +37,17 @@ model User {
   vehicleType     String?
   vehiclePlate    String?
 
-  orders        Order[]          @relation("CashierOrders")
-  servedOrders  Order[]          @relation("ServerOrders")
-  expenses      Expense[]
-  shifts        Shift[]
-  auditLogs     AuditLog[]
-  deliveries    Delivery[]       @relation("RiderDeliveries")
-  sessions      Session[]
-  deliveryZones DeliveryZone[]  @relation("DeliveryZoneCreator")
-  tableLocks    TableLock[]
+  orders             Order[]                    @relation("CashierOrders")
+  servedOrders       Order[]                    @relation("ServerOrders")
+  expenses           Expense[]
+  shifts             Shift[]
+  auditLogs          AuditLog[]
+  deliveries         Delivery[]                 @relation("RiderDeliveries")
+  sessions           Session[]
+  deliveryZones      DeliveryZone[]             @relation("DeliveryZoneCreator")
+  tableLocks         TableLock[]
   orderModifications OrderModificationHistory[]
+  StaffPerformance   StaffPerformance[]
 
   @@index([username])
   @@index([email])
@@ -77,14 +68,14 @@ model Session {
 }
 
 model MenuCategory {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  displayOrder Int    @default(0)
-  isActive    Boolean  @default(true)
-  image       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  image        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   items MenuItem[]
 
@@ -96,26 +87,26 @@ model MenuItem {
   categoryId      String
   name            String
   description     String?
-  price           Float  
-  cost            Float  
+  price           Float
+  cost            Float
   image           String?
   sku             String?
   barcode         String?
   isActive        Boolean  @default(true)
   isAvailable     Boolean  @default(true)
   prepTimeMinutes Int      @default(15)
-  taxRate         Float   @default(0) 
+  taxRate         Float    @default(0)
   displayOrder    Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  category        MenuCategory       @relation(fields: [categoryId], references: [id])
-  orderItems      OrderItem[]
-  inventoryItems  InventoryItem[]
-  modifiers       ItemModifier[]
-  tags            MenuItemTag[]
-  comboItems      ComboItem[]
-  recipes         Recipe[]
+  category       MenuCategory    @relation(fields: [categoryId], references: [id])
+  orderItems     OrderItem[]
+  inventoryItems InventoryItem[]
+  modifiers      ItemModifier[]
+  tags           MenuItemTag[]
+  comboItems     ComboItem[]
+  recipes        Recipe[]
 
   @@index([categoryId])
   @@index([isActive])
@@ -124,26 +115,26 @@ model MenuItem {
 }
 
 model ItemModifier {
-  id            String   @id @default(uuid())
-  menuItemId    String
-  name          String
-  type          String
-  isRequired    Boolean  @default(false)
-  displayOrder  Int      @default(0)
+  id           String  @id @default(uuid())
+  menuItemId   String
+  name         String
+  type         String
+  isRequired   Boolean @default(false)
+  displayOrder Int     @default(0)
 
-  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  menuItem MenuItem         @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
   options  ModifierOption[]
 
   @@index([menuItemId])
 }
 
 model ModifierOption {
-  id             String   @id @default(uuid())
-  modifierId     String
-  name           String
-  priceAdjustment Float @default(0) 
-  isDefault      Boolean  @default(false)
-  displayOrder   Int      @default(0)
+  id              String  @id @default(uuid())
+  modifierId      String
+  name            String
+  priceAdjustment Float   @default(0)
+  isDefault       Boolean @default(false)
+  displayOrder    Int     @default(0)
 
   modifier ItemModifier @relation(fields: [modifierId], references: [id], onDelete: Cascade)
 
@@ -171,52 +162,52 @@ enum OrderType {
 }
 
 model Order {
-  id              String        @id @default(uuid())
-  orderNumber     String        @unique
-  orderType       OrderType     @default(DINE_IN)
-  status          String   @default("PENDING")
+  id          String    @id @default(uuid())
+  orderNumber String    @unique
+  orderType   OrderType @default(DINE_IN)
+  status      String    @default("PENDING")
 
-  customerId      String?
-  customerName    String?
-  customerPhone   String?
+  customerId    String?
+  customerName  String?
+  customerPhone String?
 
-  tableId         String?
+  tableId String?
 
-  subtotal        Float       
-  discountAmount  Float       @default(0) 
-  discountPercent Float       @default(0) 
-  taxAmount       Float       @default(0) 
-  surchargeAmount Float       @default(0) 
-  tipAmount       Float       @default(0)
-  totalAmount     Float       
-  paidAmount      Float       @default(0) 
+  subtotal        Float
+  discountAmount  Float @default(0)
+  discountPercent Float @default(0)
+  taxAmount       Float @default(0)
+  surchargeAmount Float @default(0)
+  tipAmount       Float @default(0)
+  totalAmount     Float
+  paidAmount      Float @default(0)
 
-  paymentMethod   String?
-  paymentStatus   String @default("PENDING")
+  paymentMethod String?
+  paymentStatus String  @default("PENDING")
 
-  cashierId       String
-  serverId        String?
+  cashierId String
+  serverId  String?
 
-  notes           String?
-  kitchenNotes    String?
+  notes        String?
+  kitchenNotes String?
 
-  orderedAt       DateTime      @default(now())
-  confirmedAt     DateTime?
-  completedAt     DateTime?
-  cancelledAt     DateTime?
-  cancelReason    String?
+  orderedAt    DateTime  @default(now())
+  confirmedAt  DateTime?
+  completedAt  DateTime?
+  cancelledAt  DateTime?
+  cancelReason String?
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  items           OrderItem[]
-  payments        Payment[]
-  table           Table?        @relation(fields: [tableId], references: [id])
-  customer        Customer?     @relation(fields: [customerId], references: [id])
-  cashier         User          @relation("CashierOrders", fields: [cashierId], references: [id])
-  server          User?         @relation("ServerOrders", fields: [serverId], references: [id])
-  delivery        Delivery?
-  kotTickets      KotTicket[]
+  items               OrderItem[]
+  payments            Payment[]
+  table               Table?                     @relation(fields: [tableId], references: [id])
+  customer            Customer?                  @relation(fields: [customerId], references: [id])
+  cashier             User                       @relation("CashierOrders", fields: [cashierId], references: [id])
+  server              User?                      @relation("ServerOrders", fields: [serverId], references: [id])
+  delivery            Delivery?
+  kotTickets          KotTicket[]
   modificationHistory OrderModificationHistory[]
 
   @@index([orderNumber])
@@ -229,22 +220,22 @@ model Order {
 }
 
 model OrderItem {
-  id              String   @id @default(uuid())
-  orderId         String
-  menuItemId      String
-  quantity        Int      @default(1)
-  unitPrice       Float  
-  totalPrice      Float  
+  id         String @id @default(uuid())
+  orderId    String
+  menuItemId String
+  quantity   Int    @default(1)
+  unitPrice  Float
+  totalPrice Float
 
-  notes           String?
-  modifiers       String?
+  notes     String?
+  modifiers String?
 
-  status          String @default("NEW")
+  status          String    @default("NEW")
   sentToKitchenAt DateTime?
   preparedAt      DateTime?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   menuItem MenuItem @relation(fields: [menuItemId], references: [id])
@@ -253,25 +244,25 @@ model OrderItem {
   @@index([menuItemId])
   @@index([status])
   @@index([status, sentToKitchenAt]) // Kitchen display queries
-  @@index([status, preparedAt])      // Kitchen performance queries
+  @@index([status, preparedAt]) // Kitchen performance queries
 }
 
 model Payment {
-  id            String        @id @default(uuid())
-  orderId       String
-  method        String
-  amount        Float       
-  reference     String?
-  status        String @default("PAID")
-  paidAt        DateTime      @default(now())
-  notes         String?
+  id        String   @id @default(uuid())
+  orderId   String
+  method    String
+  amount    Float
+  reference String?
+  status    String   @default("PAID")
+  paidAt    DateTime @default(now())
+  notes     String?
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([paidAt])
-  @@index([status, paidAt])          // Financial reporting queries
-  @@index([method, paidAt])          // Payment method reporting
+  @@index([status, paidAt]) // Financial reporting queries
+  @@index([method, paidAt]) // Payment method reporting
 }
 
 model PaymentValidation {
@@ -290,22 +281,22 @@ model PaymentValidation {
 }
 
 model Table {
-  id          String      @id @default(uuid())
-  number      String
-  capacity    Int         @default(4)
-  status      String @default("AVAILABLE")
-  location    String?
-  shape       String?
-  isActive    Boolean     @default(true)
-  posX        Int?
-  posY        Int?
-  width       Int?
-  height      Int?
+  id             String   @id @default(uuid())
+  number         String
+  capacity       Int      @default(4)
+  status         String   @default("AVAILABLE")
+  location       String?
+  shape          String?
+  isActive       Boolean  @default(true)
+  posX           Int?
+  posY           Int?
+  width          Int?
+  height         Int?
   currentOrderId String?  @unique
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  orders Order[]
+  orders     Order[]
   tableLocks TableLock[]
 
   @@index([status])
@@ -314,29 +305,29 @@ model Table {
 }
 
 model Customer {
-  id              String   @id @default(uuid())
-  firstName       String
-  lastName        String
-  email           String?  @unique
-  phone           String   @unique
-  address         String?
-  city            String?
-  dateOfBirth     DateTime?
-  gender          String?
-  notes           String?
+  id          String    @id @default(uuid())
+  firstName   String
+  lastName    String
+  email       String?   @unique
+  phone       String    @unique
+  address     String?
+  city        String?
+  dateOfBirth DateTime?
+  gender      String?
+  notes       String?
 
-  loyaltyPoints   Int      @default(0)
-  totalOrders     Int      @default(0)
-  totalSpent      Float   @default(0) 
-  lastVisitAt     DateTime?
+  loyaltyPoints Int       @default(0)
+  totalOrders   Int       @default(0)
+  totalSpent    Float     @default(0)
+  lastVisitAt   DateTime?
 
-  preferences     String?
+  preferences String?
 
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  orders Order[]
+  orders              Order[]
   loyaltyTransactions LoyaltyTransaction[]
 
   @@index([phone])
@@ -345,13 +336,13 @@ model Customer {
 }
 
 model LoyaltyTransaction {
-  id          String   @id @default(uuid())
-  customerId  String
-  points      Int
-  reason      String
-  referenceId String?
+  id           String   @id @default(uuid())
+  customerId   String
+  points       Int
+  reason       String
+  referenceId  String?
   balanceAfter Int
-  createdAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   customer Customer @relation(fields: [customerId], references: [id])
 
@@ -360,60 +351,60 @@ model LoyaltyTransaction {
 }
 
 model InventoryItem {
-  id              String       @id @default(uuid())
-  menuItemId      String?
-  name            String
-  sku             String?      @unique
-  barcode         String?      @unique
-  category        String?
-  unit            String
+  id         String  @id @default(uuid())
+  menuItemId String?
+  name       String
+  sku        String? @unique
+  barcode    String? @unique
+  category   String?
+  unit       String
 
-  currentStock    Float      
-  minStock        Float      
-  maxStock        Float      
-  reservedStock   Float      @default(0) 
+  currentStock  Float
+  minStock      Float
+  maxStock      Float
+  reservedStock Float @default(0)
 
-  costPerUnit     Float      
-  sellingPrice    Decimal?     
+  costPerUnit  Float
+  sellingPrice Decimal?
 
-  supplierId      String?
+  supplierId String?
 
-  status          String  @default("IN_STOCK")
-  isActive        Boolean      @default(true)
+  status   String  @default("IN_STOCK")
+  isActive Boolean @default(true)
 
-  warehouseId     String?
+  warehouseId String?
 
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  menuItem    MenuItem?   @relation(fields: [menuItemId], references: [id])
-  supplier    Vendor?     @relation(fields: [supplierId], references: [id])
-  warehouse   Warehouse?  @relation(fields: [warehouseId], references: [id])
-  movements   StockMovement[]
-  adjustments StockAdjustment[]
-  stockAlerts StockAlert[]
-  recipeIngredients RecipeIngredient[]
+  menuItem           MenuItem?           @relation(fields: [menuItemId], references: [id])
+  supplier           Vendor?             @relation(fields: [supplierId], references: [id])
+  warehouse          Warehouse?          @relation(fields: [warehouseId], references: [id])
+  movements          StockMovement[]
+  adjustments        StockAdjustment[]
+  stockAlerts        StockAlert[]
+  recipeIngredients  RecipeIngredient[]
   purchaseOrderItems PurchaseOrderItem[]
 
   @@index([sku])
   @@index([status])
   @@index([warehouseId])
   @@index([currentStock])
-  @@index([menuItemId, status])      // Stock availability checks
-  @@index([status, currentStock])     // Low stock reporting
+  @@index([menuItemId, status]) // Stock availability checks
+  @@index([status, currentStock]) // Low stock reporting
 }
 
 model StockMovement {
-  id                String   @id @default(uuid())
-  inventoryItemId   String
-  type              String
-  quantity          Float  
-  previousStock     Float  
-  newStock          Float  
-  reference         String?
-  notes             String?
-  performedById     String?
-  createdAt         DateTime @default(now())
+  id              String   @id @default(uuid())
+  inventoryItemId String
+  type            String
+  quantity        Float
+  previousStock   Float
+  newStock        Float
+  reference       String?
+  notes           String?
+  performedById   String?
+  createdAt       DateTime @default(now())
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
 
@@ -423,14 +414,14 @@ model StockMovement {
 }
 
 model StockAlert {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   inventoryItemId String
-  alertType       String   // LOW_STOCK, OUT_OF_STOCK, EXPIRED
+  alertType       String // LOW_STOCK, OUT_OF_STOCK, EXPIRED
   message         String?
-  isResolved      Boolean  @default(false)
+  isResolved      Boolean   @default(false)
   resolvedAt      DateTime?
   resolvedById    String?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
 
@@ -441,14 +432,14 @@ model StockAlert {
 }
 
 model StockAdjustment {
-  id                String   @id @default(uuid())
-  inventoryItemId   String
-  adjustmentType    String
-  quantity          Float  
-  reason            String
-  notes             String?
-  adjustedById      String
-  createdAt         DateTime @default(now())
+  id              String   @id @default(uuid())
+  inventoryItemId String
+  adjustmentType  String
+  quantity        Float
+  reason          String
+  notes           String?
+  adjustedById    String
+  createdAt       DateTime @default(now())
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
 
@@ -457,16 +448,16 @@ model StockAdjustment {
 }
 
 model Warehouse {
-  id          String   @id @default(uuid())
-  name        String
-  code        String   @unique
-  address     String?
-  city        String?
-  phone       String?
-  manager     String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  address   String?
+  city      String?
+  phone     String?
+  manager   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   inventoryItems InventoryItem[]
 
@@ -474,26 +465,26 @@ model Warehouse {
 }
 
 model KotTicket {
-  id            String       @id @default(uuid())
-  ticketNumber  String       @unique
-  orderId       String
-  orderItemId   String?
+  id           String  @id @default(uuid())
+  ticketNumber String  @unique
+  orderId      String
+  orderItemId  String?
 
-  course        String       @default("main")
-  status        String @default("NEW")
-  priority      String       @default("normal")
+  course   String @default("main")
+  status   String @default("NEW")
+  priority String @default("normal")
 
-  orderedAt     DateTime     @default(now())
-  startedAt     DateTime?
-  completedAt   DateTime?
+  orderedAt   DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
 
-  station       String?
-  assignedTo    String?
+  station    String?
+  assignedTo String?
 
-  notes         String?
+  notes String?
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   order Order @relation(fields: [orderId], references: [id])
 
@@ -505,34 +496,34 @@ model KotTicket {
 }
 
 model Delivery {
-  id              String         @id @default(uuid())
-  orderId         String         @unique
-  deliveryNumber  String         @unique
+  id             String @id @default(uuid())
+  orderId        String @unique
+  deliveryNumber String @unique
 
   customerName    String
   customerPhone   String
   deliveryAddress String
   deliveryNotes   String?
 
-  latitude        Decimal?
-  longitude       Decimal?
+  latitude  Decimal?
+  longitude Decimal?
 
-  riderId         String?
+  riderId String?
 
-  estimatedTime   Int?
-  dispatchedAt    DateTime?
-  pickedUpAt      DateTime?
-  deliveredAt     DateTime?
+  estimatedTime Int?
+  dispatchedAt  DateTime?
+  pickedUpAt    DateTime?
+  deliveredAt   DateTime?
 
-  status          String @default("PENDING")
+  status String @default("PENDING")
 
-  deliveryFee     Float        @default(0)
+  deliveryFee Float @default(0)
 
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  order   Order    @relation(fields: [orderId], references: [id])
-  rider User?     @relation("RiderDeliveries", fields: [riderId], references: [id])
+  order Order @relation(fields: [orderId], references: [id])
+  rider User? @relation("RiderDeliveries", fields: [riderId], references: [id])
 
   @@index([status])
   @@index([riderId])
@@ -541,43 +532,43 @@ model Delivery {
 }
 
 model DeliveryZone {
-  id                        String   @id @default(uuid())
-  name                      String
-  description               String?
-  baseFee                   Float    @default(0)
-  minimumOrder              Float    @default(0)
-  freeDeliveryThreshold     Float?
-  estimatedTimeMin          Int
-  estimatedTimeMax          Int
-  isActive                  Boolean  @default(true)
-  color                     String?
-  coordinates               Json?
-  createdById               String
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  id                    String   @id @default(uuid())
+  name                  String
+  description           String?
+  baseFee               Float    @default(0)
+  minimumOrder          Float    @default(0)
+  freeDeliveryThreshold Float?
+  estimatedTimeMin      Int
+  estimatedTimeMax      Int
+  isActive              Boolean  @default(true)
+  color                 String?
+  coordinates           Json?
+  createdById           String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  createdBy                 User     @relation("DeliveryZoneCreator", fields: [createdById], references: [id])
+  createdBy User @relation("DeliveryZoneCreator", fields: [createdById], references: [id])
 
   @@index([isActive])
   @@index([createdById])
 }
 
 model Expense {
-  id          String           @id @default(uuid())
-  expenseNumber String         @unique
-  category    String
-  description String
-  amount      Float          
+  id            String  @id @default(uuid())
+  expenseNumber String  @unique
+  category      String
+  description   String
+  amount        Float
   paymentMethod String?
-  receipt     String?
-  notes       String?
+  receipt       String?
+  notes         String?
 
   approvedById String?
   createdById  String
 
-  expenseDate DateTime         @default(now())
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  expenseDate DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   createdBy User @relation(fields: [createdById], references: [id])
 
@@ -587,50 +578,50 @@ model Expense {
 }
 
 model Discount {
-  id            String   @id @default(uuid())
-  name          String
-  code          String?  @unique
-  type          String
-  value         Float  
-  minValue      Decimal? 
-  maxValue      Decimal? 
-  usageLimit    Int?
-  usedCount     Int      @default(0)
-  isActive      Boolean  @default(true)
+  id         String   @id @default(uuid())
+  name       String
+  code       String?  @unique
+  type       String
+  value      Float
+  minValue   Decimal?
+  maxValue   Decimal?
+  usageLimit Int?
+  usedCount  Int      @default(0)
+  isActive   Boolean  @default(true)
 
-  validFrom     DateTime?
-  validUntil    DateTime?
+  validFrom  DateTime?
+  validUntil DateTime?
 
-  applicableTo  String   @default("all")
-  itemIds       String?
-  categoryIds   String?
+  applicableTo String  @default("all")
+  itemIds      String?
+  categoryIds  String?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([code])
   @@index([isActive])
 }
 
 model Surcharge {
-  id          String   @id @default(uuid())
-  name        String
-  type        String
-  value       Float  
-  isActive    Boolean  @default(true)
+  id           String  @id @default(uuid())
+  name         String
+  type         String
+  value        Float
+  isActive     Boolean @default(true)
   applicableTo String  @default("all")
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([isActive])
 }
 
 model TaxRate {
-  id        String   @id @default(uuid())
-  name      String
-  rate      Float  
-  isActive  Boolean  @default(true)
+  id          String  @id @default(uuid())
+  name        String
+  rate        Float
+  isActive    Boolean @default(true)
   isInclusive Boolean @default(false)
 
   createdAt DateTime @default(now())
@@ -640,30 +631,30 @@ model TaxRate {
 }
 
 model CashDrawer {
-  id            String   @id @default(uuid())
-  sessionNumber String   @unique
+  id            String @id @default(uuid())
+  sessionNumber String @unique
 
-  openedById    String
-  closedById    String?
+  openedById String
+  closedById String?
 
-  openingBalance Float   
-  openedAt       DateTime  @default(now())
+  openingBalance Float
+  openedAt       DateTime @default(now())
 
-  closingBalance Decimal?  
-  expectedBalance Decimal? 
-  discrepancy    Decimal?  
-  closedAt       DateTime?
-  closingNotes   String?
+  closingBalance  Decimal?
+  expectedBalance Decimal?
+  discrepancy     Decimal?
+  closedAt        DateTime?
+  closingNotes    String?
 
-  totalSales     Float   @default(0) 
-  totalCashIn    Float   @default(0) 
-  totalCashOut   Float   @default(0) 
-  transactionCount Int     @default(0)
+  totalSales       Float @default(0)
+  totalCashIn      Float @default(0)
+  totalCashOut     Float @default(0)
+  transactionCount Int   @default(0)
 
-  status         String    @default("open")
+  status String @default("open")
 
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([sessionNumber])
   @@index([status])
@@ -671,24 +662,24 @@ model CashDrawer {
 }
 
 model Shift {
-  id          String     @id @default(uuid())
+  id          String @id @default(uuid())
   userId      String
-  shiftNumber String     @unique
+  shiftNumber String @unique
 
-  clockedInAt DateTime   @default(now())
+  clockedInAt  DateTime  @default(now())
   clockedOutAt DateTime?
 
   scheduledStart DateTime?
   scheduledEnd   DateTime?
 
-  breakStart  DateTime?
-  breakEnd    DateTime?
+  breakStart DateTime?
+  breakEnd   DateTime?
 
-  notes       String?
-  status      String @default("OPEN")
+  notes  String?
+  status String  @default("OPEN")
 
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id])
 
@@ -698,19 +689,21 @@ model Shift {
 }
 
 model StaffPerformance {
-  id          String   @id @default(uuid())
-  userId      String
-  date        DateTime 
+  id     String   @id @default(uuid())
+  userId String
+  date   DateTime
 
-  ordersHandled Int    @default(0)
-  totalSales    Float @default(0) 
+  ordersHandled   Int   @default(0)
+  totalSales      Float @default(0)
   totalCommission Float @default(0)
-  avgOrderValue Float @default(0) 
-  tips          Float @default(0) 
-  cancellations Int    @default(0)
+  avgOrderValue   Float @default(0)
+  tips            Float @default(0)
+  cancellations   Int   @default(0)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
   @@index([userId])
@@ -718,7 +711,7 @@ model StaffPerformance {
 }
 
 model Vendor {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   name        String
   contactName String?
   email       String?
@@ -728,9 +721,9 @@ model Vendor {
   website     String?
   notes       String?
 
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   inventoryItems InventoryItem[]
   purchaseOrders PurchaseOrder[]
@@ -740,12 +733,12 @@ model Vendor {
 }
 
 model Setting {
-  id        String   @id @default(uuid())
-  key       String   @unique
-  value     String   
-  category  String?
-  dataType  String   @default("string")
-  isPublic  Boolean  @default(false)
+  id       String  @id @default(uuid())
+  key      String  @unique
+  value    String
+  category String?
+  dataType String  @default("string")
+  isPublic Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -755,73 +748,73 @@ model Setting {
 }
 
 model Device {
-  id          String   @id @default(uuid())
-  name        String
-  type        String
-  model       String?
-  ipAddress   String?
-  port        Int?
-  config      String?
-  isActive    Boolean  @default(true)
-  lastSeenAt  DateTime?
+  id         String    @id @default(uuid())
+  name       String
+  type       String
+  model      String?
+  ipAddress  String?
+  port       Int?
+  config     String?
+  isActive   Boolean   @default(true)
+  lastSeenAt DateTime?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([type])
   @@index([isActive])
 }
 
 model OrderCounter {
-  id          String   @id @default("global")
-  count       Int    @default(0)
-  date        String   // YYYY-MM-DD format
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default("global")
+  count     Int      @default(0)
+  date      String // YYYY-MM-DD format
+  updatedAt DateTime @updatedAt
 
   @@index([date])
 }
 
 model TableLock {
-  id          String   @id @default(uuid())
-  tableId     String   @unique
-  userId      String
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  tableId   String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  table       Table    @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  table Table @relation(fields: [tableId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
 }
 
 model IdempotencyKey {
-  id          String   @id @default(uuid())
-  key         String   @unique
-  requestPath String
-  requestBody String   @db.LongText
-  responseBody String  @db.LongText
-  orderId     String?
-  createdAt   DateTime @default(now())
-  expiresAt   DateTime // TTL for cleanup
+  id           String   @id @default(uuid())
+  key          String   @unique
+  requestPath  String
+  requestBody  String   @db.LongText
+  responseBody String   @db.LongText
+  orderId      String?
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime // TTL for cleanup
 
   @@index([key])
   @@index([expiresAt])
 }
 
 model SyncQueue {
-  id          String   @id @default(uuid())
-  operation   String
-  modelName   String
-  recordId    String
-  payload     String   @db.LongText
-  status      String   @default("pending")
-  retryCount  Int      @default(0)
+  id           String    @id @default(uuid())
+  operation    String
+  modelName    String
+  recordId     String
+  payload      String    @db.LongText
+  status       String    @default("pending")
+  retryCount   Int       @default(0)
   errorMessage String?
-  syncedAt    DateTime?
+  syncedAt     DateTime?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([createdAt])
@@ -829,27 +822,27 @@ model SyncQueue {
 }
 
 model SyncLog {
-  id          String   @id @default(uuid())
-  action      String
-  direction   String
-  recordsSynced Int    @default(0)
-  status      String
-  details     String?  
-  duration    Int?
+  id            String  @id @default(uuid())
+  action        String
+  direction     String
+  recordsSynced Int     @default(0)
+  status        String
+  details       String?
+  duration      Int?
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([createdAt])
   @@index([status])
 }
 
 model AuditLog {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   userId    String?
   action    String
   entity    String
   entityId  String?
-  changes   String?   @db.LongText
+  changes   String? @db.LongText
   ipAddress String?
   userAgent String?
 
@@ -896,16 +889,16 @@ model ReportCache {
 
 // Combo Meals
 model Combo {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   name        String
   description String?
   price       Float
-  isAvailable Boolean  @default(true)
+  isAvailable Boolean   @default(true)
   startDate   DateTime?
   endDate     DateTime?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   items ComboItem[]
 
@@ -913,13 +906,13 @@ model Combo {
 }
 
 model ComboItem {
-  id        String @id @default(uuid())
-  comboId   String
+  id         String @id @default(uuid())
+  comboId    String
   menuItemId String
-  quantity  Int
-  price     Float
+  quantity   Int
+  price      Float
 
-  combo   Combo   @relation(fields: [comboId], references: [id], onDelete: Cascade)
+  combo    Combo    @relation(fields: [comboId], references: [id], onDelete: Cascade)
   menuItem MenuItem @relation(fields: [menuItemId], references: [id])
 
   @@index([comboId])
@@ -931,8 +924,8 @@ model Recipe {
   id              String   @id @default(uuid())
   name            String
   description     String?
-  instructions   String?  @db.LongText
-  prepTimeMinutes  Int      @default(0)
+  instructions    String?  @db.LongText
+  prepTimeMinutes Int      @default(0)
   cookTimeMinutes Int      @default(0)
   servings        Int      @default(1)
   cost            Float    @default(0)
@@ -941,7 +934,7 @@ model Recipe {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  menuItem        MenuItem? @relation(fields: [menuItemId], references: [id])
+  menuItem    MenuItem?          @relation(fields: [menuItemId], references: [id])
   ingredients RecipeIngredient[]
 
   @@index([menuItemId])
@@ -951,11 +944,11 @@ model RecipeIngredient {
   id              String @id @default(uuid())
   recipeId        String
   inventoryItemId String
-  quantity       Float
-  unit           String
+  quantity        Float
+  unit            String
 
-  recipe         Recipe       @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  inventoryItem  InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  recipe        Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
 
   @@index([recipeId])
   @@index([inventoryItemId])
@@ -963,18 +956,18 @@ model RecipeIngredient {
 
 // Purchase Orders
 model PurchaseOrder {
-  id              String   @id @default(uuid())
-  vendorId        String
-  status         String   @default("PENDING")
-  notes          String?
-  totalAmount    Float    @default(0)
+  id               String    @id @default(uuid())
+  vendorId         String
+  status           String    @default("PENDING")
+  notes            String?
+  totalAmount      Float     @default(0)
   expectedDelivery DateTime?
-  receivedAt    DateTime?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  receivedAt       DateTime?
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  vendor  Vendor @relation(fields: [vendorId], references: [id])
+  vendor Vendor              @relation(fields: [vendorId], references: [id])
   items  PurchaseOrderItem[]
 
   @@index([vendorId])
@@ -985,12 +978,12 @@ model PurchaseOrderItem {
   id               String @id @default(uuid())
   purchaseOrderId  String
   inventoryItemId  String
-  quantity        Float
-  unitCost        Float
+  quantity         Float
+  unitCost         Float
   receivedQuantity Float  @default(0)
 
-  purchaseOrder  PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  inventoryItem InventoryItem  @relation(fields: [inventoryItemId], references: [id])
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
 
   @@index([purchaseOrderId])
   @@index([inventoryItemId])

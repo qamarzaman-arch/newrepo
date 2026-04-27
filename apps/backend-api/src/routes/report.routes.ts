@@ -5,7 +5,11 @@ import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
-const getOrderNetPaidAmount = (order: { payments?: Array<{ amount: number }> }) =>
+// Helper functions for accurate financial reporting
+const getOrderTotalAmount = (order: { totalAmount: number | string }) => 
+  Number(order.totalAmount);
+
+const getOrderPaidAmount = (order: { payments?: Array<{ amount: number }> }) =>
   (order.payments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
 
 const getPaymentBreakdown = (orders: Array<{ payments?: Array<{ amount: number; method: string | null }> }>) =>
@@ -47,9 +51,13 @@ router.get('/sales/daily', authenticate, async (req: AuthRequest, res: Response,
       include: { payments: true, items: { include: { menuItem: true } } },
     });
 
-    const totalRevenue = orders.reduce((sum, order) => sum + getOrderNetPaidAmount(order), 0);
+    // Calculate both gross sales and collected amounts
+    const totalSales = orders.reduce((sum, order) => sum + getOrderTotalAmount(order), 0);
+    const totalCollected = orders.reduce((sum, order) => sum + getOrderPaidAmount(order), 0);
+    const outstandingBalance = totalSales - totalCollected;
+    
     const totalOrders = orders.length;
-    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
     const paymentMethodBreakdown = getPaymentBreakdown(orders);
     const refundTotal = orders.reduce((sum, order) => {
       const refunds = (order.payments || []).filter((payment) => Number(payment.amount) < 0);
@@ -60,7 +68,9 @@ router.get('/sales/daily', authenticate, async (req: AuthRequest, res: Response,
       success: true,
       data: {
         date: targetDate,
-        totalRevenue,
+        totalSales,           // Gross sales (what should be collected)
+        totalCollected,       // Actual cash/card received
+        outstandingBalance,   // Amount still owed (partial payments)
         totalOrders,
         avgOrderValue,
         paymentMethodBreakdown,
@@ -97,17 +107,17 @@ router.get('/sales/monthly', authenticate, async (req: AuthRequest, res: Respons
       if (!acc[date]) {
         acc[date] = { date, revenue: 0, orders: 0 };
       }
-      acc[date].revenue += getOrderNetPaidAmount(order);
+      acc[date].revenue += getOrderTotalAmount(order);
       acc[date].orders++;
       return acc;
     }, {} as Record<string, { date: string; revenue: number; orders: number }>);
 
-    const totalRevenue = orders.reduce((sum, order) => sum + getOrderNetPaidAmount(order), 0);
+    const totalSales = orders.reduce((sum, order) => sum + getOrderTotalAmount(order), 0);
 
     res.json({
       success: true,
       data: {
-        totalRevenue,
+        totalSales,
         totalOrders: orders.length,
         dailySales: Object.values(dailySales),
         period: { start: startDate, end: new Date() },
@@ -148,7 +158,7 @@ router.get('/products/top-selling', authenticate, async (req: AuthRequest, res: 
         return {
           ...menuItem,
           totalQuantity: item._sum.quantity,
-          totalRevenue: item._sum.totalPrice,
+          totalSales: item._sum.totalPrice,
         };
       })
     );
@@ -321,9 +331,12 @@ router.get('/daily', authenticate, async (req: AuthRequest, res: Response, next:
       include: { payments: true },
     });
 
-    const totalRevenue = orders.reduce((sum, o) => sum + getOrderNetPaidAmount(o), 0);
+    const totalSales = orders.reduce((sum, o) => sum + getOrderTotalAmount(o), 0);
+    const totalCollected = orders.reduce((sum, o) => sum + getOrderPaidAmount(o), 0);
+    const outstandingBalance = totalSales - totalCollected;
+    
     const totalOrders = orders.length;
-    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
 
     const cashSales = orders.reduce((sum, order) => {
       const cashPayments = order.payments?.filter(payment => payment.method === 'CASH' && Number(payment.amount) > 0) || [];
@@ -338,7 +351,9 @@ router.get('/daily', authenticate, async (req: AuthRequest, res: Response, next:
       success: true,
       data: {
         date: targetDate,
-        totalRevenue,
+        totalSales,
+        totalCollected,
+        outstandingBalance,
         totalOrders,
         averageOrderValue,
         paymentBreakdown: { cash: cashSales, card: cardSales },
@@ -388,53 +403,55 @@ router.get('/profit-loss', authenticate, authorize('ADMIN', 'MANAGER'), async (r
     const end = endDate ? new Date(endDate as string) : new Date();
     end.setHours(23, 59, 59, 999);
 
-    // Get all orders in period
+    // Get all orders in period (without deep nested item loading)
     const orders = await prisma.order.findMany({
       where: {
         orderedAt: { gte: start, lte: end },
         status: { notIn: ['CANCELLED', 'VOIDED'] },
       },
-      include: {
-        payments: true,
-        items: {
-          include: {
-            menuItem: {
-              include: {
-                recipes: {
-                  include: {
-                    ingredients: {
-                      include: {
-                        inventoryItem: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+      include: { payments: true },
     });
 
     // Calculate revenue
-    const totalRevenue = orders.reduce((sum, o) => sum + getOrderNetPaidAmount(o), 0);
+    const totalSales = orders.reduce((sum, o) => sum + getOrderTotalAmount(o), 0);
+    const totalCollected = orders.reduce((sum, o) => sum + getOrderPaidAmount(o), 0);
+    const outstandingBalance = totalSales - totalCollected;
 
-    // Calculate COGS based on recipe ingredients
+    // Calculate COGS using aggregated order items
     let totalCOGS = 0;
-    for (const order of orders) {
-      for (const item of order.items) {
-        const menuItem = item.menuItem;
-        if (menuItem?.recipes && menuItem.recipes.length > 0) {
-          // Use recipe to calculate COGS
+    
+    // 1. Fetch menu items and their recipes (Small memory footprint)
+    const menuItems = await prisma.menuItem.findMany({
+      include: {
+        recipes: { include: { ingredients: { include: { inventoryItem: true } } } }
+      }
+    });
+
+    // 2. Fetch order items aggregation
+    const orderItemsAggregation = await prisma.orderItem.groupBy({
+      by: ['menuItemId'],
+      _sum: { quantity: true },
+      where: {
+        order: {
+          orderedAt: { gte: start, lte: end },
+          status: { notIn: ['CANCELLED', 'VOIDED'] },
+        }
+      }
+    });
+
+    for (const agg of orderItemsAggregation) {
+      const menuItem = menuItems.find(m => m.id === agg.menuItemId);
+      if (menuItem) {
+        const qty = agg._sum.quantity || 0;
+        if (menuItem.recipes && menuItem.recipes.length > 0) {
           for (const recipe of menuItem.recipes) {
             for (const ingredient of recipe.ingredients) {
               const unitCost = ingredient.inventoryItem?.costPerUnit || 0;
-              totalCOGS += unitCost * ingredient.quantity * item.quantity;
+              totalCOGS += unitCost * ingredient.quantity * qty;
             }
           }
         } else {
-          // Fallback: use menu item cost if no recipe
-          totalCOGS += (menuItem?.cost || 0) * item.quantity;
+          totalCOGS += (menuItem.cost || 0) * qty;
         }
       }
     }
@@ -446,23 +463,25 @@ router.get('/profit-loss', authenticate, authorize('ADMIN', 'MANAGER'), async (r
     const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
     // Calculate metrics
-    const grossProfit = totalRevenue - totalCOGS;
-    const grossProfitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+    const grossProfit = totalSales - totalCOGS;
+    const grossProfitMargin = totalSales > 0 ? (grossProfit / totalSales) * 100 : 0;
     const netProfit = grossProfit - totalExpenses;
-    const netProfitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+    const netProfitMargin = totalSales > 0 ? (netProfit / totalSales) * 100 : 0;
 
     res.json({
       success: true,
       data: {
         period: { start, end },
         revenue: {
-          total: totalRevenue,
+          total: totalSales,
+          collected: totalCollected,
+          outstanding: outstandingBalance,
           orderCount: orders.length,
-          averageOrderValue: orders.length > 0 ? totalRevenue / orders.length : 0,
+          averageOrderValue: orders.length > 0 ? totalSales / orders.length : 0,
         },
         cogs: {
           total: totalCOGS,
-          percentage: totalRevenue > 0 ? (totalCOGS / totalRevenue) * 100 : 0,
+          percentage: totalSales > 0 ? (totalCOGS / totalSales) * 100 : 0,
         },
         grossProfit: {
           total: grossProfit,

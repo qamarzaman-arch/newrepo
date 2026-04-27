@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, screen, safeStorage } from 'electron';
 import path from 'path';
-// import Database from 'better-sqlite3'; // Temporarily disabled - requires C++ build tools
+import Database from 'better-sqlite3';
 import Store from 'electron-store';
 import log from 'electron-log';
 import { setupHardwareHandlers } from './hardware-handlers';
@@ -12,7 +12,7 @@ log.transports.file.maxSize = 5 * 1024 * 1024; // 5MB
 
 const store = new Store();
 let mainWindow: BrowserWindow | null = null;
-// let db: Database.Database; // Temporarily disabled
+let db: Database.Database;
 
 // Secure storage path
 const secureStoragePath = path.join(app.getPath('userData'), 'secure-storage');
@@ -64,19 +64,96 @@ async function secureRemoveItem(key: string): Promise<void> {
   }
 }
 
-// Initialize local database - TEMPORARILY DISABLED
-// function initializeDatabase() {
-//   const dbPath = path.join(app.getPath('userData'), 'pos-local.db');
-//   db = new Database(dbPath);
-//   db.pragma('journal_mode = WAL');
-//   db.pragma('foreign_keys = ON');
-//   createTables();
-//   log.info(`Database initialized at: ${dbPath}`);
-// }
+// Initialize local database for offline mode
+function initializeDatabase() {
+  const dbPath = path.join(app.getPath('userData'), 'pos-local.db');
+  db = new Database(dbPath);
+  
+  // Enable WAL mode for better performance and concurrent access
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+  db.pragma('synchronous = NORMAL');
+  
+  createTables();
+  log.info(`Offline database initialized at: ${dbPath}`);
+}
 
-// function createTables() {
-//   db.exec(`...`);
-// }
+function createTables() {
+  // Orders table for offline queue
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS orders (
+      id TEXT PRIMARY KEY,
+      orderNumber TEXT UNIQUE NOT NULL,
+      orderType TEXT NOT NULL,
+      status TEXT DEFAULT 'PENDING',
+      customerId TEXT,
+      customerName TEXT,
+      customerPhone TEXT,
+      tableId TEXT,
+      subtotal REAL NOT NULL,
+      discountAmount REAL DEFAULT 0,
+      taxAmount REAL DEFAULT 0,
+      totalAmount REAL NOT NULL,
+      paidAmount REAL DEFAULT 0,
+      paymentMethod TEXT,
+      paymentStatus TEXT DEFAULT 'PENDING',
+      cashierId TEXT NOT NULL,
+      notes TEXT,
+      kitchenNotes TEXT,
+      orderedAt TEXT DEFAULT (datetime('now')),
+      synced INTEGER DEFAULT 0,
+      syncError TEXT,
+      createdAt TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Order items table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS order_items (
+      id TEXT PRIMARY KEY,
+      orderId TEXT NOT NULL,
+      menuItemId TEXT NOT NULL,
+      quantity INTEGER NOT NULL,
+      unitPrice REAL NOT NULL,
+      totalPrice REAL NOT NULL,
+      notes TEXT,
+      modifiers TEXT,
+      FOREIGN KEY (orderId) REFERENCES orders(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Payments table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id TEXT PRIMARY KEY,
+      orderId TEXT NOT NULL,
+      method TEXT NOT NULL,
+      amount REAL NOT NULL,
+      reference TEXT,
+      status TEXT DEFAULT 'PAID',
+      paidAt TEXT DEFAULT (datetime('now')),
+      notes TEXT,
+      FOREIGN KEY (orderId) REFERENCES orders(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Sync metadata table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sync_metadata (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updatedAt TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Create indexes for performance
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_orders_synced ON orders(synced);
+    CREATE INDEX IF NOT EXISTS idx_orders_orderedAt ON orders(orderedAt);
+    CREATE INDEX IF NOT EXISTS idx_order_items_orderId ON order_items(orderId);
+    CREATE INDEX IF NOT EXISTS idx_payments_orderId ON payments(orderId);
+  `);
+}
 
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
@@ -130,11 +207,39 @@ function createWindow() {
 
 // App lifecycle
 app.whenReady().then(() => {
+  // Initialize offline database
+  initializeDatabase();
+  log.info('Offline database initialized successfully');
+  
   // Register IPC handlers after app is ready
   ipcMain.handle('db-query', (event, sql, params = []) => {
-    // Temporarily disabled - better-sqlite3 not available
-    log.warn('Database queries are currently disabled. Install better-sqlite3 to enable.');
-    return { success: false, error: 'Database not available - better-sqlite3 requires C++ build tools' };
+    try {
+      if (!db) {
+        return { success: false, error: 'Database not initialized' };
+      }
+      
+      const stmt = db.prepare(sql);
+      let result;
+      
+      // Determine query type
+      if (sql.trim().toUpperCase().startsWith('SELECT')) {
+        result = stmt.all(params);
+      } else if (sql.trim().toUpperCase().startsWith('INSERT')) {
+        const info = stmt.run(params);
+        result = { lastInsertRowid: info.lastInsertRowid, changes: info.changes };
+      } else {
+        const info = stmt.run(params);
+        result = { changes: info.changes };
+      }
+      
+      return { success: true, data: result };
+    } catch (error) {
+      log.error('Database query error:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
   });
 
   ipcMain.handle('store-get', (event, key) => {
@@ -186,9 +291,6 @@ app.whenReady().then(() => {
     }
   });
 
-  // initializeDatabase(); // Temporarily disabled - better-sqlite3 requires C++ build tools
-  log.info('Database initialization skipped (better-sqlite3 not available)');
-  
   // Setup hardware handlers
   const hardwareConfigPath = path.join(app.getPath('userData'), 'hardware-config.json');
   setupHardwareHandlers(hardwareConfigPath);
@@ -205,13 +307,13 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    // db?.close(); // Temporarily disabled
+    db?.close();
     app.quit();
   }
 });
 
 app.on('before-quit', () => {
-  // db?.close(); // Temporarily disabled
+  db?.close();
 });
 
 // Security: Disable navigation

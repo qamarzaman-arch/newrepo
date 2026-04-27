@@ -6,10 +6,25 @@ const prisma = new PrismaClient();
 const SEED_ADMIN_USERNAME = process.env.SEED_ADMIN_USERNAME || 'admin';
 const SEED_ADMIN_FULL_NAME = process.env.SEED_ADMIN_FULL_NAME || 'System Administrator';
 const SEED_ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || 'admin@restaurant.local';
-const SEED_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'ChangeMe123!';
-const SEED_ADMIN_PIN = process.env.SEED_ADMIN_PIN || '9876';
+const SEED_ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? '' : 'ChangeMe123!');
+if (process.env.NODE_ENV === 'production' && (!process.env.SEED_ADMIN_PASSWORD || process.env.SEED_ADMIN_PASSWORD === 'ChangeMe123!')) {
+  console.error('[SECURITY FATAL] SEED_ADMIN_PASSWORD must be properly configured in production environment variables.');
+  process.exit(1);
+}
+const SEED_ADMIN_PIN = process.env.SEED_ADMIN_PIN;
 const SEED_INCLUDE_DEMO_USERS = process.env.SEED_INCLUDE_DEMO_USERS === 'true';
 const ALLOW_DESTRUCTIVE_SEED = process.env.ALLOW_DESTRUCTIVE_SEED === 'true';
+
+// CRITICAL: Fail fast if credentials not provided
+if (!SEED_ADMIN_PASSWORD || !SEED_ADMIN_PIN) {
+  throw new Error(
+    'CRITICAL SECURITY ERROR: SEED_ADMIN_PASSWORD and SEED_ADMIN_PIN environment variables are required.\n' +
+    'Do not use default credentials! Set them in your .env file:\n' +
+    '  SEED_ADMIN_PASSWORD=YourStrongPassword123!\n' +
+    '  SEED_ADMIN_PIN=1234\n' +
+    'Generate a secure password with: node -e "console.log(require(\'crypto\').randomBytes(16).toString(\'hex\'))"'
+  );
+}
 
 async function cleanupData() {
   await prisma.kotTicket.deleteMany();
@@ -104,8 +119,8 @@ async function main() {
     email: SEED_ADMIN_EMAIL,
     fullName: SEED_ADMIN_FULL_NAME,
     role: 'ADMIN',
-    password: SEED_ADMIN_PASSWORD,
-    pin: SEED_ADMIN_PIN,
+    password: SEED_ADMIN_PASSWORD!, // Non-null assertion - validated above
+    pin: SEED_ADMIN_PIN!, // Non-null assertion - validated above
   });
 
   console.log(`Admin user ensured: ${SEED_ADMIN_USERNAME}`);

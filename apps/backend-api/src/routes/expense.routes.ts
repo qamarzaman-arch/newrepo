@@ -100,7 +100,7 @@ router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRe
         paymentMethod: data.paymentMethod,
         receipt: data.receipt,
         notes: data.notes,
-        approvedById: data.approvedById,
+        ...(data.approvedById ? { approvedBy: { connect: { id: data.approvedById } } } : {}),
         createdBy: {
           connect: { id: req.user!.userId },
         },

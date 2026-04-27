@@ -89,6 +89,34 @@ router.post('/process', authenticate, async (req: AuthRequest, res: Response, ne
     const processed = [];
     for (const op of pending) {
       try {
+        const payloadObj = typeof op.payload === 'string' ? JSON.parse(op.payload) : op.payload;
+        const modelNameMap: Record<string, string> = {
+          'Order': 'order',
+          'OrderItem': 'orderItem',
+          'Payment': 'payment',
+          'Customer': 'customer',
+          'CashDrawer': 'cashDrawer'
+        };
+        const safeModelName = modelNameMap[op.modelName] || op.modelName.charAt(0).toLowerCase() + op.modelName.slice(1);
+        const modelDelegate = (prisma as any)[safeModelName];
+
+        if (!modelDelegate) throw new Error(`Unknown model ${op.modelName}`);
+
+        // Strip unsupported relational nested arrays if needed, basic implementation handles flat tables primarily
+        if (op.operation === 'CREATE') {
+          // Check if exists
+          const existing = await modelDelegate.findUnique({ where: { id: op.recordId } });
+          if (!existing) {
+             await modelDelegate.create({ data: payloadObj });
+          } else {
+             await modelDelegate.update({ where: { id: op.recordId }, data: payloadObj });
+          }
+        } else if (op.operation === 'UPDATE') {
+          await modelDelegate.update({ where: { id: op.recordId }, data: payloadObj });
+        } else if (op.operation === 'DELETE') {
+          await modelDelegate.delete({ where: { id: op.recordId } }).catch((_e: any) => {});
+        }
+
         await prisma.syncQueue.update({
           where: { id: op.id },
           data: { status: 'completed', syncedAt: new Date() },

@@ -7,7 +7,7 @@ import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 import { verifyAndUpgradeSecret } from '../utils/pinSecurity';
-import { rateLimiters } from '../middleware/rateLimiter';
+import { authLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -36,7 +36,7 @@ const registerSchema = z.object({
 });
 
 // Login
-router.post('/login', rateLimiters.strict, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/login', authLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { username, password, pin } = loginSchema.parse(req.body);
 

@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '.env.test' });
 
 const BASE_URL = 'http://localhost:5176';
 
@@ -18,7 +20,7 @@ test.describe('Complete Order Flow Tests', () => {
     await page.goto(`${BASE_URL}/login`);
     await page.waitForSelector('input[type="text"]', { timeout: 10000 });
     await page.fill('input[type="text"]', 'cashier1');
-    await page.fill('input[type="password"]', 'cashier123');
+    await page.fill('input[type="password"]', process.env.TEST_CASHIER_PASSWORD as string);
     await page.click('button[type="submit"]');
     
     // Wait for redirect to cashier POS
@@ -98,7 +100,7 @@ test.describe('Complete Order Flow Tests', () => {
     await page.goto(`${BASE_URL}/login`);
     await page.waitForSelector('input[type="text"]', { timeout: 10000 });
     await page.fill('input[type="text"]', 'kitchen');
-    await page.fill('input[type="password"]', 'kitchen123');
+    await page.fill('input[type="password"]', process.env.TEST_KITCHEN_PASSWORD as string);
     await page.click('button[type="submit"]');
     
     await page.waitForTimeout(3000);
@@ -122,7 +124,7 @@ test.describe('Complete Order Flow Tests', () => {
     await page.goto(`${BASE_URL}/login`);
     await page.waitForSelector('input[type="text"]', { timeout: 10000 });
     await page.fill('input[type="text"]', 'admin');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[type="password"]', process.env.TEST_ADMIN_PASSWORD as string);
     await page.click('button[type="submit"]');
     
     await page.waitForTimeout(3000);
@@ -177,7 +179,7 @@ test.describe('Complete Order Flow Tests', () => {
     await page.goto(`${BASE_URL}/login`);
     await page.waitForSelector('input[type="text"]', { timeout: 10000 });
     await page.fill('input[type="text"]', 'cashier1');
-    await page.fill('input[type="password"]', 'cashier123');
+    await page.fill('input[type="password"]', process.env.TEST_CASHIER_PASSWORD as string);
     await page.click('button[type="submit"]');
     await page.waitForTimeout(3000);
     
@@ -237,7 +239,7 @@ test.describe('Complete Order Flow Tests', () => {
     await page.goto(`${BASE_URL}/login`);
     await page.waitForSelector('input[type="text"]', { timeout: 10000 });
     await page.fill('input[type="text"]', 'admin');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[type="password"]', process.env.TEST_ADMIN_PASSWORD as string);
     await page.click('button[type="submit"]');
     await page.waitForTimeout(3000);
     
@@ -291,7 +293,7 @@ test.describe('Complete Order Flow Tests', () => {
     await page.goto(`${BASE_URL}/login`);
     await page.waitForSelector('input[type="text"]', { timeout: 10000 });
     await page.fill('input[type="text"]', 'kitchen');
-    await page.fill('input[type="password"]', 'kitchen123');
+    await page.fill('input[type="password"]', process.env.TEST_KITCHEN_PASSWORD as string);
     await page.click('button[type="submit"]');
     await page.waitForTimeout(3000);
     
@@ -323,7 +325,7 @@ test.describe('Complete Order Flow Tests', () => {
     await page.goto(`${BASE_URL}/login`);
     await page.waitForSelector('input[type="text"]', { timeout: 10000 });
     await page.fill('input[type="text"]', 'cashier1');
-    await page.fill('input[type="password"]', 'cashier123');
+    await page.fill('input[type="password"]', process.env.TEST_CASHIER_PASSWORD as string);
     await page.click('button[type="submit"]');
     await page.waitForTimeout(3000);
     

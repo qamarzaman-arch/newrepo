@@ -105,10 +105,10 @@ const AdvancedCustomersScreen: React.FC = () => {
   const segments = segmentsData || [];
 
   const stats = {
-    totalCustomers: customers.length || 678,
-    activeLoyaltyMembers: 267,
-    totalPromotions: promotions.length,
-    avgCustomerValue: 67.50,
+    totalCustomers: customersData?.pagination?.total || customers.length || 0,
+    activeLoyaltyMembers: customers.filter((c: any) => c.loyaltyPoints > 0).length || 0,
+    totalPromotions: promotions.length || 0,
+    avgCustomerValue: customers.reduce((acc: number, c: any) => acc + (c.totalSpent || 0), 0) / (customers.length || 1) || 0,
   };
 
   const handleAddCustomer = async () => {

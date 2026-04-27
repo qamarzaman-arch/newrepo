@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { prisma } from '../config/database';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { logger, sanitize } from '../utils/logger';
+import { logger, sanitize as loggerSanitize } from '../utils/logger';
+import { validatePagination, createPaginationResponse } from '../utils/pagination';
+import xss from 'xss';
 
 const router = Router();
 
@@ -146,7 +148,10 @@ function mapPromotion(discount: {
 
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { search, page = 1, limit = 50, minLoyaltyPoints } = req.query;
+    const { search, page, limit, minLoyaltyPoints } = req.query;
+
+    // Validate pagination
+    const pagination = validatePagination(page || 1, limit || 50);
 
     const where: any = { isActive: true };
 
@@ -167,8 +172,8 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
       prisma.customer.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit),
+        skip: pagination.skip,
+        take: pagination.limit,
       }),
       prisma.customer.count({ where }),
     ]);
@@ -177,12 +182,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
       success: true,
       data: {
         customers,
-        pagination: {
-          total,
-          page: Number(page),
-          limit: Number(limit),
-          totalPages: Math.ceil(total / Number(limit)),
-        },
+        pagination: createPaginationResponse(total, pagination.page, pagination.limit),
       },
     });
   } catch (error) {
@@ -501,7 +501,10 @@ router.get('/:id/orders', authenticate, async (req: AuthRequest, res: Response, 
       throw new AppError('Customer not found', 404);
     }
 
-    const { page = 1, limit = 50 } = req.query;
+    const { page, limit } = req.query;
+
+    // Validate pagination
+    const pagination = validatePagination(page || 1, limit || 50);
 
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
@@ -516,8 +519,8 @@ router.get('/:id/orders', authenticate, async (req: AuthRequest, res: Response, 
           payments: true,
         },
         orderBy: { orderedAt: 'desc' },
-        skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit),
+        skip: pagination.skip,
+        take: pagination.limit,
       }),
       prisma.order.count({ where: { customerId: req.params.id } }),
     ]);
@@ -526,12 +529,7 @@ router.get('/:id/orders', authenticate, async (req: AuthRequest, res: Response, 
       success: true,
       data: {
         orders,
-        pagination: {
-          total,
-          page: Number(page),
-          limit: Number(limit),
-          totalPages: Math.ceil(total / Number(limit)),
-        },
+        pagination: createPaginationResponse(total, pagination.page, pagination.limit),
       },
     });
   } catch (error) {
@@ -562,16 +560,16 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
         lastName: validatedData.lastName,
         phone: validatedData.phone,
         email: validatedData.email,
-        address: validatedData.address,
-        city: validatedData.city,
+        address: validatedData.address ? xss(validatedData.address) : undefined,
+        city: validatedData.city ? xss(validatedData.city) : undefined,
         dateOfBirth: validatedData.dateOfBirth,
         gender: validatedData.gender,
-        notes: validatedData.notes,
-        preferences: validatedData.preferences,
+        notes: validatedData.notes ? xss(validatedData.notes) : undefined,
+        preferences: validatedData.preferences ? xss(validatedData.preferences) : undefined,
       },
     });
 
-    logger.info(`Customer created: ${sanitize(customer.firstName)} ${sanitize(customer.lastName)} by ${sanitize(req.user!.username)}`);
+    logger.info(`Customer created: ${loggerSanitize(customer.firstName)} ${loggerSanitize(customer.lastName)} by ${loggerSanitize(req.user!.username)}`);
 
     res.status(201).json({
       success: true,
@@ -602,9 +600,17 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
       }
     }
 
+    const sanitizedData = {
+      ...data,
+      ...(data.address ? { address: xss(data.address) } : {}),
+      ...(data.city ? { city: xss(data.city) } : {}),
+      ...(data.notes ? { notes: xss(data.notes) } : {}),
+      ...(data.preferences ? { preferences: xss(data.preferences) } : {}),
+    };
+
     const customer = await prisma.customer.update({
       where: { id: req.params.id },
-      data,
+      data: sanitizedData,
     });
 
     res.json({
@@ -671,7 +677,7 @@ router.post('/:id/loyalty', authenticate, async (req: AuthRequest, res: Response
       return { transaction: loyaltyTx, customer: updatedCustomer };
     });
 
-    logger.info(`Loyalty points updated for customer ${sanitize(req.params.id)}: ${data.points} points by ${sanitize(req.user!.username)}`);
+    logger.info(`Loyalty points updated for customer ${loggerSanitize(req.params.id)}: ${data.points} points by ${loggerSanitize(req.user!.username)}`);
 
     res.json({
       success: true,

@@ -24,7 +24,6 @@ import cashDrawerRoutes from './cash-drawer.routes';
 import auditLogRoutes from './audit-log.routes';
 import orderModificationRoutes from './order-modification.routes';
 import deliveryZoneRoutes from './delivery-zone.routes';
-import paymentGatewayRoutes from './payment-gateway.routes';
 import staffScheduleRoutes from './staff-schedule.routes';
 import riderRoutes from './rider.routes';
 import commissionRoutes from './commission.routes';
@@ -59,7 +58,6 @@ export function setupRoutes(app: Application) {
   app.use(`${apiPrefix}/audit-logs`, auditLogRoutes);
   app.use(`${apiPrefix}/order-modifications`, orderModificationRoutes);
   app.use(`${apiPrefix}/delivery-zones`, deliveryZoneRoutes);
-  app.use(`${apiPrefix}/payment-gateway`, paymentGatewayRoutes);
   app.use(`${apiPrefix}/staff-schedules`, staffScheduleRoutes);
   app.use(`${apiPrefix}/riders`, riderRoutes);
   app.use(`${apiPrefix}/commissions`, commissionRoutes);

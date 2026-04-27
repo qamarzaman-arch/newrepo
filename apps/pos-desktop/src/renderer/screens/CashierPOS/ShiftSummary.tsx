@@ -32,17 +32,10 @@ const ShiftSummary: React.FC = () => {
   const [cashDrawer, setCashDrawer] = React.useState<CashDrawer | null>(null);
   const [, setIsLoadingDrawer] = React.useState(false);
 
-  // Load opening balance from localStorage or default to 0
-  const [openingBalance, setOpeningBalance] = React.useState(() => {
-    const saved = localStorage.getItem('pos_opening_balance');
-    return saved ? parseFloat(saved) : 0;
-  });
+  const [openingBalance, setOpeningBalance] = React.useState(0);
 
-  // Load shift start time from localStorage or use current time
-  const shiftStartTime = React.useMemo(() => {
-    const saved = localStorage.getItem('pos_shift_start_time');
-    return saved ? new Date(saved) : new Date();
-  }, []);
+  // Use current time or state for shift time
+  const [shiftStartTime] = React.useState(new Date());
 
   // Fetch per-cashier shift summary instead of restaurant-wide daily sales
   const { data: shiftSummary } = useQuery({
@@ -66,22 +59,21 @@ const ShiftSummary: React.FC = () => {
           setCashDrawer(existingDrawer);
           // Sync opening balance with server
           setOpeningBalance(existingDrawer.openingBalance);
-          localStorage.setItem('pos_opening_balance', existingDrawer.openingBalance.toString());
-          localStorage.setItem('pos_cash_drawer_id', existingDrawer.id);
         } else {
-          // No open drawer - check if we should create one from localStorage
-          const savedBalance = localStorage.getItem('pos_opening_balance');
-          if (savedBalance && user?.id) {
+          // No auto-creation from localStorage anymore
+          // Will be handled manually by user if needed
+          if (user?.id) {
             try {
+              // Attempt to open a 0-balance drawer just to have a session, 
+              // or let user open it manually via a dedicated screen (assuming 0 for now)
               const openResponse = await cashDrawerService.open({
-                openingBalance: parseFloat(savedBalance),
+                openingBalance: 0,
               });
               setCashDrawer(openResponse.data.data.drawer);
-              localStorage.setItem('pos_cash_drawer_id', openResponse.data.data.drawer.id);
               
               // Log cash drawer open
               await logAction('CASH_DRAWER_OPEN', 'CashDrawer', openResponse.data.data.drawer.id, {
-                openingBalance: parseFloat(savedBalance),
+                openingBalance: 0,
                 sessionNumber: openResponse.data.data.drawer.sessionNumber,
               });
             } catch (error) {
@@ -335,7 +327,6 @@ Voided Orders: ${shiftData.voidedOrders}
                     onClick={() => {
                       const newBalance = parseFloat(openingBalanceInput) || 0;
                       setOpeningBalance(newBalance);
-                      localStorage.setItem('pos_opening_balance', newBalance.toString());
                       setIsEditingOpeningBalance(false);
                       toast.success('Opening balance updated');
                     }}
@@ -587,15 +578,8 @@ Voided Orders: ${shiftData.voidedOrders}
                       return;
                     }
 
-                    console.log('[ShiftSummary] PIN validated successfully');
-
-                    // Save closing balance to localStorage for record
-                    localStorage.setItem('pos_closing_balance', closingBalanceInput);
-                    localStorage.setItem('pos_closing_notes', closingNotes);
-                    localStorage.setItem('pos_closing_time', new Date().toISOString());
-
                     // Close cash drawer if exists
-                    const drawerId = cashDrawer?.id || localStorage.getItem('pos_cash_drawer_id');
+                    const drawerId = cashDrawer?.id;
                     if (drawerId) {
                       console.log('[ShiftSummary] Closing cash drawer:', drawerId);
                       try {
@@ -625,9 +609,7 @@ Voided Orders: ${shiftData.voidedOrders}
                         notes: closingNotes,
                       });
                       
-                      // Clear cash drawer from localStorage
-                      localStorage.removeItem('pos_cash_drawer_id');
-                      localStorage.removeItem('pos_opening_balance');
+                      // Drawer closed
                     }
 
                     if (user?.id) {
