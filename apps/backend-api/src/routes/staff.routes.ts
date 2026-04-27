@@ -30,6 +30,16 @@ const updateStaffSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+const createShiftSchema = z.object({
+  userId: z.string(),
+  shiftDate: z.string(),
+  startTime: z.string(),
+});
+
+const updateShiftSchema = z.object({
+  endTime: z.string(),
+});
+
 // Create staff
 router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
@@ -272,6 +282,55 @@ router.get('/:id/performance', authenticate, async (req: AuthRequest, res: Respo
     });
 
     res.json({ success: true, data: { performances } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create shift (for attendance marking)
+router.post('/shifts', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const validatedData = createShiftSchema.parse(req.body);
+
+    const today = new Date().toISOString().split('T')[0];
+    const count = await prisma.shift.count({
+      where: {
+        clockedInAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+      },
+    });
+    const shiftNumber = `SH-${today}-${String(count + 1).padStart(3, '0')}`;
+
+    const shift = await prisma.shift.create({
+      data: {
+        userId: validatedData.userId,
+        shiftNumber,
+        status: 'OPEN',
+        clockedInAt: new Date(validatedData.startTime),
+      },
+    });
+
+    logger.info(`Shift created for user ${sanitize(validatedData.userId)} by ${sanitize(req.user!.username)}`);
+    res.status(201).json({ success: true, data: { shift } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update shift (for ending shift)
+router.patch('/shifts/:id', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const validatedData = updateShiftSchema.parse(req.body);
+
+    const shift = await prisma.shift.update({
+      where: { id: req.params.id },
+      data: {
+        clockedOutAt: new Date(validatedData.endTime),
+        status: 'CLOSED',
+      },
+    });
+
+    logger.info(`Shift ${sanitize(req.params.id)} ended by ${sanitize(req.user!.username)}`);
+    res.json({ success: true, data: { shift } });
   } catch (error) {
     next(error);
   }

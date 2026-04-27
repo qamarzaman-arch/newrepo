@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authService } from '../services/authService';
 import { getSecureStorageService } from '../services/secureStorageService';
+import { useFeatureAccessStore } from './featureAccessStore';
 
 interface User {
   id: string;
@@ -40,6 +41,10 @@ export const useAuthStore = create<AuthState>()(
         const secureStorage = getSecureStorageService();
         await secureStorage.setToken(token);
         await secureStorage.setUser(user);
+
+        // Load feature access for this user's role
+        const featureAccessStore = useFeatureAccessStore.getState();
+        await featureAccessStore.loadFeatureAccess(user.role);
       },
 
       logout: async () => {
@@ -52,6 +57,10 @@ export const useAuthStore = create<AuthState>()(
         // Clear secure storage
         const secureStorage = getSecureStorageService();
         await secureStorage.clearAuth();
+
+        // Clear feature access
+        const featureAccessStore = useFeatureAccessStore.getState();
+        featureAccessStore.clear();
 
         set({
           user: null,
@@ -88,11 +97,15 @@ export const useAuthStore = create<AuthState>()(
           // Re-store in secure storage (in case it was in localStorage before migration)
           await secureStorage.setToken(token);
           await secureStorage.setUser(user);
+
+          // Load feature access for this user's role
+          const featureAccessStore = useFeatureAccessStore.getState();
+          await featureAccessStore.loadFeatureAccess(user.role);
         } catch (error: any) {
-          console.error('Token verification failed:', error);
           // Only clear auth on 401 (unauthorized) errors
           // For network errors or other issues, keep user logged in
           if (error?.response?.status === 401 || error?.status === 401) {
+            // Token is invalid or expired - clear auth silently
             await secureStorage.clearAuth();
             set({
               user: null,

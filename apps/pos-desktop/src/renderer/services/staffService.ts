@@ -38,4 +38,8 @@ export const staffService = {
   getShifts: (userId: string) => api.get(`/staff/${userId}/shifts`),
   getPerformance: (userId?: string, params?: { startDate?: string; endDate?: string }) =>
     api.get(userId ? `/staff/${userId}/performance` : '/staff/performance', { params }),
+  createShift: (data: { userId: string; shiftDate: string; startTime: string }) =>
+    api.post('/staff/shifts', data),
+  updateShift: (shiftId: string, data: { endTime: string }) =>
+    api.patch(`/staff/shifts/${shiftId}`, data),
 };

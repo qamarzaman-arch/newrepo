@@ -18,6 +18,7 @@ export interface CreateExpenseData {
   date?: string;
   paymentMethod: string;
   vendorId?: string;
+  notes?: string;
 }
 
 export const expenseService = {

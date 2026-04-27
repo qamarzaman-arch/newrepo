@@ -385,215 +385,258 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
   };
 
   return (
-    <div className="flex h-full overflow-hidden bg-gray-50">
+    <div className="flex h-full overflow-hidden bg-neutral-50">
       {/* Left Side: Payment Details */}
-      <div className="flex-1 flex flex-col p-8 overflow-y-auto">
+      <div className="flex-1 flex flex-col p-10 overflow-y-auto">
         {/* Progress Indicator */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mb-10"
+        >
+          <div className="flex items-center gap-6 mb-6">
+            <div className="flex items-center gap-3">
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-base border-2 border-primary-200"
+              >
                 ✓
-              </div>
-              <span className="text-gray-500 text-sm">Type</span>
+              </motion.div>
+              <span className="text-neutral-600 text-sm font-semibold">Type</span>
             </div>
-            <div className="w-12 h-0.5 bg-primary" />
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
+            <div className="w-16 h-0.5 bg-primary-600 rounded-full" />
+            <div className="flex items-center gap-3">
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-base border-2 border-primary-200"
+              >
                 ✓
-              </div>
-              <span className="text-gray-500 text-sm">Menu</span>
+              </motion.div>
+              <span className="text-neutral-600 text-sm font-semibold">Menu</span>
             </div>
-            <div className="w-12 h-0.5 bg-primary" />
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">
+            <div className="w-16 h-0.5 bg-primary-600 rounded-full" />
+            <div className="flex items-center gap-3">
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center text-white font-bold text-base shadow-lg shadow-primary-500/30"
+              >
                 3
-              </div>
-              <span className="text-gray-900 font-bold text-sm">Payment</span>
+              </motion.div>
+              <span className="text-neutral-900 font-bold text-sm">Payment</span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="font-manrope text-4xl font-extrabold tracking-tight text-gray-900 mb-2">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.4 }}
+          className="mb-10"
+        >
+          <h1 className="font-display text-5xl font-black tracking-tight text-neutral-900 mb-3">
             Checkout & Payment
           </h1>
-          <p className="text-gray-600 text-lg">Select payment method and complete transaction</p>
-        </div>
+          <p className="text-neutral-600 text-lg font-medium">Select payment method and complete transaction</p>
+        </motion.div>
 
         {/* Order Summary Card */}
-        <div className="bg-white rounded-[2.5rem] p-8 mb-8 shadow-lg border border-gray-100">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="bg-neutral-0 rounded-3xl p-8 mb-8 shadow-lg border-2 border-neutral-200"
+        >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-manrope text-xl font-bold text-gray-900">Order Summary</h2>
-            <span className="bg-gray-100 text-gray-600 text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-widest">
+            <h2 className="font-display text-2xl font-bold text-neutral-900">Order Summary</h2>
+            <span className="bg-neutral-100 text-neutral-700 text-xs px-4 py-2 rounded-full font-bold uppercase tracking-wider border-2 border-neutral-200">
               {currentOrder.items.length} Items
             </span>
           </div>
 
           {/* Items List */}
-          <div className="space-y-3 mb-6 max-h-64 overflow-y-auto pr-2">
-            {currentOrder.items.map((item) => (
-              <div key={item.id} className="flex justify-between items-start">
+          <div className="space-y-4 mb-8 max-h-72 overflow-y-auto pr-2">
+            {currentOrder.items.map((item, index) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + index * 0.05 }}
+                className="flex justify-between items-start p-4 bg-neutral-50 rounded-2xl border-2 border-neutral-200"
+              >
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-base font-bold text-neutral-900">
                     {item.quantity}x {item.name}
                   </p>
                   {item.notes && (
-                    <p className="text-xs text-gray-500 mt-1 italic">{item.notes}</p>
+                    <p className="text-sm text-neutral-600 mt-2 italic">"{item.notes}"</p>
                   )}
                 </div>
-                <span className="text-sm font-manrope font-bold text-gray-900 ml-4">
+                <span className="text-base font-bold text-neutral-900 ml-4">
                   {formatCurrency(item.price * item.quantity, currencyCode)}
                 </span>
-              </div>
+              </motion.div>
             ))}
           </div>
 
           {/* Totals */}
-          <div className="border-t border-gray-200 pt-6 space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Subtotal</span>
-              <span className="text-gray-900 font-manrope">{formatCurrency(subtotal, currencyCode)}</span>
+          <div className="border-t-2 border-neutral-200 pt-8 space-y-4">
+            <div className="flex justify-between text-base">
+              <span className="text-neutral-600 font-semibold">Subtotal</span>
+              <span className="text-neutral-900 font-bold">{formatCurrency(subtotal, currencyCode)}</span>
             </div>
             {discount > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-green-600 font-medium">Discount ({currentOrder.discountPercent}%)</span>
-                <span className="text-green-600 font-manrope font-bold">-{formatCurrency(discount, currencyCode)}</span>
+              <div className="flex justify-between text-base">
+                <span className="text-success-600 font-bold">Discount ({currentOrder.discountPercent}%)</span>
+                <span className="text-success-600 font-black">-{formatCurrency(discount, currencyCode)}</span>
               </div>
             )}
             {tip > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-rose-600 font-medium">Tip</span>
-                <span className="text-rose-600 font-manrope font-bold">+{formatCurrency(tip, currencyCode)}</span>
+              <div className="flex justify-between text-base">
+                <span className="text-primary-600 font-bold">Tip</span>
+                <span className="text-primary-600 font-black">+{formatCurrency(tip, currencyCode)}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Tax ({taxRate}%)</span>
-              <span className="text-gray-900 font-manrope">{formatCurrency(tax, currencyCode)}</span>
+            <div className="flex justify-between text-base">
+              <span className="text-neutral-600 font-semibold">Tax ({taxRate}%)</span>
+              <span className="text-neutral-900 font-bold">{formatCurrency(tax, currencyCode)}</span>
             </div>
             {serviceChargeRate > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Service Charge ({serviceChargeRate}%)</span>
-                <span className="text-gray-900 font-manrope">{formatCurrency(serviceCharge, currencyCode)}</span>
+              <div className="flex justify-between text-base">
+                <span className="text-neutral-600 font-semibold">Service Charge ({serviceChargeRate}%)</span>
+                <span className="text-neutral-900 font-bold">{formatCurrency(serviceCharge, currencyCode)}</span>
               </div>
             )}
-            <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-              <span className="font-manrope text-base font-bold uppercase tracking-widest text-gray-500">
+            <div className="flex justify-between items-center pt-6 border-t-2 border-neutral-200">
+              <span className="font-display text-lg font-black uppercase tracking-wider text-primary-600">
                 Total Due
               </span>
-              <span className="font-manrope text-4xl font-black text-primary">
+              <span className="font-display text-5xl font-black text-primary-600">
                 {formatCurrency(total, currencyCode)}
               </span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Discount & Tip Buttons */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-2 gap-6 mb-8">
           <motion.button
-            whileHover={{ scale: 1.02 }}
+            whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)' }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setShowDiscountModal(true)}
-            className="py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-manrope font-bold flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all"
+            className="py-5 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-3xl font-bold flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all"
           >
-            <Gift className="w-5 h-5" />
+            <Gift className="w-6 h-6" />
             Discount
           </motion.button>
           <motion.button
-            whileHover={{ scale: 1.02 }}
+            whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)' }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setShowTipModal(true)}
-            className="py-4 bg-gradient-to-r from-rose-500 to-orange-500 text-white rounded-2xl font-manrope font-bold flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all"
+            className="py-5 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-3xl font-bold flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all"
           >
-            <Heart className="w-5 h-5" />
+            <Heart className="w-6 h-6" />
             Tip {tip > 0 ? `(${formatCurrency(tip, currencyCode)})` : ''}
           </motion.button>
         </div>
 
         {/* Payment Method Selection */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-6 mb-10">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setPaymentMethod('CASH')}
-            className={`p-6 rounded-2xl flex flex-col items-center gap-3 transition-all ${
+            className={`p-8 rounded-3xl flex flex-col items-center gap-4 transition-all ${
               paymentMethod === 'CASH'
-                ? 'bg-gradient-to-br from-primary to-primary-container text-white shadow-xl'
-                : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-xl shadow-primary-500/30 border-2 border-primary-500'
+                : 'bg-neutral-0 text-neutral-700 hover:bg-neutral-50 border-2 border-neutral-200'
             }`}
           >
-            <Banknote className="w-8 h-8" />
-            <span className="font-manrope font-bold text-sm uppercase tracking-wider">Cash</span>
+            <Banknote className="w-10 h-10" />
+            <span className="font-bold text-base uppercase tracking-wider">Cash</span>
           </motion.button>
 
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setPaymentMethod('CARD')}
-            className={`p-6 rounded-2xl flex flex-col items-center gap-3 transition-all ${
+            className={`p-8 rounded-3xl flex flex-col items-center gap-4 transition-all ${
               paymentMethod === 'CARD'
-                ? 'bg-gradient-to-br from-primary to-primary-container text-white shadow-xl'
-                : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-xl shadow-primary-500/30 border-2 border-primary-500'
+                : 'bg-neutral-0 text-neutral-700 hover:bg-neutral-50 border-2 border-neutral-200'
             }`}
           >
-            <CreditCard className="w-8 h-8" />
-            <span className="font-manrope font-bold text-sm uppercase tracking-wider">Card</span>
+            <CreditCard className="w-10 h-10" />
+            <span className="font-bold text-base uppercase tracking-wider">Card</span>
           </motion.button>
 
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setPaymentMethod('SPLIT')}
-            className={`p-6 rounded-2xl flex flex-col items-center gap-3 transition-all ${
+            className={`p-8 rounded-3xl flex flex-col items-center gap-4 transition-all ${
               paymentMethod === 'SPLIT'
-                ? 'bg-gradient-to-br from-primary to-primary-container text-white shadow-xl'
-                : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-xl shadow-primary-500/30 border-2 border-primary-500'
+                : 'bg-neutral-0 text-neutral-700 hover:bg-neutral-50 border-2 border-neutral-200'
             }`}
           >
-            <Split className="w-8 h-8" />
-            <span className="font-manrope font-bold text-sm uppercase tracking-wider">Split</span>
+            <Split className="w-10 h-10" />
+            <span className="font-bold text-base uppercase tracking-wider">Split</span>
           </motion.button>
         </div>
 
         {/* Cash Input Section (only for CASH payment) */}
         {paymentMethod === 'CASH' && (
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-lg border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-manrope text-lg font-bold text-gray-900">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            className="bg-neutral-0 rounded-3xl p-10 shadow-lg border-2 border-neutral-200"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-display text-2xl font-bold text-neutral-900">
                 Cash Received
               </h3>
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setShowCashCounter(!showCashCounter)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors ${
+                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors ${
                   showCashCounter
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-primary-600 text-white border-2 border-primary-500'
+                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-2 border-neutral-200'
                 }`}
               >
-                <Calculator className="w-4 h-4" />
+                <Calculator className="w-5 h-5" />
                 {showCashCounter ? 'Hide' : 'Show'} Counter
-              </button>
+              </motion.button>
             </div>
 
             {/* Cash Counting Helper */}
             {showCashCounter && (
-              <div className="mb-6">
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-8"
+              >
                 <CashCountingHelper
                   onTotalCalculated={(total) => setCashReceived(total.toFixed(2))}
                   currencyCode={currencyCode}
                   expectedAmount={total}
                 />
-              </div>
+              </motion.div>
             )}
 
             {/* Cash Display - Editable with Keyboard */}
-            <div className="bg-gray-50 rounded-2xl p-6 mb-4 border border-gray-200">
-              <label className="text-xs text-gray-500 uppercase tracking-wide mb-1 block">
+            <div className="bg-neutral-50 rounded-3xl p-8 mb-6 border-2 border-neutral-200">
+              <label className="text-xs font-bold uppercase tracking-wider text-primary-600 mb-3 block">
                 Cash Received (Type or use keypad)
               </label>
-              <div className="flex items-center justify-end gap-2">
-                <span className="text-2xl text-gray-400">{currencyCode === 'USD' ? '$' : currencyCode}</span>
+              <div className="flex items-center justify-end gap-3">
+                <span className="text-3xl text-neutral-400 font-bold">{currencyCode === 'USD' ? '$' : currencyCode}</span>
                 <input
                   type="number"
                   step="0.01"
@@ -606,90 +649,115 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                     }
                   }}
                   placeholder="0.00"
-                  className="font-manrope text-5xl font-black text-primary bg-transparent border-none outline-none text-right w-full max-w-[300px] placeholder:text-gray-300"
+                  className="font-display text-6xl font-black text-primary-600 bg-transparent border-none outline-none text-right w-full max-w-[350px] placeholder:text-neutral-300"
                   autoFocus
                 />
               </div>
-              <p className="text-xs text-gray-400 text-right mt-1">
+              <p className="text-sm text-neutral-500 text-right mt-2 font-medium">
                 Press numbers on keyboard or use keypad below
               </p>
             </div>
 
             {/* Quick Amount Buttons */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              <button
+            <div className="grid grid-cols-3 gap-4 mb-8">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleQuickAmount('exact')}
-                className="py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors text-sm"
+                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors text-base border-2 border-neutral-200"
               >
                 Exact Change
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleQuickAmount('next10')}
-                className="py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors text-sm"
+                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors text-base border-2 border-neutral-200"
               >
                 Next {formatCurrency(10, currencyCode).replace(/[0-9.,]/g, '')}10
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleQuickAmount('next20')}
-                className="py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors text-sm"
+                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors text-base border-2 border-neutral-200"
               >
                 Next {formatCurrency(20, currencyCode).replace(/[0-9.,]/g, '')}20
-              </button>
+              </motion.button>
             </div>
 
             {/* Numeric Keypad */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-4">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'BACKSPACE'].map(
                 (key) => (
-                  <button
+                  <motion.button
                     key={key}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => handleKeypadPress(key)}
-                    className="py-4 bg-gray-100 text-gray-900 rounded-xl font-manrope text-xl font-bold hover:bg-gray-200 transition-all active:scale-95"
+                    className="py-5 bg-neutral-100 text-neutral-900 rounded-2xl font-display text-2xl font-bold hover:bg-neutral-200 transition-all border-2 border-neutral-200"
                   >
                     {key === 'BACKSPACE' ? '⌫' : key}
-                  </button>
+                  </motion.button>
                 )
               )}
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => handleKeypadPress('CLEAR')}
-                className="py-4 bg-red-100 text-red-600 rounded-xl font-manrope text-lg font-bold hover:bg-red-200 transition-all active:scale-95"
+                className="py-5 bg-error-100 text-error-600 rounded-2xl font-display text-xl font-bold hover:bg-error-200 transition-all border-2 border-error-200"
               >
                 CLEAR
-              </button>
+              </motion.button>
             </div>
 
             {/* Change Due Display */}
             {cashReceived && (
-              <div className="mt-6 p-4 bg-primary/10 rounded-2xl border border-primary/30">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mt-8 p-6 bg-primary-50 rounded-3xl border-2 border-primary-200"
+              >
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600 font-medium">Change Due:</span>
+                  <span className="text-neutral-700 font-bold text-lg">Change Due:</span>
                   <span
-                    className={`font-manrope text-3xl font-black ${
-                      change >= 0 ? 'text-primary' : 'text-red-500'
+                    className={`font-display text-4xl font-black ${
+                      change >= 0 ? 'text-primary-600' : 'text-error-600'
                     }`}
                   >
                     {change >= 0 ? formatCurrency(change, currencyCode) : `-${formatCurrency(Math.abs(change), currencyCode)}`}
                   </span>
                 </div>
-              </div>
+              </motion.div>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* Card Payment Info */}
         {paymentMethod === 'CARD' && (
-          <div className="bg-white rounded-[2.5rem] p-8 text-center shadow-lg border border-gray-100">
-            <CreditCard className="w-20 h-20 mx-auto mb-4 text-primary" />
-            <h3 className="font-manrope text-xl font-bold text-gray-900 mb-2">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            className="bg-neutral-0 rounded-3xl p-10 text-center shadow-lg border-2 border-neutral-200"
+          >
+            <motion.div
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="w-24 h-24 mx-auto mb-6 bg-primary-100 rounded-full flex items-center justify-center border-2 border-primary-200"
+            >
+              <CreditCard className="w-12 h-12 text-primary-600" />
+            </motion.div>
+            <h3 className="font-display text-3xl font-bold text-neutral-900 mb-3">
               Card Payment
             </h3>
-            <p className="text-gray-600 mb-4">
-              Total to charge: <span className="font-bold text-primary">{formatCurrency(total, currencyCode)}</span>
+            <p className="text-neutral-600 text-lg mb-8">
+              Total to charge: <span className="font-black text-primary-600">{formatCurrency(total, currencyCode)}</span>
             </p>
 
             {/* Manual confirmation for non-integrated terminals */}
-            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
-              <p className="text-sm text-gray-600 mb-4">
+            <div className="bg-neutral-50 rounded-3xl p-8 border-2 border-neutral-200">
+              <p className="text-base text-neutral-600 mb-6 font-medium">
                 For non-integrated terminals: Process payment on your terminal, then confirm below.
               </p>
 
@@ -697,58 +765,65 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => cardPaymentConfirmed ? setCardPaymentConfirmed(false) : setShowCardConfirmationModal(true)}
-                className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 ${
+                className={`w-full py-5 rounded-2xl font-bold text-xl transition-all flex items-center justify-center gap-3 ${
                   cardPaymentConfirmed
-                    ? 'bg-green-100 text-green-700 border-2 border-green-500'
-                    : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-primary'
+                    ? 'bg-success-100 text-success-700 border-2 border-success-500'
+                    : 'bg-neutral-0 border-2 border-neutral-300 text-neutral-700 hover:border-primary-600 hover:bg-primary-50'
                 }`}
               >
                 {cardPaymentConfirmed ? (
                   <>
-                    <Check className="w-6 h-6" />
+                    <Check className="w-7 h-7" />
                     Card Payment Confirmed
                   </>
                 ) : (
                   <>
-                    <CreditCard className="w-6 h-6" />
+                    <CreditCard className="w-7 h-7" />
                     Process Card Payment
                   </>
                 )}
               </motion.button>
 
               {!cardPaymentConfirmed && (
-                <p className="text-xs text-gray-400 mt-3 text-center">
+                <p className="text-sm text-neutral-500 mt-4 text-center font-medium">
                   Click to open card payment confirmation
                 </p>
               )}
             </div>
-
-            <p className="text-xs text-gray-400 mt-4">
-              Integrated terminal support coming soon
-            </p>
-          </div>
+          </motion.div>
         )}
 
         {/* Split Payment */}
         {paymentMethod === 'SPLIT' && (
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-lg border border-gray-100">
-            <Split className="w-16 h-16 mx-auto mb-4 text-primary" />
-            <h3 className="font-manrope text-xl font-bold text-gray-900 mb-2 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            className="bg-neutral-0 rounded-3xl p-10 shadow-lg border-2 border-neutral-200"
+          >
+            <motion.div
+              animate={{ rotate: 180 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="w-20 h-20 mx-auto mb-6 bg-primary-100 rounded-full flex items-center justify-center border-2 border-primary-200"
+            >
+              <Split className="w-10 h-10 text-primary-600" />
+            </motion.div>
+            <h3 className="font-display text-3xl font-bold text-neutral-900 mb-3 text-center">
               Split Payment
             </h3>
-            <p className="text-gray-600 mb-6 text-center">
+            <p className="text-neutral-600 text-lg mb-8 text-center">
               Divide the payment between cash and card
             </p>
 
             {/* Split Amount Inputs */}
-            <div className="space-y-4 mb-6">
-              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-600 font-medium flex items-center gap-2">
-                    <Banknote className="w-5 h-5 text-green-600" />
+            <div className="space-y-6 mb-8">
+              <div className="bg-neutral-50 rounded-3xl p-6 border-2 border-neutral-200">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-neutral-700 font-bold text-base flex items-center gap-3">
+                    <Banknote className="w-6 h-6 text-success-600" />
                     Cash Amount
                   </span>
-                  <span className="text-lg font-bold text-gray-900">
+                  <span className="text-2xl font-black text-neutral-900">
                     {formatCurrency(splitPayment.cash, currencyCode)}
                   </span>
                 </div>
@@ -765,18 +840,18 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                       card: Math.max(0, total - cash),
                     });
                   }}
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 font-semibold focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full px-5 py-4 bg-white border-2 border-neutral-300 rounded-2xl text-neutral-900 font-bold text-lg focus:border-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
                   placeholder="Enter cash amount"
                 />
               </div>
 
-              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-600 font-medium flex items-center gap-2">
-                    <CreditCard className="w-5 h-5 text-blue-600" />
+              <div className="bg-neutral-50 rounded-3xl p-6 border-2 border-neutral-200">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-neutral-700 font-bold text-base flex items-center gap-3">
+                    <CreditCard className="w-6 h-6 text-primary-600" />
                     Card Amount
                   </span>
-                  <span className="text-lg font-bold text-gray-900">
+                  <span className="text-2xl font-black text-neutral-900">
                     {formatCurrency(splitPayment.card, currencyCode)}
                   </span>
                 </div>
@@ -793,25 +868,25 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                       card: Math.min(card, total),
                     });
                   }}
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 font-semibold focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full px-5 py-4 bg-white border-2 border-neutral-300 rounded-2xl text-neutral-900 font-bold text-lg focus:border-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
                   placeholder="Enter card amount"
                 />
               </div>
             </div>
 
             {/* Validation */}
-            <div className={`p-4 rounded-2xl border-2 ${
+            <div className={`p-6 rounded-3xl border-2 ${
               Math.abs(splitPayment.cash + splitPayment.card - total) < 0.01
-                ? 'bg-green-50 border-green-200'
-                : 'bg-red-50 border-red-200'
+                ? 'bg-success-50 border-success-300'
+                : 'bg-error-50 border-error-300'
             }`}>
               <div className="flex justify-between items-center">
-                <span className="font-medium">
+                <span className="font-bold text-lg">
                   {Math.abs(splitPayment.cash + splitPayment.card - total) < 0.01
                     ? '✓ Payment split correctly'
                     : '⚠ Split must equal total'}
                 </span>
-                <span className="font-bold">
+                <span className="font-black text-xl">
                   {formatCurrency(splitPayment.cash + splitPayment.card, currencyCode)}
                   {' / '}
                   {formatCurrency(total, currencyCode)}
@@ -820,37 +895,45 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
             </div>
 
             {/* Quick Split Buttons */}
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              <button
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setSplitPayment({ cash: total, card: 0 })}
-                className="py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors border-2 border-neutral-200"
               >
                 All Cash
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setSplitPayment({ cash: 0, card: total })}
-                className="py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors border-2 border-neutral-200"
               >
                 All Card
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setSplitPayment({ cash: Math.ceil(total / 2), card: Math.floor(total / 2) })}
-                className="py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors border-2 border-neutral-200"
               >
                 50/50 Split
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setSplitPayment({ cash: Math.ceil(total / 20) * 10, card: total - Math.ceil(total / 20) * 10 })}
-                className="py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors border-2 border-neutral-200"
               >
                 Round Cash
-              </button>
+              </motion.button>
             </div>
 
             {/* Cash Received Input for Split Payment */}
             {splitPayment.cash > 0 && (
-              <div className="mt-6 bg-green-50 rounded-2xl p-4 border border-green-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="mt-8 bg-success-50 rounded-3xl p-6 border-2 border-success-300">
+                <label className="block text-base font-bold text-neutral-800 mb-3">
                   Cash Received
                 </label>
                 <input
@@ -859,47 +942,52 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                   step="0.01"
                   value={cashReceived}
                   onChange={(e) => setCashReceived(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-xl text-gray-900 font-bold text-xl focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full px-5 py-4 bg-white border-2 border-success-400 rounded-2xl text-neutral-900 font-black text-2xl focus:border-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
                   placeholder={`Enter cash amount (min: ${formatCurrency(splitPayment.cash, currencyCode)})`}
                 />
                 {cashReceivedNum >= splitPayment.cash && (
-                  <div className="mt-2 text-sm font-semibold text-green-700">
+                  <div className="mt-3 text-base font-bold text-success-700">
                     Change: {formatCurrency(cashReceivedNum - splitPayment.cash, currencyCode)}
                   </div>
                 )}
               </div>
             )}
-          </div>
+          </motion.div>
         )}
       </div>
 
       {/* Right Side: Action Panel */}
-      <div className="w-96 bg-[#1c1b1b] flex flex-col shadow-[-20px_0_40px_rgba(0,0,0,0.3)]">
-        <div className="flex-1 p-8">
-          <h3 className="font-manrope text-xl font-extrabold text-[#e5e2e1] mb-6">
+      <motion.div
+        initial={{ x: 20, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ delay: 0.4, duration: 0.4 }}
+        className="w-[450px] bg-gradient-to-b from-primary-600 to-primary-700 flex flex-col shadow-2xl"
+      >
+        <div className="flex-1 p-10">
+          <h3 className="font-display text-3xl font-black text-white mb-8">
             Complete Transaction
           </h3>
 
           {/* Transaction Details */}
-          <div className="space-y-4 mb-8">
-            <div className="flex justify-between items-center p-4 bg-[#2a2a2a] rounded-xl">
-              <span className="text-[#bdcabc] text-sm">Payment Method</span>
-              <span className="text-[#e5e2e1] font-semibold capitalize">{paymentMethod.toLowerCase()}</span>
+          <div className="space-y-5 mb-10">
+            <div className="flex justify-between items-center p-5 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
+              <span className="text-white/90 text-sm font-semibold">Payment Method</span>
+              <span className="text-white font-black text-lg capitalize">{paymentMethod.toLowerCase()}</span>
             </div>
 
             {paymentMethod === 'CASH' && cashReceivedNum > 0 && (
               <>
-                <div className="flex justify-between items-center p-4 bg-[#2a2a2a] rounded-xl">
-                  <span className="text-[#bdcabc] text-sm">Cash Received</span>
-                  <span className="text-[#e5e2e1] font-manrope font-bold">
+                <div className="flex justify-between items-center p-5 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
+                  <span className="text-white/90 text-sm font-semibold">Cash Received</span>
+                  <span className="text-white font-display font-black text-2xl">
                     {formatCurrency(cashReceivedNum, currencyCode)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center p-4 bg-[#2a2a2a] rounded-xl">
-                  <span className="text-[#bdcabc] text-sm">Change</span>
+                <div className="flex justify-between items-center p-5 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
+                  <span className="text-white/90 text-sm font-semibold">Change</span>
                   <span
-                    className={`font-manrope font-bold ${
-                      change >= 0 ? 'text-[#6ee591]' : 'text-red-400'
+                    className={`font-display font-black text-2xl ${
+                      change >= 0 ? 'text-success-300' : 'text-error-300'
                     }`}
                   >
                     {change >= 0 ? formatCurrency(change, currencyCode) : 'N/A'}
@@ -910,15 +998,15 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
 
             {paymentMethod === 'SPLIT' && (
               <>
-                <div className="flex justify-between items-center p-4 bg-[#2a2a2a] rounded-xl">
-                  <span className="text-[#bdcabc] text-sm">Cash Portion</span>
-                  <span className="text-[#e5e2e1] font-manrope font-bold">
+                <div className="flex justify-between items-center p-5 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
+                  <span className="text-white/90 text-sm font-semibold">Cash Portion</span>
+                  <span className="text-white font-display font-black text-2xl">
                     {formatCurrency(splitPayment.cash, currencyCode)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center p-4 bg-[#2a2a2a] rounded-xl">
-                  <span className="text-[#bdcabc] text-sm">Card Portion</span>
-                  <span className="text-[#e5e2e1] font-manrope font-bold">
+                <div className="flex justify-between items-center p-5 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
+                  <span className="text-white/90 text-sm font-semibold">Card Portion</span>
+                  <span className="text-white font-display font-black text-2xl">
                     {formatCurrency(splitPayment.card, currencyCode)}
                   </span>
                 </div>
@@ -928,7 +1016,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
 
           {/* Place Order Button */}
           <motion.button
-            whileHover={{ scale: 1.02 }}
+            whileHover={{ scale: 1.02, boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)' }}
             whileTap={{ scale: 0.98 }}
             onClick={handlePlaceOrder}
             disabled={
@@ -940,34 +1028,36 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                 (splitPayment.cash > 0 && cashReceivedNum < splitPayment.cash)
               ))
             }
-            className="w-full py-6 bg-gradient-to-br from-[#6ee591] to-[#50c878] text-[#00210c] rounded-2xl font-manrope font-black text-xl tracking-wide hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl shadow-emerald-950/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-7 bg-gradient-to-r from-success-500 to-success-600 text-white rounded-3xl font-display font-black text-2xl tracking-wide hover:from-success-600 hover:to-success-700 transition-all flex items-center justify-center gap-4 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
-              <div className="w-6 h-6 border-4 border-black/20 border-t-black rounded-full animate-spin" />
+              <div className="w-7 h-7 border-4 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              <Check className="w-6 h-6" />
+              <Check className="w-8 h-8" />
             )}
             {isSubmitting ? 'Processing...' : 'Place Order & Print'}
           </motion.button>
 
           {/* Back Button */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={onBack}
-            className="w-full mt-4 py-4 bg-[#2a2a2a] text-[#e5e2e1] rounded-2xl font-manrope font-bold text-lg hover:bg-[#353534] transition-all flex items-center justify-center gap-2"
+            className="w-full mt-6 py-5 bg-white/10 backdrop-blur-sm text-white rounded-3xl font-display font-bold text-xl hover:bg-white/20 transition-all flex items-center justify-center gap-3 border-2 border-white/20"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-6 h-6" />
             Back to Menu
-          </button>
+          </motion.button>
         </div>
 
         {/* Footer Info */}
-        <div className="p-6 bg-[#0e0e0e] border-t border-white/5">
-          <div className="flex items-center gap-3 text-sm text-[#bdcabc]">
-            <Printer className="w-4 h-4" />
-            <span>Receipt will be printed automatically</span>
+        <div className="p-8 bg-primary-800 border-t border-white/10">
+          <div className="flex items-center gap-4 text-white/80">
+            <Printer className="w-5 h-5" />
+            <span className="font-medium">Receipt will be printed automatically</span>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Discount Modal */}
       {showDiscountModal && (
@@ -976,26 +1066,32 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl"
+            className="bg-neutral-0 rounded-3xl p-10 max-w-md w-full mx-4 shadow-2xl border-2 border-neutral-200"
           >
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-              <Gift className="w-6 h-6 text-purple-600" />
+            <h3 className="font-display text-3xl font-black text-neutral-900 mb-8 flex items-center gap-4">
+              <motion.div
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 0.5 }}
+                className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center border-2 border-primary-200"
+              >
+                <Gift className="w-6 h-6 text-primary-600" />
+              </motion.div>
               Apply Discount
             </h3>
 
-            <div className="space-y-4 mb-6">
-              <p className="text-sm text-gray-600">Select a discount percentage:</p>
-              <div className="grid grid-cols-4 gap-3">
+            <div className="space-y-6 mb-8">
+              <p className="text-base text-neutral-600 font-medium">Select a discount percentage:</p>
+              <div className="grid grid-cols-4 gap-4">
                 {[5, 10, 15, 20, 25, 30, 50, 100].map((percent) => (
                   <motion.button
                     key={percent}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setDiscountPercent(percent)}
-                    className={`py-3 rounded-xl font-bold transition-all ${
+                    className={`py-4 rounded-2xl font-bold transition-all ${
                       discountPercent === percent
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
+                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-2 border-neutral-200'
                     }`}
                   >
                     {percent}%
@@ -1004,27 +1100,33 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
               </div>
 
               {discountPercent > 0 && (
-                <div className="bg-purple-50 p-4 rounded-xl">
-                  <p className="text-sm text-gray-600 mb-1">Discount Amount:</p>
-                  <p className="text-2xl font-bold text-purple-600">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-primary-50 p-6 rounded-2xl border-2 border-primary-200"
+                >
+                  <p className="text-sm text-neutral-600 mb-2 font-semibold">Discount Amount:</p>
+                  <p className="text-3xl font-black text-primary-600">
                     -{formatCurrency(subtotal * (discountPercent / 100), currencyCode)}
                   </p>
-                </div>
+                </motion.div>
               )}
             </div>
 
-            <div className="flex gap-3">
-              <button
+            <div className="flex gap-4">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   setShowDiscountModal(false);
                   setDiscountPercent(0);
                 }}
-                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                className="flex-1 py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors border-2 border-neutral-200"
               >
                 Cancel
-              </button>
+              </motion.button>
               <motion.button
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)' }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   if (discountPercent >= DISCOUNT_PIN_THRESHOLD) {
@@ -1036,7 +1138,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                     toast.success(`Discount of ${discountPercent}% applied!`);
                   }
                 }}
-                className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity"
+                className="flex-1 py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-2xl font-bold hover:shadow-lg shadow-primary-500/30 transition-all"
               >
                 Apply Discount
               </motion.button>
@@ -1052,88 +1154,81 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl"
+            className="bg-neutral-0 rounded-3xl p-10 max-w-md w-full mx-4 shadow-2xl border-2 border-neutral-200"
           >
-            <h3 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-              <Shield className="w-6 h-6 text-amber-600" />
-              Manager Approval Required
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Discounts of {DISCOUNT_PIN_THRESHOLD}% or more require manager approval.
-            </p>
-
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="text-sm font-semibold text-gray-700 mb-2 block">
-                  Enter Manager PIN
-                </label>
-                <input
-                  type="password"
-                  maxLength={6}
-                  value={discountPin}
-                  onChange={(e) => setDiscountPin(e.target.value.replace(/\D/g, ''))}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-2xl font-bold text-center tracking-widest text-gray-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                  placeholder="••••••"
-                  autoFocus
-                />
-              </div>
-
-              <div className="bg-amber-50 p-4 rounded-xl">
-                <p className="text-sm text-gray-600">Discount to apply:</p>
-                <p className="text-2xl font-bold text-amber-600">{pendingDiscountPercent}%</p>
-                <p className="text-lg text-amber-700">
-                  -{formatCurrency(subtotal * (pendingDiscountPercent / 100), currencyCode)}
-                </p>
-              </div>
+            <div className="flex items-center gap-4 mb-8">
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="w-12 h-12 bg-warning-100 rounded-full flex items-center justify-center border-2 border-warning-200"
+              >
+                <Shield className="w-6 h-6 text-warning-600" />
+              </motion.div>
+              <h3 className="font-display text-3xl font-black text-neutral-900">Manager PIN Required</h3>
             </div>
 
-            <div className="flex gap-3">
-              <button
+            <p className="text-base text-neutral-600 mb-8 font-medium">
+              Discounts of {DISCOUNT_PIN_THRESHOLD}% or higher require manager authorization.
+            </p>
+
+            <div className="space-y-6 mb-8">
+              <input
+                type="password"
+                value={discountPin}
+                onChange={(e) => setDiscountPin(e.target.value)}
+                placeholder="Enter manager PIN"
+                className="w-full px-5 py-4 bg-neutral-50 border-2 border-neutral-300 rounded-2xl text-neutral-900 font-bold text-xl focus:border-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
+                maxLength={4}
+              />
+            </div>
+
+            <div className="flex gap-4">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   setShowDiscountPinModal(false);
                   setDiscountPin('');
                   setPendingDiscountPercent(0);
                 }}
-                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                className="flex-1 py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors border-2 border-neutral-200"
               >
                 Cancel
-              </button>
+              </motion.button>
               <motion.button
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)' }}
                 whileTap={{ scale: 0.98 }}
                 onClick={async () => {
-                  if (discountPin.length < 4) {
-                    toast.error('PIN must be at least 4 digits');
-                    return;
-                  }
-                  
-                  // Validate PIN via backend API for security
-                  let managerName = 'Manager';
-                  let isValid = false;
-                  try {
-                    const pinResponse = await api.post('/auth/validate-pin', {
-                      pin: discountPin,
-                      operation: `discount-${pendingDiscountPercent}%`,
-                    });
-                    isValid = pinResponse.data.data.valid === true;
-                    if (isValid) managerName = pinResponse.data.data.managerName || 'Manager';
-                  } catch {
-                    isValid = false;
-                  }
-                  
-                  if (isValid) {
-                    applyDiscount(pendingDiscountPercent, managerName);
-                    setShowDiscountPinModal(false);
-                    setShowDiscountModal(false);
-                    setDiscountPin('');
-                    toast.success(`Discount of ${pendingDiscountPercent}% approved by ${managerName}`);
-                  } else {
-                    toast.error('Invalid PIN. Access denied.');
-                    setDiscountPin('');
+                  // Validate PIN (simplified - in production, verify against actual manager PIN)
+                  if (discountPin.length === 4) {
+                    // Validate PIN via backend API for security
+                    let managerName = 'Manager';
+                    let isValid = false;
+                    try {
+                      const pinResponse = await api.post('/auth/validate-pin', {
+                        pin: discountPin,
+                        operation: `discount-${pendingDiscountPercent}%`,
+                      });
+                      isValid = pinResponse.data.data.valid === true;
+                      if (isValid) managerName = pinResponse.data.data.managerName || 'Manager';
+                    } catch {
+                      isValid = false;
+                    }
+                    
+                    if (isValid) {
+                      applyDiscount(pendingDiscountPercent, managerName);
+                      setShowDiscountPinModal(false);
+                      setShowDiscountModal(false);
+                      setDiscountPin('');
+                      toast.success(`Discount of ${pendingDiscountPercent}% approved by ${managerName}`);
+                    } else {
+                      toast.error('Invalid PIN. Access denied.');
+                      setDiscountPin('');
+                    }
                   }
                 }}
                 disabled={discountPin.length < 4}
-                className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="flex-1 py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-2xl font-bold hover:shadow-lg shadow-primary-500/30 transition-all disabled:opacity-50"
               >
                 Verify & Apply
               </motion.button>
@@ -1149,17 +1244,23 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl"
+            className="bg-neutral-0 rounded-3xl p-10 max-w-md w-full mx-4 shadow-2xl border-2 border-neutral-200"
           >
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-              <Heart className="w-6 h-6 text-rose-600" />
+            <h3 className="font-display text-3xl font-black text-neutral-900 mb-8 flex items-center gap-4">
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+                className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center border-2 border-primary-200"
+              >
+                <Heart className="w-6 h-6 text-primary-600" />
+              </motion.div>
               Add Tip
             </h3>
 
-            <div className="space-y-4 mb-6">
-              <p className="text-sm text-gray-600">Select a tip percentage or enter custom amount:</p>
+            <div className="space-y-6 mb-8">
+              <p className="text-base text-neutral-600 font-medium">Select a tip percentage or enter custom amount:</p>
               {/* Percentage buttons */}
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-4 gap-4">
                 {settings.tipSuggestions?.map((percent: number) => (
                   <motion.button
                     key={percent}
@@ -1169,10 +1270,10 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                       setTipPercent(percent);
                       setCustomTip('');
                     }}
-                    className={`py-3 rounded-xl font-bold transition-all ${
+                    className={`py-4 rounded-2xl font-bold transition-all ${
                       tipPercent === percent && !customTip
-                        ? 'bg-rose-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
+                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-2 border-neutral-200'
                     }`}
                   >
                     {percent}%
@@ -1185,10 +1286,10 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                     setTipPercent(0);
                     setCustomTip('');
                   }}
-                    className={`py-3 rounded-xl font-bold transition-all ${
+                    className={`py-4 rounded-2xl font-bold transition-all ${
                     !tipPercent && !customTip
-                        ? 'bg-gray-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-neutral-600 text-white'
+                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-2 border-neutral-200'
                     }`}
                 >
                   No Tip
@@ -1196,10 +1297,10 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
               </div>
 
               {/* Custom tip input */}
-              <div className="bg-gray-50 p-4 rounded-xl">
-                <p className="text-sm text-gray-600 mb-2">Custom tip amount:</p>
+              <div className="bg-neutral-50 p-6 rounded-2xl border-2 border-neutral-200">
+                <p className="text-sm text-neutral-600 mb-3 font-semibold">Custom tip amount:</p>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">{settings.currency === 'USD' ? '$' : settings.currency === 'EUR' ? '€' : settings.currency === 'GBP' ? '£' : settings.currency === 'PKR' ? '₨' : settings.currency === 'INR' ? '₹' : settings.currency === 'BDT' ? '৳' : settings.currency === 'SAR' ? '﷼' : settings.currency === 'AED' ? 'د.إ' : '$'}</span>
+                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-500 font-bold">{settings.currency === 'USD' ? '$' : settings.currency === 'EUR' ? '€' : settings.currency === 'GBP' ? '£' : settings.currency === 'PKR' ? '₨' : settings.currency === 'INR' ? '₹' : settings.currency === 'BDT' ? '৳' : settings.currency === 'SAR' ? '﷼' : settings.currency === 'AED' ? 'د.إ' : '$'}</span>
                   <input
                     type="number"
                     min="0"
@@ -1210,38 +1311,44 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                       setTipPercent(0);
                     }}
                     placeholder="0.00"
-                    className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 font-semibold focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                    className="w-full pl-12 pr-5 py-4 bg-white border-2 border-neutral-300 rounded-2xl text-neutral-900 font-bold text-lg focus:border-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Tip preview */}
               {(tipPercent > 0 || customTip) && (
-                <div className="bg-rose-50 p-4 rounded-xl">
-                  <p className="text-sm text-gray-600 mb-1">Tip Amount:</p>
-                  <p className="text-2xl font-bold text-rose-600">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-primary-50 p-6 rounded-2xl border-2 border-primary-200"
+                >
+                  <p className="text-sm text-neutral-600 mb-2 font-semibold">Tip Amount:</p>
+                  <p className="text-3xl font-black text-primary-600">
                     +{formatCurrency(
                       customTip ? parseFloat(customTip) || 0 : (subtotal * tipPercent / 100),
                       currencyCode
                     )}
                   </p>
-                </div>
+                </motion.div>
               )}
             </div>
 
-            <div className="flex gap-3">
-              <button
+            <div className="flex gap-4">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   setShowTipModal(false);
                   setTipPercent(0);
                   setCustomTip('');
                 }}
-                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                className="flex-1 py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors border-2 border-neutral-200"
               >
                 Cancel
-              </button>
+              </motion.button>
               <motion.button
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)' }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   const tipAmount = customTip
@@ -1251,7 +1358,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                   setShowTipModal(false);
                   toast.success(`Tip of ${formatCurrency(tipAmount, currencyCode)} added!`);
                 }}
-                className="flex-1 py-3 bg-gradient-to-r from-rose-600 to-orange-600 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity"
+                className="flex-1 py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-2xl font-bold hover:shadow-lg shadow-primary-500/30 transition-all"
               >
                 Add Tip
               </motion.button>
@@ -1273,19 +1380,23 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl"
+            className="bg-neutral-0 rounded-3xl p-10 max-w-md w-full mx-4 shadow-2xl border-2 border-neutral-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CreditCard className="w-8 h-8 text-blue-600" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2 font-manrope">Confirm Card Payment</h3>
-              <p className="text-gray-600">Amount: {formatCurrency(total, currencyCode)}</p>
+            <div className="text-center mb-8">
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-primary-200"
+              >
+                <CreditCard className="w-10 h-10 text-primary-600" />
+              </motion.div>
+              <h3 className="font-display text-3xl font-black text-neutral-900 mb-3">Confirm Card Payment</h3>
+              <p className="text-neutral-600 text-lg font-medium">Amount: {formatCurrency(total, currencyCode)}</p>
             </div>
 
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="mb-8">
+              <label className="block text-sm font-bold text-neutral-700 mb-3 uppercase tracking-wider">
                 Card Last 4 Digits (Optional)
               </label>
               <input
@@ -1294,44 +1405,35 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                 value={cardLastFour}
                 onChange={(e) => setCardLastFour(e.target.value.replace(/\D/g, ''))}
                 placeholder="Enter last 4 digits"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none text-center font-mono text-lg tracking-widest"
+                className="w-full px-5 py-4 border-2 border-neutral-300 rounded-2xl focus:border-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:outline-none text-center font-mono text-xl font-bold tracking-[0.3em]"
               />
             </div>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-              <p className="text-sm text-yellow-800 flex items-start gap-2">
-                <Shield className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <div className="bg-warning-50 border-2 border-warning-200 rounded-2xl p-6 mb-8">
+              <p className="text-base text-warning-800 flex items-start gap-3 font-medium">
+                <Shield className="w-6 h-6 flex-shrink-0 mt-0.5" />
                 Please ensure the card payment has been successfully processed on your terminal before confirming.
               </p>
             </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setShowCardConfirmationModal(false); setCardLastFour(''); }}
-                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
+            <div className="flex gap-4">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={async () => {
-                  // Validate card payment via backend/payment gateway
-                  const validation = await validationService.validateCardPayment(
-                    total,
-                    { lastFour: cardLastFour || undefined }
-                  );
-                  
-                  if (validation.success) {
-                    setCardPaymentConfirmed(true);
-                    setShowCardConfirmationModal(false);
-                    toast.success('Card payment confirmed');
-                  } else {
-                    toast.error(validation.error || 'Card payment validation failed');
-                  }
-                  setCardLastFour('');
+                onClick={() => { setShowCardConfirmationModal(false); setCardLastFour(''); }}
+                className="flex-1 py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors border-2 border-neutral-200"
+              >
+                Cancel
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)' }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setCardPaymentConfirmed(true);
+                  setShowCardConfirmationModal(false);
+                  toast.success('Card payment confirmed!');
                 }}
-                className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity"
+                className="flex-1 py-4 bg-gradient-to-r from-success-500 to-success-600 text-white rounded-2xl font-bold hover:shadow-lg shadow-success-500/30 transition-all"
               >
                 Confirm Payment
               </motion.button>

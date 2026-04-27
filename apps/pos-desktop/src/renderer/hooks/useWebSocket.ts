@@ -32,11 +32,8 @@ export function useWebSocket() {
       const socket = io(SOCKET_URL, {
         auth: { token },
         transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 3000,
-        reconnectionDelayMax: 10000,
-        timeout: 20000,
+        reconnection: false, // Disable auto-reconnection for now
+        timeout: 5000, // Short timeout to fail fast
       });
 
       socket.on('connect', () => {
@@ -52,9 +49,10 @@ export function useWebSocket() {
       });
 
       socket.on('connect_error', (error) => {
-        console.error('Socket.IO connection error:', error.message);
+        console.warn('Socket.IO not available - real-time features disabled');
         setIsConnected(false);
         isConnectingRef.current = false;
+        socket.disconnect();
       });
 
       socket.on('reconnect_failed', () => {
@@ -71,7 +69,8 @@ export function useWebSocket() {
 
       socketRef.current = socket;
     } catch (error) {
-      console.error('Failed to connect Socket.IO:', error);
+      console.warn('Socket.IO initialization failed:', error);
+      isConnectingRef.current = false;
     }
   }, [token]);
 

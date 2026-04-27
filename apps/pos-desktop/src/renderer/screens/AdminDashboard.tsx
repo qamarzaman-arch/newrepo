@@ -69,7 +69,7 @@ const AdminDashboard: React.FC = () => {
         navigate('/staff');
         break;
       case 'FINANCE':
-        navigate('/reports');
+        navigate('/financial');
         break;
       case 'PRINT_Z':
         try {
@@ -290,7 +290,7 @@ const AdminDashboard: React.FC = () => {
       change: `${revenueGrowth >= 0 ? '+' : ''}${revenueGrowth}%`,
       trend: revenueGrowth >= 0 ? 'up' : 'down',
       icon: DollarSign,
-      color: 'from-green-500 to-emerald-600',
+      color: 'from-primary-500 to-primary-600',
     },
     {
       title: "Today's Orders",
@@ -298,7 +298,7 @@ const AdminDashboard: React.FC = () => {
       change: `${orderGrowth >= 0 ? '+' : ''}${orderGrowth}%`,
       trend: orderGrowth >= 0 ? 'up' : 'down',
       icon: ShoppingCart,
-      color: 'from-blue-500 to-cyan-600',
+      color: 'from-primary-600 to-primary-700',
     },
     {
       title: 'Avg Order Value',
@@ -306,7 +306,7 @@ const AdminDashboard: React.FC = () => {
       change: `${avgOrderValueGrowth >= 0 ? '+' : ''}${avgOrderValueGrowth}%`,
       trend: avgOrderValueGrowth >= 0 ? 'up' : 'down',
       icon: Activity,
-      color: 'from-purple-500 to-pink-600',
+      color: 'from-primary-700 to-primary-800',
     },
     {
       title: 'Occupied Tables',
@@ -314,47 +314,69 @@ const AdminDashboard: React.FC = () => {
       change: `${occupiedTables?.length || 0} active`,
       trend: 'neutral',
       icon: Users,
-      color: 'from-orange-500 to-red-600',
+      color: 'from-primary-400 to-primary-500',
     },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="rounded-[32px] border border-red-100 bg-[linear-gradient(135deg,#fff5f5_0%,#ffffff_42%,#fff1f2_100%)] p-6 shadow-soft">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="rounded-3xl border-2 border-primary-100 bg-gradient-to-br from-primary-50 via-neutral-0 to-primary-50 p-8 shadow-2xl"
+      >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-red-500">Admin Control Center</p>
-            <h1 className="mt-2 text-3xl font-black text-gray-900">Admin Dashboard</h1>
-            <p className="mt-2 max-w-2xl text-sm text-gray-600">Business analytics, staffing pressure, and live operational risk in one screen.</p>
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="text-xs font-black uppercase tracking-[0.3em] text-primary-600"
+            >
+              Admin Control Center
+            </motion.p>
+            <motion.h1 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="mt-2 text-4xl font-black text-neutral-900"
+            >
+              Admin Dashboard
+            </motion.h1>
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="mt-2 max-w-2xl text-sm text-neutral-600"
+            >
+              Business analytics, staffing pressure, and live operational risk in one screen.
+            </motion.p>
           </div>
-          <div className="flex gap-2 rounded-2xl border border-red-100 bg-white p-1 shadow-sm">
-          <button
-            onClick={() => setTimeRange('7d')}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-              timeRange === '7d' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
-            }`}
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 }}
+            className="flex gap-2 rounded-2xl border-2 border-primary-200 bg-white p-1.5 shadow-lg"
           >
-            7 Days
-          </button>
-          <button
-            onClick={() => setTimeRange('30d')}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-              timeRange === '30d' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            30 Days
-          </button>
-          <button
-            onClick={() => setTimeRange('90d')}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-              timeRange === '90d' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            90 Days
-          </button>
-          </div>
+          {['7d', '30d', '90d'].map((range) => (
+            <motion.button
+              key={range}
+              onClick={() => setTimeRange(range as any)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                timeRange === range 
+                  ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' 
+                  : 'text-neutral-600 hover:bg-neutral-100'
+              }`}
+            >
+              {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : '90 Days'}
+            </motion.button>
+          ))}
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -365,26 +387,45 @@ const AdminDashboard: React.FC = () => {
           return (
             <motion.div
               key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-2xl p-6 shadow-soft border border-red-50 hover:shadow-medium transition-all"
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ delay: 0.6 + index * 0.1, type: "spring", stiffness: 200 }}
+              whileHover={{ y: -8, scale: 1.02 }}
+              className="bg-neutral-0 rounded-2xl p-6 shadow-xl border-2 border-primary-100 hover:border-primary-300 hover:shadow-2xl transition-all cursor-pointer"
             >
               <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.color}`}>
+                <motion.div 
+                  whileHover={{ rotate: 10, scale: 1.1 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                  className={`p-4 rounded-2xl bg-gradient-to-br ${stat.color} shadow-lg shadow-primary-500/30`}
+                >
                   <Icon className="w-6 h-6 text-white" />
-                </div>
+                </motion.div>
                 {TrendIcon && (
-                  <div className={`flex items-center gap-1 text-sm font-semibold ${
-                    stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.8 + index * 0.1, type: "spring" }}
+                    className={`flex items-center gap-1 text-sm font-bold px-3 py-1.5 rounded-full ${
+                      stat.trend === 'up' 
+                        ? 'bg-success-100 text-success-700' 
+                        : 'bg-error-100 text-error-700'
+                    }`}
+                  >
                     <TrendIcon className="w-4 h-4" />
                     <span>{stat.change}</span>
-                  </div>
+                  </motion.div>
                 )}
               </div>
-              <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
-              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+              <p className="text-sm font-semibold text-neutral-600 mb-1">{stat.title}</p>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1 + index * 0.1 }}
+                className="text-3xl font-black text-neutral-900"
+              >
+                {stat.value}
+              </motion.p>
             </motion.div>
           );
         })}
@@ -393,55 +434,75 @@ const AdminDashboard: React.FC = () => {
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Revenue Trend Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-soft border border-red-50">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2 }}
+          className="lg:col-span-2 bg-neutral-0 rounded-2xl p-6 shadow-xl border-2 border-primary-100"
+        >
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-primary" />
+              <motion.h3 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.3 }}
+                className="text-xl font-bold text-neutral-900 flex items-center gap-2"
+              >
+                <BarChart3 className="w-6 h-6 text-primary-600" />
                 Revenue Trend
-              </h3>
-              <p className="text-sm text-gray-600 mt-1">Daily revenue over time</p>
+              </motion.h3>
+              <p className="text-sm text-neutral-600 mt-1">Daily revenue over time</p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={salesTrendData}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#00513f" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#00513f" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#E53935" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#E53935" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
-              <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={(value) => `$${value}`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
+              <XAxis dataKey="date" stroke="#9E9E9E" fontSize={12} />
+              <YAxis stroke="#9E9E9E" fontSize={12} tickFormatter={(value) => `$${value}`} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
+                  border: '2px solid #E53935',
                   borderRadius: '12px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)',
                 }}
               />
               <Area
                 type="monotone"
                 dataKey="revenue"
-                stroke="#00513f"
-                strokeWidth={2}
+                stroke="#E53935"
+                strokeWidth={3}
                 fillOpacity={1}
                 fill="url(#colorRevenue)"
               />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </motion.div>
 
         {/* Order Type Distribution */}
-        <div className="bg-white rounded-2xl p-6 shadow-soft border border-red-50">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.3 }}
+          className="bg-neutral-0 rounded-2xl p-6 shadow-xl border-2 border-primary-100"
+        >
           <div className="mb-6">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <PieChart className="w-5 h-5 text-primary" />
+            <motion.h3 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.4 }}
+              className="text-xl font-bold text-neutral-900 flex items-center gap-2"
+            >
+              <PieChart className="w-6 h-6 text-primary-600" />
               Order Types
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">Distribution by type</p>
+            </motion.h3>
+            <p className="text-sm text-neutral-600 mt-1">Distribution by type</p>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <RePieChart>
@@ -455,56 +516,89 @@ const AdminDashboard: React.FC = () => {
                 dataKey="value"
               >
                 {orderTypeData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+                  <Cell key={`cell-${index}`} fill={index === 0 ? '#E53935' : index === 1 ? '#EF5350' : index === 2 ? '#E57373' : '#EF9A9A'} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: '2px solid #E53935',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)',
+                }}
+              />
             </RePieChart>
           </ResponsiveContainer>
-          <div className="space-y-2 mt-4">
+          <div className="space-y-3 mt-4">
             {orderTypeData.map((item, index) => (
-              <div key={index} className="flex items-center justify-between">
+              <motion.div 
+                key={index}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1.5 + index * 0.1 }}
+                className="flex items-center justify-between p-2 rounded-lg hover:bg-neutral-50 transition-colors"
+              >
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-sm text-gray-700">{item.name}</span>
+                  <motion.div 
+                    className="w-3 h-3 rounded-full shadow-md"
+                    style={{ backgroundColor: index === 0 ? '#E53935' : index === 1 ? '#EF5350' : index === 2 ? '#E57373' : '#EF9A9A' }}
+                    whileHover={{ scale: 1.2 }}
+                  />
+                  <span className="text-sm font-medium text-neutral-700">{item.name}</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">{item.value}%</span>
-              </div>
+                <span className="text-sm font-bold text-neutral-900">{item.value}%</span>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Peak Hours */}
-        <div className="bg-white rounded-2xl p-6 shadow-soft border border-red-50">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.4 }}
+          className="bg-neutral-0 rounded-2xl p-6 shadow-xl border-2 border-primary-100"
+        >
           <div className="mb-6">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />
+            <motion.h3 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.5 }}
+              className="text-xl font-bold text-neutral-900 flex items-center gap-2"
+            >
+              <Clock className="w-6 h-6 text-primary-600" />
               Peak Hours
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">Busiest times of day</p>
+            </motion.h3>
+            <p className="text-sm text-neutral-600 mt-1">Busiest times of day</p>
           </div>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={peakHoursData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="hour" stroke="#9ca3af" fontSize={12} />
-              <YAxis stroke="#9ca3af" fontSize={12} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
+              <XAxis dataKey="hour" stroke="#9E9E9E" fontSize={12} />
+              <YAxis stroke="#9E9E9E" fontSize={12} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
+                  border: '2px solid #E53935',
                   borderRadius: '12px',
+                  boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)',
                 }}
               />
-              <Bar dataKey="orders" fill="#00513f" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="orders" fill="#E53935" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </motion.div>
 
         {/* Top Products */}
-        <div className="bg-white rounded-2xl p-6 shadow-soft border border-red-50">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.5 }}
+          className="bg-neutral-0 rounded-2xl p-6 shadow-xl border-2 border-primary-100"
+        >
           <div className="mb-6">
             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" />
@@ -543,7 +637,7 @@ const AdminDashboard: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Bottom Row */}

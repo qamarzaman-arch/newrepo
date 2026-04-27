@@ -44,6 +44,7 @@ const AdvancedOrdersScreen: React.FC = () => {
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [selectedTablesForMerge, setSelectedTablesForMerge] = useState<string[]>([]);
   const [selectedTableForSplit, setSelectedTableForSplit] = useState<string | null>(null);
+  const [mergedTableNumber, setMergedTableNumber] = useState('');
   const [splitConfig, setSplitConfig] = useState([
     { number: '', capacity: 2 },
     { number: '', capacity: 2 },
@@ -176,7 +177,6 @@ const AdvancedOrdersScreen: React.FC = () => {
       return;
     }
     try {
-      const mergedTableNumber = prompt('Enter merged table number (optional)');
       await tableService.mergeTables({
         tableIds: selectedTablesForMerge,
         mergedTableNumber: mergedTableNumber || undefined,
@@ -184,6 +184,7 @@ const AdvancedOrdersScreen: React.FC = () => {
       toast.success('Tables merged successfully');
       setShowMergeModal(false);
       setSelectedTablesForMerge([]);
+      setMergedTableNumber('');
       refetchTables();
     } catch (error: any) {
       console.error('Failed to merge tables:', error);
@@ -1089,6 +1090,16 @@ const AdvancedOrdersScreen: React.FC = () => {
             </div>
             <div className="space-y-4">
               <p className="text-sm text-gray-600">Select at least 2 tables to merge:</p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Merged Table Number (Optional)</label>
+                <input
+                  type="text"
+                  value={mergedTableNumber}
+                  onChange={(e) => setMergedTableNumber(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., M1, Combined-1"
+                />
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {tables.filter(t => t.status === 'AVAILABLE').map((table: any) => (
                   <div

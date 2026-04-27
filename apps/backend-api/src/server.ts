@@ -1,6 +1,6 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import http from 'http';
-import { Server as SocketIOServer } from 'socket.io';
+import { Server as SocketIOServer, Socket } from 'socket.io';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -15,11 +15,20 @@ import { logger } from './utils/logger';
 import { initializeWebSocketManager } from './utils/websocket';
 import { initSessionCleanupJob, initAuditLogCleanupJob } from './jobs/sessionCleanup';
 import { validateAndExitIfInvalid } from './config/configValidator';
+import { JwtPayload } from './middleware/auth';
 
 dotenv.config();
 
 // Validate configuration BEFORE starting server
 validateAndExitIfInvalid();
+
+interface SocketWithUser extends Socket {
+  user?: {
+    userId: string;
+    username: string;
+    role: string;
+  };
+}
 
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET is required. Set it in apps/backend-api/.env');
@@ -143,7 +152,7 @@ app.get('/health', async (_req: Request, res: Response) => {
 setupRoutes(app);
 
 // Error handling middleware
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   logger.error('Unhandled error:', err);
   errorHandler(err, req, res, next);
 });
@@ -156,10 +165,10 @@ io.use(async (socket, next) => {
       return next(new Error('Authentication error: No token provided'));
     }
 
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET as string);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload;
 
     // Attach user info to socket for use in handlers
-    (socket as any).user = {
+    (socket as SocketWithUser).user = {
       userId: decoded.userId,
       username: decoded.username,
       role: decoded.role,
@@ -173,8 +182,8 @@ io.use(async (socket, next) => {
 });
 
 // Socket.IO connection handling
-io.on('connection', (socket) => {
-  const user = (socket as any).user;
+io.on('connection', (socket: SocketWithUser) => {
+  const user = socket.user;
   logger.info(`Client connected: ${socket.id} (User: ${user?.username}, Role: ${user?.role})`);
 
   // Auto-join role-based rooms

@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { LogOut, HelpCircle, Clock, ShoppingCart, History, LayoutDashboard, X, Keyboard, Phone, ChevronLeft, ChevronRight, Users, Truck, Bell, Table as TableIcon } from 'lucide-react';
+import { LogOut, HelpCircle, Clock, ShoppingCart, History, LayoutDashboard, X, Keyboard, Phone, ChevronLeft, ChevronRight, Users, Truck, Bell, Table as TableIcon, ChefHat, Package, BarChart3, Settings } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { useFeatureAccessStore } from '../stores/featureAccessStore';
 import { useCashierWebSocket } from '../hooks/useWebSocket';
 import ShiftManager from '../components/ShiftManager';
 import toast from 'react-hot-toast';
@@ -15,6 +16,7 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const { hasAccess } = useFeatureAccessStore();
 
   const handleLogout = () => {
     logout();
@@ -25,24 +27,42 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
 
   // Cashier-specific menu items with delivery, tables, and attendance
   const cashierMenuItems = [
-    { icon: LayoutDashboard, label: 'POS Terminal', path: '/cashier-pos' },
-    { icon: ShoppingCart, label: 'Active Orders', path: '/cashier-orders' },
-    { icon: TableIcon, label: 'Tables', path: '/cashier-tables' },
-    { icon: Truck, label: 'Deliveries', path: '/delivery' },
-    { icon: Users, label: 'Staff Attendance', path: '/staff-attendance' },
-    { icon: History, label: 'Order History', path: '/cashier-history' },
-    { icon: Clock, label: 'Shift Summary', path: '/shift-summary' },
+    { icon: LayoutDashboard, label: 'POS Terminal', path: '/cashier-pos', feature: null },
+    { icon: ShoppingCart, label: 'Active Orders', path: '/cashier-orders', feature: 'orders' },
+    { icon: TableIcon, label: 'Tables', path: '/cashier-tables', feature: 'tables' },
+    { icon: ChefHat, label: 'Kitchen Display', path: '/kitchen', feature: 'kitchen' },
+    { icon: Package, label: 'Inventory', path: '/inventory', feature: 'inventory' },
+    { icon: Package, label: 'Menu', path: '/menu', feature: 'menu' },
+    { icon: Users, label: 'Customers', path: '/customers', feature: 'customers' },
+    { icon: BarChart3, label: 'Vendors', path: '/vendors', feature: 'vendors' },
+    { icon: Truck, label: 'Deliveries', path: '/delivery', feature: 'delivery' },
+    { icon: Users, label: 'Staff Attendance', path: '/staff-attendance', feature: 'staff' },
+    { icon: Clock, label: 'Attendance', path: '/attendance', feature: 'attendance' },
+    { icon: History, label: 'Order History', path: '/cashier-history', feature: null },
+    { icon: Clock, label: 'Shift Summary', path: '/shift-summary', feature: null },
   ];
 
   // Rider-specific menu items
   const riderMenuItems = [
-    { icon: Truck, label: 'My Deliveries', path: '/rider-deliveries' },
-    { icon: History, label: 'Delivery History', path: '/rider-history' },
-    { icon: Clock, label: 'My Shifts', path: '/shift-summary' },
+    { icon: Truck, label: 'My Deliveries', path: '/rider-deliveries', feature: 'delivery' },
+    { icon: History, label: 'Delivery History', path: '/rider-history', feature: 'delivery' },
+    { icon: Clock, label: 'My Shifts', path: '/shift-summary', feature: null },
   ];
 
   // Select menu based on user role
   const menuItems = user?.role === 'RIDER' ? riderMenuItems : cashierMenuItems;
+
+  // Filter menu items based on feature access
+  const filteredMenuItems = menuItems.filter(item => {
+    // If item has no feature, always show it
+    if (!item.feature) return true;
+    // Otherwise check if user has access to that feature
+    const access = hasAccess(item.feature);
+    console.log(`Checking access for ${item.label} (feature: ${item.feature}): ${access}`);
+    return access;
+  });
+
+  console.log('Filtered menu items:', filteredMenuItems);
 
   // Handle kitchen completion notifications
   const handleKitchenNotification = useCallback((data: any) => {
@@ -114,7 +134,7 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-2">
-          {menuItems.map((item, index) => {
+          {filteredMenuItems.map((item, index) => {
             const isActive = location.pathname === item.path.split('?')[0];
             const Icon = item.icon;
 

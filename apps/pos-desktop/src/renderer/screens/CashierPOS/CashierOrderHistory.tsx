@@ -125,12 +125,12 @@ const CashierOrderHistory: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      COMPLETED: 'bg-green-100 text-green-700',
-      REFUNDED: 'bg-red-100 text-red-700',
-      PARTIALLY_REFUNDED: 'bg-orange-100 text-orange-700',
-      CANCELLED: 'bg-gray-100 text-gray-700',
+      COMPLETED: 'bg-success-100 text-success-700 border-2 border-success-200',
+      REFUNDED: 'bg-error-100 text-error-700 border-2 border-error-200',
+      PARTIALLY_REFUNDED: 'bg-warning-100 text-warning-700 border-2 border-warning-200',
+      CANCELLED: 'bg-neutral-100 text-neutral-700 border-2 border-neutral-200',
     };
-    return colors[status] || 'bg-gray-100 text-gray-700';
+    return colors[status] || 'bg-neutral-100 text-neutral-700 border-2 border-neutral-200';
   };
 
   const getStatusLabel = (status: string) => {
@@ -169,52 +169,67 @@ const CashierOrderHistory: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
+    <div className="h-full flex flex-col bg-neutral-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="bg-neutral-0 border-b-2 border-neutral-200 px-8 py-6 shadow-sm"
+      >
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Order History</h1>
-            <p className="text-sm text-gray-500 mt-1">View and manage past orders</p>
+            <h1 className="font-display text-4xl font-black text-neutral-900">Order History</h1>
+            <p className="text-neutral-600 text-lg mt-2 font-medium">View and manage past orders</p>
           </div>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => refetch()}
-            className="px-4 py-2 bg-primary text-white rounded-xl font-semibold hover:opacity-90 transition-opacity"
+            className="px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-2xl font-bold hover:shadow-lg shadow-primary-500/30 transition-all"
           >
             Refresh
-          </button>
+          </motion.button>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {summaryCards.map((item) => (
-            <div key={item.label} className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-red-400">{item.label}</p>
-              <p className="mt-1 text-lg font-black text-gray-900">{item.value}</p>
-            </div>
+        <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+          {summaryCards.map((item, index) => (
+            <motion.div
+              key={item.label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * index }}
+              className="rounded-3xl border-2 border-primary-200 bg-primary-50 px-6 py-4"
+            >
+              <p className="text-xs font-black uppercase tracking-wider text-primary-600">{item.label}</p>
+              <p className="mt-2 text-2xl font-black text-neutral-900">{item.value}</p>
+            </motion.div>
           ))}
         </div>
 
         {/* Search & Filters */}
-        <div className="flex gap-3">
+        <div className="flex gap-4 mt-6">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
             <input
               type="text"
               placeholder="Search by order ID, customer, or table..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="w-full pl-12 pr-5 py-4 bg-neutral-50 border-2 border-neutral-200 rounded-2xl focus:border-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:outline-none text-base"
             />
           </div>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => setShowFilters(!showFilters)}
-            className={`px-4 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-colors ${
-              showFilters ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            className={`px-6 py-4 rounded-2xl font-bold flex items-center gap-3 transition-colors ${
+              showFilters ? 'bg-primary-600 text-white border-2 border-primary-500' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-2 border-neutral-200'
             }`}
           >
             <Filter className="w-5 h-5" />
             Filters
-          </button>
+          </motion.button>
         </div>
 
         {/* Filter Panel */}
@@ -226,13 +241,13 @@ const CashierOrderHistory: React.FC = () => {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
+              <div className="grid grid-cols-3 gap-6 mt-6 pt-6 border-t-2 border-neutral-200">
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 mb-2 block">Date Range</label>
+                  <label className="text-sm font-bold text-neutral-700 mb-3 block uppercase tracking-wider">Date Range</label>
                   <select
                     value={dateFilter}
                     onChange={(e) => setDateFilter(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+                    className="w-full px-4 py-3 bg-neutral-0 border-2 border-neutral-300 rounded-2xl text-base focus:border-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
                   >
                     <option value="today">Today</option>
                     <option value="week">Last 7 Days</option>
@@ -241,11 +256,11 @@ const CashierOrderHistory: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 mb-2 block">Payment Method</label>
+                  <label className="text-sm font-bold text-neutral-700 mb-3 block uppercase tracking-wider">Payment Method</label>
                   <select
                     value={paymentFilter}
                     onChange={(e) => setPaymentFilter(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+                    className="w-full px-4 py-3 bg-neutral-0 border-2 border-neutral-300 rounded-2xl text-base focus:border-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
                   >
                     <option value="all">All Methods</option>
                     <option value="CASH">Cash</option>
@@ -254,11 +269,11 @@ const CashierOrderHistory: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 mb-2 block">Order Type</label>
+                  <label className="text-sm font-bold text-neutral-700 mb-3 block uppercase tracking-wider">Order Type</label>
                   <select
                     value={orderTypeFilter}
                     onChange={(e) => setOrderTypeFilter(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+                    className="w-full px-4 py-3 bg-neutral-0 border-2 border-neutral-300 rounded-2xl text-base focus:border-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
                   >
                     <option value="all">All Types</option>
                     <option value="DINE_IN">Dine-In</option>
@@ -272,90 +287,99 @@ const CashierOrderHistory: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
 
       {/* Orders List */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-8">
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-          </div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center justify-center h-64"
+          >
+            <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+          </motion.div>
         ) : filteredOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-            <Calendar className="w-16 h-16 mb-4 opacity-30" />
-            <p className="text-lg font-semibold">No orders found</p>
-            <p className="text-sm">Try adjusting your filters</p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center h-64 text-neutral-400"
+          >
+            <Calendar className="w-20 h-20 mb-6 opacity-30" />
+            <p className="text-xl font-bold text-neutral-600">No orders found</p>
+            <p className="text-base font-medium">Try adjusting your filters</p>
+          </motion.div>
         ) : (
-          <div className="space-y-3">
-            {filteredOrders.map((order: any) => (
+          <div className="space-y-4">
+            {filteredOrders.map((order: any, index: number) => (
               <motion.div
                 key={order.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-xl p-4 border border-gray-200 hover:border-primary transition-colors"
+                transition={{ delay: index * 0.05 }}
+                className="bg-neutral-0 rounded-3xl p-6 border-2 border-neutral-200 hover:border-primary-400 transition-all shadow-sm hover:shadow-md"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="font-bold text-gray-900">#{order.id.slice(-6)}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                        order.orderType === 'DINE_IN' ? 'bg-blue-100 text-blue-700' :
-                        order.orderType === 'TAKEAWAY' ? 'bg-amber-100 text-amber-700' :
-                        order.orderType === 'PICKUP' ? 'bg-amber-100 text-amber-700' :
-                        order.orderType === 'DELIVERY' ? 'bg-purple-100 text-purple-700' :
-                        'bg-green-100 text-green-700'
+                    <div className="flex items-center gap-3 mb-3 flex-wrap">
+                      <span className="font-black text-xl text-neutral-900">#{order.id.slice(-6)}</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        order.orderType === 'DINE_IN' ? 'bg-primary-100 text-primary-700 border-2 border-primary-200' :
+                        order.orderType === 'TAKEAWAY' ? 'bg-warning-100 text-warning-700 border-2 border-warning-200' :
+                        order.orderType === 'PICKUP' ? 'bg-warning-100 text-warning-700 border-2 border-warning-200' :
+                        order.orderType === 'DELIVERY' ? 'bg-purple-100 text-purple-700 border-2 border-purple-200' :
+                        'bg-success-100 text-success-700 border-2 border-success-200'
                       }`}>
                         {getOrderTypeLabel(order.orderType)}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
                         {getStatusLabel(order.status)}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700">
+                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-primary-50 text-primary-700 border-2 border-primary-200">
                         Journey: {getJourneyLabel(order.status)}
                       </span>
                       {order.tableNumber && (
-                        <span className="text-sm text-gray-500">Table {order.tableNumber}</span>
+                        <span className="text-sm font-semibold text-neutral-600">Table {order.tableNumber}</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-5 text-base text-neutral-600">
                       {order.customerName && (
-                        <span className="flex items-center gap-1">
-                          <span className="font-medium">{order.customerName}</span>
+                        <span className="flex items-center gap-2 font-medium">
+                          <span className="font-bold text-neutral-900">{order.customerName}</span>
                         </span>
                       )}
-                      <span>{new Date(order.createdAt).toLocaleString()}</span>
-                      <span className="flex items-center gap-1">
-                        <DollarSign className="w-4 h-4" />
+                      <span className="font-medium">{new Date(order.createdAt).toLocaleString()}</span>
+                      <span className="flex items-center gap-2 font-bold text-neutral-900">
+                        <DollarSign className="w-5 h-5 text-primary-600" />
                         {formatCurrency(order.total)}
                       </span>
-                      <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full">
+                      <span className="text-xs px-3 py-1 bg-neutral-100 rounded-full font-semibold border-2 border-neutral-200">
                         {getPaymentMethodLabel(order.payments?.[0]?.method || 'CASH')}
                       </span>
                     </div>
-                    <div className="mt-2 text-sm text-gray-500">
+                    <div className="mt-3 text-sm font-semibold text-neutral-500">
                       {order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''}
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setSelectedOrder(order)}
-                      className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                      className="p-3 bg-neutral-100 hover:bg-neutral-200 rounded-2xl transition-colors border-2 border-neutral-200"
                       title="View Details"
                     >
-                      <Eye className="w-5 h-5 text-gray-600" />
+                      <Eye className="w-5 h-5 text-neutral-700" />
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => handlePrintReceipt(order)}
                       disabled={isPrinting}
-                      className="p-2 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors disabled:opacity-50"
+                      className="p-3 bg-primary-100 hover:bg-primary-200 rounded-2xl transition-colors disabled:opacity-50 border-2 border-primary-200"
                       title="Print Receipt"
                     >
-                      <Printer className="w-5 h-5 text-primary" />
+                      <Printer className="w-5 h-5 text-primary-600" />
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
@@ -369,10 +393,10 @@ const CashierOrderHistory: React.FC = () => {
                         setShowRefundModal(true);
                       }}
                       disabled={order.status === 'REFUNDED' || order.status === 'CANCELLED'}
-                      className="p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="p-3 bg-error-100 hover:bg-error-200 rounded-2xl transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-2 border-error-200"
                       title={order.status === 'REFUNDED' ? 'Already Refunded' : order.status === 'CANCELLED' ? 'Order Cancelled' : 'Process Refund'}
                     >
-                      <RotateCcw className="w-5 h-5 text-red-600" />
+                      <RotateCcw className="w-5 h-5 text-error-600" />
                     </motion.button>
                   </div>
                 </div>
@@ -384,27 +408,35 @@ const CashierOrderHistory: React.FC = () => {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between">
-          <p className="text-sm text-gray-600">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-neutral-0 border-t-2 border-neutral-200 px-8 py-6 flex items-center justify-between"
+        >
+          <p className="text-base font-semibold text-neutral-600">
             Page {currentPage} of {totalPages} • {ordersData?.pagination?.total || 0} total orders
           </p>
-          <div className="flex gap-2">
-            <button
+          <div className="flex gap-3">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-3 bg-neutral-100 hover:bg-neutral-200 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed border-2 border-neutral-200"
             >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
+              <ChevronLeft className="w-6 h-6 text-neutral-700" />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-3 bg-neutral-100 hover:bg-neutral-200 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed border-2 border-neutral-200"
             >
-              <ChevronRight className="w-5 h-5" />
-            </button>
+              <ChevronRight className="w-6 h-6 text-neutral-700" />
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Order Details Modal */}
@@ -421,59 +453,61 @@ const CashierOrderHistory: React.FC = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-neutral-0 rounded-3xl p-10 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto border-2 border-neutral-200"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Order Details</h2>
-                <button
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="font-display text-3xl font-black text-neutral-900">Order Details</h2>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setSelectedOrder(null)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-3 hover:bg-neutral-100 rounded-2xl transition-colors border-2 border-neutral-200"
                 >
-                  <X className="w-6 h-6 text-gray-500" />
-                </button>
+                  <X className="w-6 h-6 text-neutral-500" />
+                </motion.button>
               </div>
 
-                <div className="space-y-6">
+              <div className="space-y-8">
                 {/* Order Info */}
-                <div className="bg-gray-50 rounded-2xl p-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="bg-neutral-50 rounded-3xl p-6 border-2 border-neutral-200">
+                  <div className="grid grid-cols-2 gap-6 text-base">
                     <div>
-                      <p className="text-gray-500">Order ID</p>
-                      <p className="font-bold text-gray-900">#{selectedOrder.id.slice(-6)}</p>
+                      <p className="text-neutral-500 text-sm font-semibold uppercase tracking-wider mb-1">Order ID</p>
+                      <p className="font-black text-neutral-900 text-lg">#{selectedOrder.id.slice(-6)}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Date & Time</p>
-                      <p className="font-semibold text-gray-900">{new Date(selectedOrder.createdAt).toLocaleString()}</p>
+                      <p className="text-neutral-500 text-sm font-semibold uppercase tracking-wider mb-1">Date & Time</p>
+                      <p className="font-bold text-neutral-900">{new Date(selectedOrder.createdAt).toLocaleString()}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Order Type</p>
-                      <p className="font-semibold text-gray-900">{getOrderTypeLabel(selectedOrder.orderType)}</p>
+                      <p className="text-neutral-500 text-sm font-semibold uppercase tracking-wider mb-1">Order Type</p>
+                      <p className="font-bold text-neutral-900">{getOrderTypeLabel(selectedOrder.orderType)}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Payment Method</p>
-                      <p className="font-semibold text-gray-900">{getPaymentMethodLabel(selectedOrder.payments?.[0]?.method || 'CASH')}</p>
+                      <p className="text-neutral-500 text-sm font-semibold uppercase tracking-wider mb-1">Payment Method</p>
+                      <p className="font-bold text-neutral-900">{getPaymentMethodLabel(selectedOrder.payments?.[0]?.method || 'CASH')}</p>
                     </div>
                     {selectedOrder.tableNumber && (
                       <div>
-                        <p className="text-gray-500">Table</p>
-                        <p className="font-semibold text-gray-900">#{selectedOrder.tableNumber}</p>
+                        <p className="text-neutral-500 text-sm font-semibold uppercase tracking-wider mb-1">Table</p>
+                        <p className="font-bold text-neutral-900">#{selectedOrder.tableNumber}</p>
                       </div>
                     )}
                     {selectedOrder.customerName && (
                       <div>
-                        <p className="text-gray-500">Customer</p>
-                        <p className="font-semibold text-gray-900">{selectedOrder.customerName}</p>
+                        <p className="text-neutral-500 text-sm font-semibold uppercase tracking-wider mb-1">Customer</p>
+                        <p className="font-bold text-neutral-900">{selectedOrder.customerName}</p>
                       </div>
                     )}
                   </div>
-                  <div className="mt-4 rounded-2xl bg-white p-3 ring-1 ring-red-100">
+                  <div className="mt-6 rounded-3xl bg-neutral-0 p-4 border-2 border-primary-200">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs font-black uppercase tracking-[0.25em] text-red-400">Order journey</p>
-                        <p className="mt-1 text-sm font-semibold text-gray-900">{getJourneyLabel(selectedOrder.status)}</p>
+                        <p className="text-xs font-black uppercase tracking-widest text-primary-600">Order journey</p>
+                        <p className="mt-2 text-base font-bold text-neutral-900">{getJourneyLabel(selectedOrder.status)}</p>
                       </div>
-                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusColor(selectedOrder.status)}`}>
+                      <span className={`rounded-full px-4 py-2 text-sm font-bold ${getStatusColor(selectedOrder.status)}`}>
                         {getStatusLabel(selectedOrder.status)}
                       </span>
                     </div>
@@ -482,74 +516,86 @@ const CashierOrderHistory: React.FC = () => {
 
                 {/* Items */}
                 <div>
-                  <h3 className="font-bold text-gray-900 mb-3">Items</h3>
-                  <div className="space-y-2">
+                  <h3 className="font-display text-xl font-black text-neutral-900 mb-4">Items</h3>
+                  <div className="space-y-3">
                     {selectedOrder.items?.map((item: any, index: number) => (
-                      <div key={index} className="flex justify-between items-start p-3 bg-gray-50 rounded-xl">
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="flex justify-between items-start p-4 bg-neutral-50 rounded-2xl border-2 border-neutral-200"
+                      >
                         <div className="flex-1">
-                          <p className="font-semibold text-gray-900">
+                          <p className="font-bold text-neutral-900 text-base">
                             {item.quantity}x {item.menuItem?.name || item.name || 'Unknown Item'}
                           </p>
                           {item.notes && (
-                            <p className="text-xs text-gray-500 italic mt-1">{item.notes}</p>
+                            <p className="text-sm text-neutral-500 italic mt-2 font-medium">{item.notes}</p>
                           )}
                         </div>
-                        <span className="font-bold text-gray-900">
+                        <span className="font-black text-neutral-900 text-lg">
                           {formatCurrency(item.price * item.quantity)}
                         </span>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 </div>
 
                 {/* Totals */}
-                <div className="border-t border-gray-200 pt-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="font-semibold">{formatCurrency(selectedOrder.subtotal || 0)}</span>
+                <div className="border-t-2 border-neutral-200 pt-6 space-y-4">
+                  <div className="flex justify-between text-base">
+                    <span className="text-neutral-600 font-semibold">Subtotal</span>
+                    <span className="font-bold text-neutral-900">{formatCurrency(selectedOrder.subtotal || 0)}</span>
                   </div>
                   {selectedOrder.discount > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-green-600">Discount</span>
-                      <span className="font-semibold text-green-600">-{formatCurrency(selectedOrder.discount)}</span>
+                    <div className="flex justify-between text-base">
+                      <span className="text-success-600 font-semibold">Discount</span>
+                      <span className="font-bold text-success-600">-{formatCurrency(selectedOrder.discount)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Tax</span>
-                    <span className="font-semibold">{formatCurrency(selectedOrder.tax || 0)}</span>
+                  <div className="flex justify-between text-base">
+                    <span className="text-neutral-600 font-semibold">Tax</span>
+                    <span className="font-bold text-neutral-900">{formatCurrency(selectedOrder.tax || 0)}</span>
                   </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                    <span className="font-bold text-gray-900">Total</span>
-                    <span className="text-2xl font-black text-primary">{formatCurrency(selectedOrder.total)}</span>
+                  <div className="flex justify-between items-center pt-4 border-t-2 border-neutral-200">
+                    <span className="font-black text-neutral-900 text-xl">Total</span>
+                    <span className="text-3xl font-black text-primary-600">{formatCurrency(selectedOrder.total)}</span>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-3">
-                  <button
+                <div className="flex gap-4">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setSelectedOrder(null)}
-                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                    className="flex-1 py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors border-2 border-neutral-200"
                   >
                     Close
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       setRefundOrder(selectedOrder);
                       setShowRefundModal(true);
                     }}
-                    className="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 py-4 bg-gradient-to-r from-error-600 to-error-700 text-white rounded-2xl font-bold hover:shadow-lg shadow-error-500/30 transition-all flex items-center justify-center gap-3"
                   >
                     <RotateCcw className="w-5 h-5" />
                     Process Refund
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => handlePrintReceipt(selectedOrder)}
                     disabled={isPrinting}
-                    className="flex-1 py-3 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="flex-1 py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-2xl font-bold hover:shadow-lg shadow-primary-500/30 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                   >
                     <Printer className="w-5 h-5" />
-                    {isPrinting ? 'Printing...' : 'Print Receipt'}
-                  </button>
+                    Print Receipt
+                  </motion.button>
                 </div>
               </div>
             </motion.div>

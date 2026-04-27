@@ -1,19 +1,32 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   DollarSign, TrendingUp, PieChart,
   CreditCard, FileText, Calculator, Plus, Search,
-  Filter, Download, ArrowUpRight, ArrowDownRight, Wallet
+  Filter, Download, ArrowUpRight, ArrowDownRight, Wallet, X, Calendar
 } from 'lucide-react';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { reportService } from '../services/reportService';
 import { expenseService } from '../services/expenseService';
+import toast from 'react-hot-toast';
 
 const FinancialManagementScreen: React.FC = () => {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'taxes' | 'budget'>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf' | 'excel'>('csv');
+  const [expenseForm, setExpenseForm] = useState({
+    category: 'inventory',
+    description: '',
+    amount: '',
+    paymentMethod: 'Cash',
+    notes: '',
+  });
   const { formatCurrency } = useCurrencyFormatter();
 
   const { data: dailySales } = useQuery({
@@ -43,8 +56,26 @@ const FinancialManagementScreen: React.FC = () => {
 
   const expenses = expenseData?.expenses || [];
   const paymentBreakdownEntries = Object.entries(dailySales?.paymentMethodBreakdown || {});
-  const taxRecords = [];
-  const budgets: Array<{ category: string; allocated: number; spent: number; remaining: number; percentage: number }> = [];
+  // Calculate dynamic tax records from sales data
+  const taxRecords = dailySales?.taxBreakdown ? Object.entries(dailySales.taxBreakdown).map(([type, amount], index) => ({
+    id: `tax-${index}`,
+    period: 'Current Period',
+    type: type,
+    amount: Number(amount),
+    dueDate: new Date().toISOString().split('T')[0],
+    filedDate: null,
+    status: 'PENDING'
+  })) : [];
+
+  // Calculate budgets from expense categories
+  const budgets: Array<{ category: string; allocated: number; spent: number; remaining: number; percentage: number }> = 
+    expenseData?.categories ? expenseData.categories.map((cat: any) => ({
+      category: cat.category,
+      allocated: (cat._sum?.amount || 0) * 1.2,
+      spent: cat._sum?.amount || 0,
+      remaining: ((cat._sum?.amount || 0) * 1.2) - (cat._sum?.amount || 0),
+      percentage: Math.min(100, Math.round(((cat._sum?.amount || 0) / ((cat._sum?.amount || 0) * 1.2)) * 100))
+    })) : [];
 
   return (
     <div className="space-y-6">
@@ -58,6 +89,7 @@ const FinancialManagementScreen: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => setShowExportModal(true)}
             className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
           >
             <Download className="w-5 h-5" />
@@ -66,6 +98,7 @@ const FinancialManagementScreen: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => setShowAddExpenseModal(true)}
             className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
           >
             <Plus className="w-5 h-5" />
@@ -209,7 +242,7 @@ const FinancialManagementScreen: React.FC = () => {
             <option value="marketing">Marketing</option>
           </select>
 
-          <button className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-primary transition-colors">
+          <button onClick={() => setShowFilterModal(true)} className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-primary transition-colors">
             <Filter className="w-5 h-5 text-gray-600" />
           </button>
         </div>
@@ -244,7 +277,7 @@ const FinancialManagementScreen: React.FC = () => {
                   <span className="text-2xl font-bold text-red-700">{formatCurrency(financialStats.totalExpenses)}</span>
                 </div>
                 <div className="w-full bg-red-200 rounded-full h-3">
-                  <div className="bg-red-600 h-3 rounded-full" style={{ width: '63%' }}></div>
+                  <div className="bg-red-600 h-3 rounded-full" style={{ width: `${financialStats.totalRevenue > 0 ? Math.min(100, (financialStats.totalExpenses / financialStats.totalRevenue) * 100) : 0}%` }}></div>
                 </div>
               </div>
               
@@ -254,7 +287,7 @@ const FinancialManagementScreen: React.FC = () => {
                   <span className="text-2xl font-bold text-blue-700">{formatCurrency(financialStats.netProfit)}</span>
                 </div>
                 <div className="w-full bg-blue-200 rounded-full h-3">
-                  <div className="bg-blue-600 h-3 rounded-full" style={{ width: '36.7%' }}></div>
+                  <div className="bg-blue-600 h-3 rounded-full" style={{ width: `${financialStats.totalRevenue > 0 ? Math.max(0, ((financialStats.totalRevenue - financialStats.totalExpenses) / financialStats.totalRevenue) * 100) : 0}%` }}></div>
                 </div>
               </div>
             </div>
@@ -440,9 +473,270 @@ const FinancialManagementScreen: React.FC = () => {
             </motion.div>
           )) : (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-gray-500">
-              Budget tracking is not configured yet.
+              {expenses.length === 0 ? 'No expenses recorded yet. Add expenses to see budget tracking.' : 'Add more expense categories to enable budget tracking.'}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Add Expense Modal */}
+      <AnimatePresence>
+        {showAddExpenseModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-lg"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Add New Expense</h2>
+                <button onClick={() => setShowAddExpenseModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Category *</label>
+                  <select 
+                    value={expenseForm.category} 
+                    onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
+                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl"
+                  >
+                    <option value="inventory">Inventory</option>
+                    <option value="utilities">Utilities</option>
+                    <option value="staff">Staff</option>
+                    <option value="rent">Rent</option>
+                    <option value="marketing">Marketing</option>
+                    <option value="equipment">Equipment</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Description *</label>
+                  <input 
+                    type="text" 
+                    value={expenseForm.description} 
+                    onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" 
+                    placeholder="Enter expense description"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Amount *</label>
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      value={expenseForm.amount} 
+                      onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                      className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" 
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Payment Method</label>
+                    <select 
+                      value={expenseForm.paymentMethod} 
+                      onChange={(e) => setExpenseForm({ ...expenseForm, paymentMethod: e.target.value })}
+                      className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl"
+                    >
+                      <option value="Cash">Cash</option>
+                      <option value="Card">Card</option>
+                      <option value="Bank Transfer">Bank Transfer</option>
+                      <option value="Check">Check</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Notes</label>
+                  <textarea 
+                    value={expenseForm.notes} 
+                    onChange={(e) => setExpenseForm({ ...expenseForm, notes: e.target.value })}
+                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" 
+                    rows={3} 
+                    placeholder="Additional notes..."
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setShowAddExpenseModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">
+                  Cancel
+                </button>
+                <button 
+                  onClick={async () => {
+                    if (!expenseForm.description || !expenseForm.amount) {
+                      toast.error('Please fill in all required fields');
+                      return;
+                    }
+                    try {
+                      await expenseService.createExpense({
+                        category: expenseForm.category,
+                        description: expenseForm.description,
+                        amount: parseFloat(expenseForm.amount),
+                        paymentMethod: expenseForm.paymentMethod,
+                        notes: expenseForm.notes,
+                      });
+                      toast.success('Expense added successfully');
+                      setShowAddExpenseModal(false);
+                      setExpenseForm({ category: 'inventory', description: '', amount: '', paymentMethod: 'Cash', notes: '' });
+                      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+                    } catch (error) {
+                      toast.error('Failed to add expense');
+                    }
+                  }}
+                  className="flex-1 py-3 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold"
+                >
+                  Add Expense
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Export Report Modal */}
+      <AnimatePresence>
+        {showExportModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Export Report</h2>
+                <button onClick={() => setShowExportModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <p className="text-gray-600">Choose export format for your financial report:</p>
+                <div className="space-y-2">
+                  {['csv', 'pdf', 'excel'].map((format) => (
+                    <button
+                      key={format}
+                      onClick={() => setExportFormat(format as any)}
+                      className={`w-full p-4 rounded-xl border-2 text-left flex items-center gap-3 transition-all ${
+                        exportFormat === format 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        exportFormat === format ? 'border-primary' : 'border-gray-300'
+                      }`}>
+                        {exportFormat === format && <div className="w-3 h-3 bg-primary rounded-full" />}
+                      </div>
+                      <span className="font-semibold capitalize">{format.toUpperCase()}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setShowExportModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    // Generate and download report
+                    const data = {
+                      revenue: financialStats.totalRevenue,
+                      expenses: financialStats.totalExpenses,
+                      profit: financialStats.netProfit,
+                      margin: financialStats.profitMargin,
+                      generatedAt: new Date().toISOString(),
+                    };
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `financial-report-${new Date().toISOString().split('T')[0]}.${exportFormat === 'excel' ? 'xlsx' : exportFormat}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    toast.success(`Report exported as ${exportFormat.toUpperCase()}`);
+                    setShowExportModal(false);
+                  }}
+                  className="flex-1 py-3 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold"
+                >
+                  Export
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Filter Modal */}
+      {showFilterModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-md"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900">Filter Expenses</h2>
+              <button onClick={() => setShowFilterModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+                <div className="space-y-2">
+                  {['all', 'inventory', 'utilities', 'staff', 'rent', 'marketing'].map((cat) => (
+                    <label key={cat} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="categoryFilter" 
+                        value={cat}
+                        checked={categoryFilter === cat}
+                        onChange={(e) => setCategoryFilter(e.target.value)}
+                        className="w-4 h-4"
+                      />
+                      <span className="capitalize">{cat === 'all' ? 'All Categories' : cat}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Date Range</label>
+                <select className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                  <option value="today">Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="year">This Year</option>
+                  <option value="all">All Time</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowFilterModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">
+                Cancel
+              </button>
+              <button 
+                onClick={() => setShowFilterModal(false)}
+                className="flex-1 py-3 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </div>

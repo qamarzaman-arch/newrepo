@@ -172,89 +172,135 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
   const total = getTotal();
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 overflow-hidden">
+    <div className="h-full flex flex-col bg-neutral-50 overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm flex-shrink-0">
-        <div className="flex items-end justify-between mb-3">
-          <div className="flex items-center gap-3">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="bg-neutral-0 border-b-2 border-primary-100 px-8 py-5 shadow-sm flex-shrink-0"
+      >
+        <div className="flex items-end justify-between mb-4">
+          <div className="flex items-center gap-4">
             <motion.button
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.05, backgroundColor: 'rgba(229, 57, 53, 0.1)' }}
               whileTap={{ scale: 0.95 }}
               onClick={onBack}
-              className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              className="p-3 bg-neutral-100 hover:bg-primary-50 rounded-xl transition-colors border border-neutral-200"
               title="Go Back"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5 text-primary-600" />
             </motion.button>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 font-manrope">Menu</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <motion.h2 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="text-3xl font-black text-neutral-900 font-display"
+              >
+                Menu
+              </motion.h2>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-sm text-neutral-600 mt-1 font-medium"
+              >
                 {tableNumber ? `Table ${tableNumber}` :
                   orderType === 'PICKUP' ? 'Pickup Order' :
                   orderType === 'TAKEAWAY' ? 'Takeaway Order' :
                   orderType === 'DELIVERY' ? 'Delivery Order' :
                   orderType === 'DINE_IN' ? 'Dine-In Order' : 'Order'}
                 {customerName && ` • ${customerName}`}
-              </p>
+              </motion.p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-sm text-gray-500">Current Total</p>
-            <p className="text-3xl font-black text-primary">{formatCurrency(total)}</p>
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="text-sm font-semibold text-neutral-600 uppercase tracking-wider"
+            >
+              Current Total
+            </motion.p>
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-4xl font-black text-primary-600"
+            >
+              {formatCurrency(total)}
+            </motion.p>
           </div>
         </div>
 
         {/* Search Bar */}
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
           <input
             type="text"
             placeholder="Search items or scan barcode..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-primary focus:bg-white transition-all text-base"
+            className="w-full pl-14 pr-12 py-4 bg-neutral-50 border-2 border-neutral-200 rounded-2xl focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10 transition-all text-base"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2">
-              <X className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-            </button>
+            <motion.button 
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setSearchQuery('')} 
+              className="absolute right-5 top-1/2 -translate-y-1/2"
+            >
+              <X className="w-5 h-5 text-neutral-400 hover:text-primary-600" />
+            </motion.button>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Category Tabs */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 overflow-x-auto flex-shrink-0">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="bg-neutral-0 border-b-2 border-primary-100 px-8 py-4 overflow-x-auto flex-shrink-0"
+      >
         <div className="flex gap-3 pb-2">
           {isLoadingCategories ? (
             // Category skeletons
             <>
-              <div className="px-6 py-3 rounded-xl bg-gray-200 animate-pulse w-24" />
-              <div className="px-6 py-3 rounded-xl bg-gray-200 animate-pulse w-28" />
-              <div className="px-6 py-3 rounded-xl bg-gray-200 animate-pulse w-20" />
-              <div className="px-6 py-3 rounded-xl bg-gray-200 animate-pulse w-32" />
+              <div className="px-6 py-4 rounded-2xl bg-neutral-200 animate-pulse w-28" />
+              <div className="px-6 py-4 rounded-2xl bg-neutral-200 animate-pulse w-32" />
+              <div className="px-6 py-4 rounded-2xl bg-neutral-200 animate-pulse w-24" />
+              <div className="px-6 py-4 rounded-2xl bg-neutral-200 animate-pulse w-36" />
             </>
           ) : (
             <>
               <motion.button
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setSelectedCategory('')}
-                className={`px-6 py-3 rounded-xl font-semibold whitespace-nowrap transition-all ${
+                className={`px-6 py-4 rounded-2xl font-bold whitespace-nowrap transition-all ${
                   !selectedCategory
-                    ? 'bg-gradient-to-r from-primary to-primary-container text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-xl shadow-primary-500/30'
+                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-2 border-neutral-200'
                 }`}
               >
                 All Items
               </motion.button>
-              {categories?.map((cat: any) => (
+              {categories?.map((cat: any, index: number) => (
                 <motion.button
                   key={cat.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 + index * 0.05 }}
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-6 py-3 rounded-xl font-semibold whitespace-nowrap transition-all ${
+                  className={`px-6 py-4 rounded-2xl font-bold whitespace-nowrap transition-all ${
                     selectedCategory === cat.id
-                      ? `${getCategoryGradient(cat.name)} text-white shadow-lg`
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-xl shadow-primary-500/30'
+                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-2 border-neutral-200'
                   }`}
                 >
                   {cat.name}
@@ -263,26 +309,31 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
             </>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Menu Grid */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.5 }}
+          className="flex-1 overflow-y-auto p-8"
+        >
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             {isLoadingItems ? (
               // Menu item skeletons
               <>
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                    <div className="h-32 bg-gray-200 animate-pulse" />
-                    <div className="p-4 space-y-3">
-                      <div className="h-5 bg-gray-200 rounded animate-pulse w-3/4" />
-                      <div className="h-4 bg-gray-200 rounded animate-pulse w-full" />
-                      <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" />
-                      <div className="flex justify-between items-center pt-2">
-                        <div className="h-6 bg-gray-200 rounded animate-pulse w-16" />
-                        <div className="h-8 bg-gray-200 rounded animate-pulse w-20" />
+                {[...Array(10)].map((_, i) => (
+                  <div key={i} className="bg-neutral-0 rounded-3xl border-2 border-neutral-100 overflow-hidden shadow-lg">
+                    <div className="h-40 bg-neutral-200 animate-pulse" />
+                    <div className="p-5 space-y-4">
+                      <div className="h-6 bg-neutral-200 rounded-xl animate-pulse w-3/4" />
+                      <div className="h-4 bg-neutral-200 rounded-xl animate-pulse w-full" />
+                      <div className="h-4 bg-neutral-200 rounded-xl animate-pulse w-1/2" />
+                      <div className="flex justify-between items-center pt-3">
+                        <div className="h-7 bg-neutral-200 rounded-xl animate-pulse w-20" />
+                        <div className="h-10 bg-neutral-200 rounded-xl animate-pulse w-24" />
                       </div>
                     </div>
                   </div>
@@ -290,73 +341,76 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
               </>
             ) : (
               <>
-                {filteredItems.map((item: any) => {
+                {filteredItems.map((item: any, index: number) => {
               const inCart = currentOrder.items.find((i) => i.menuItemId === item.id);
               return (
                 <motion.div
                   key={item.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  whileHover={{ y: -4 }}
+                  initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ delay: 0.6 + index * 0.03, type: "spring", stiffness: 200 }}
+                  whileHover={{ y: -8, scale: 1.02, boxShadow: '0 20px 40px rgba(229, 57, 53, 0.15)' }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => handleAddItem(item)}
-                  className={`bg-white rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
+                  className={`bg-neutral-0 rounded-3xl overflow-hidden border-2 transition-all cursor-pointer shadow-lg ${
                     !item.isAvailable
-                      ? 'opacity-50 border-gray-200'
+                      ? 'opacity-50 border-neutral-200'
                       : inCart
-                      ? 'border-primary shadow-lg'
-                      : 'border-gray-100 hover:border-primary/50'
+                      ? 'border-primary-600 shadow-2xl shadow-primary-500/30'
+                      : 'border-neutral-200 hover:border-primary-400'
                   }`}
                 >
-                  <div className="h-32 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative">
+                  <div className="h-44 bg-gradient-to-br from-neutral-100 to-neutral-200 flex items-center justify-center relative overflow-hidden">
                     {item.image && item.image.startsWith('http') ? (
                       <img
                         src={item.image}
                         alt={item.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          // Fallback to emoji if image fails to load
                           (e.target as HTMLImageElement).style.display = 'none';
-                          (e.target as HTMLImageElement).parentElement!.innerHTML = '<div class="text-5xl">🍽️</div>';
+                          (e.target as HTMLImageElement).parentElement!.innerHTML = '<div class="text-6xl">🍽️</div>';
                         }}
                       />
                     ) : (
-                      <div className="text-5xl">{item.image || '🍽️'}</div>
+                      <div className="text-6xl">{item.image || '🍽️'}</div>
                     )}
                     {!item.isAvailable && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span className="text-white font-bold">Unavailable</span>
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
+                        <span className="text-white font-black text-lg">Unavailable</span>
                       </div>
                     )}
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-bold text-gray-900 mb-1 truncate">{item.name}</h3>
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{item.description}</p>
+                  <div className="p-5">
+                    <h3 className="font-bold text-neutral-900 mb-2 truncate text-lg">{item.name}</h3>
+                    <p className="text-sm text-neutral-600 mb-4 line-clamp-2">{item.description}</p>
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-2xl font-black text-primary">{formatCurrency(item.price)}</p>
-                        {inCart && <p className="text-xs text-primary font-semibold">In cart: {inCart.quantity}x</p>}
+                        <p className="text-2xl font-black text-primary-600">{formatCurrency(item.price)}</p>
+                        {inCart && <p className="text-xs text-primary-600 font-bold mt-1">In cart: {inCart.quantity}x</p>}
                       </div>
-                      <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                      <div className="flex items-center gap-2 bg-neutral-100 rounded-2xl p-1.5 border border-neutral-200">
                           <motion.button
+                            whileHover={{ scale: 1.1, backgroundColor: 'rgba(229, 57, 53, 0.1)' }}
                             whileTap={{ scale: 0.9 }}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleQuickQuantityChange(item.id, -1);
                             }}
-                            className="w-8 h-8 rounded-md bg-white shadow-sm flex items-center justify-center hover:bg-gray-50"
+                            className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center hover:bg-neutral-50 border border-neutral-200"
                           >
-                            <Minus className="w-4 h-4 text-gray-700" />
+                            <Minus className="w-4 h-4 text-neutral-700" />
                           </motion.button>
-                          <span className="w-8 text-center font-bold text-gray-900">{quickQuantity[item.id] || 1}</span>
+                          <span className="w-10 text-center font-black text-neutral-900 text-lg">{quickQuantity[item.id] || 1}</span>
                           <motion.button
+                            whileHover={{ scale: 1.1, backgroundColor: 'rgba(229, 57, 53, 0.1)' }}
                             whileTap={{ scale: 0.9 }}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleQuickQuantityChange(item.id, 1);
                             }}
-                            className="w-8 h-8 rounded-md bg-white shadow-sm flex items-center justify-center hover:bg-gray-50"
+                            className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center hover:bg-neutral-50 border border-neutral-200"
                           >
-                            <Plus className="w-4 h-4 text-gray-700" />
+                            <Plus className="w-4 h-4 text-neutral-700" />
                           </motion.button>
                         </div>
                     </div>
@@ -367,60 +421,87 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
             </>
           )}
           {!isLoadingItems && filteredItems.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-              <UtensilsCrossed className="w-16 h-16 mb-4" />
-              <p className="text-lg font-semibold">No items found</p>
-            </div>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center justify-center h-96 text-neutral-400 col-span-full"
+            >
+              <UtensilsCrossed className="w-20 h-20 mb-6 text-primary-300" />
+              <p className="text-xl font-bold text-neutral-600">No items found</p>
+              <p className="text-sm text-neutral-500 mt-2">Try a different search or category</p>
+            </motion.div>
           )}
-        </div>
+          </div>
+        </motion.div>
       {/* END menu grid — cart sidebar follows inside the same flex row */}
 
       {/* Cart Sidebar */}
-      <div className="w-96 bg-gray-900 border-l border-gray-800 flex flex-col shadow-xl">
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.7 }}
+        className="w-80 bg-neutral-0 border-l-2 border-primary-200 flex flex-col shadow-2xl"
+      >
           {/* Cart Header */}
-          <div className="px-6 py-4 border-b border-gray-800 bg-gradient-to-r from-gray-800 to-gray-900">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Bell className="w-5 h-5 text-primary" />
+          <div className="px-6 py-5 border-b-2 border-primary-100 bg-gradient-to-br from-primary-50 to-neutral-0">
+            <div className="flex items-center justify-between mb-4">
+              <motion.h3 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 }}
+                className="text-xl font-black text-neutral-900 flex items-center gap-2"
+              >
+                <Bell className="w-6 h-6 text-primary-600" />
                 Current Order
-              </h3>
-              <span className="px-3 py-1 bg-primary text-white rounded-full text-sm font-bold">
+              </motion.h3>
+              <motion.span 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.85, type: "spring" }}
+                className="px-4 py-2 bg-primary-600 text-white rounded-full text-sm font-bold shadow-lg shadow-primary-500/30"
+              >
                 {currentOrder.items.length}
-              </span>
+              </motion.span>
             </div>
             {heldOrders.length > 0 && (
               <motion.button
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.02, backgroundColor: 'rgba(229, 57, 53, 0.05)' }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setShowHeldOrders(!showHeldOrders)}
-                className="w-full text-left px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm font-semibold text-white hover:bg-gray-700 transition-colors flex items-center justify-between"
+                className="w-full text-left px-4 py-3 bg-neutral-100 border-2 border-neutral-200 rounded-2xl text-sm font-bold text-neutral-700 hover:border-primary-300 transition-colors flex items-center justify-between"
               >
                 <span>{heldOrders.length} Held Order{heldOrders.length !== 1 ? 's' : ''}</span>
-                <BarChart3 className="w-4 h-4" />
+                <BarChart3 className="w-5 h-5 text-primary-600" />
               </motion.button>
             )}
 
-            <div className="mt-3 rounded-2xl border border-red-900/30 bg-gradient-to-r from-red-950 to-gray-900 p-3 text-xs text-red-100">
-              <div className="flex items-center justify-between">
-                <span className="font-black uppercase tracking-[0.25em] text-red-300">Journey</span>
-                <span className="rounded-full bg-red-500/20 px-2 py-1 font-bold text-red-200">
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9 }}
+              className="mt-4 rounded-2xl border-2 border-primary-200 bg-gradient-to-br from-primary-50 to-white p-4 text-xs"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-black uppercase tracking-[0.25em] text-primary-600">Journey</span>
+                <span className="rounded-full bg-primary-100 px-3 py-1 font-bold text-primary-700">
                   {currentOrder.items.length} item{currentOrder.items.length === 1 ? '' : 's'}
                 </span>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <div className="rounded-xl bg-white/5 px-2 py-2 text-center">
-                  <p className="font-bold text-white">1. Build</p>
-                  <p className="text-[10px] text-red-200">Add items and notes</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-white px-3 py-2 text-center border border-primary-100 shadow-sm">
+                  <p className="font-bold text-primary-700">1. Build</p>
+                  <p className="text-[10px] text-neutral-600 mt-1">Add items</p>
                 </div>
-                <div className="rounded-xl bg-white/5 px-2 py-2 text-center">
-                  <p className="font-bold text-white">2. Review</p>
-                  <p className="text-[10px] text-red-200">Check totals and voids</p>
+                <div className="rounded-xl bg-white px-3 py-2 text-center border border-primary-100 shadow-sm">
+                  <p className="font-bold text-primary-700">2. Review</p>
+                  <p className="text-[10px] text-neutral-600 mt-1">Check totals</p>
                 </div>
-                <div className="rounded-xl bg-white/5 px-2 py-2 text-center">
-                  <p className="font-bold text-white">3. Send</p>
-                  <p className="text-[10px] text-red-200">Kitchen or payment</p>
+                <div className="rounded-xl bg-white px-3 py-2 text-center border border-primary-100 shadow-sm">
+                  <p className="font-bold text-primary-700">3. Send</p>
+                  <p className="text-[10px] text-neutral-600 mt-1">Kitchen</p>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
 
           {/* Held Orders Panel */}
@@ -430,28 +511,28 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="border-b border-gray-700 bg-gray-800 p-4 space-y-2"
+                className="border-b-2 border-primary-100 bg-neutral-50 p-4 space-y-2"
               >
                 {heldOrders.map((held) => (
-                  <div key={held.id} className="bg-gray-900 rounded-lg p-3 border border-gray-700">
-                    <div className="flex items-start justify-between mb-2">
+                  <div key={held.id} className="bg-white rounded-2xl p-4 border-2 border-neutral-200 shadow-sm">
+                    <div className="flex items-start justify-between mb-3">
                       <div>
-                        <p className="font-semibold text-white text-sm">{held.customerName || 'Order'}</p>
-                        <p className="text-xs text-gray-400">{held.items.length} items</p>
+                        <p className="font-bold text-neutral-900 text-sm">{held.customerName || 'Order'}</p>
+                        <p className="text-xs text-neutral-600">{held.items.length} items</p>
                       </div>
                       <motion.button
                         whileTap={{ scale: 0.9 }}
                         onClick={() => removeHeldOrder(held.id)}
-                        className="p-1 hover:bg-red-900/50 rounded transition-colors"
+                        className="p-2 hover:bg-error-100 rounded-xl transition-colors"
                       >
-                        <X className="w-4 h-4 text-red-400" />
+                        <X className="w-4 h-4 text-error-600" />
                       </motion.button>
                     </div>
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => resumeOrder(held.id)}
-                      className="w-full py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-lg text-xs font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-2xl text-xs font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2 shadow-md"
                     >
                       <Play className="w-3 h-3" />
                       Resume
@@ -463,21 +544,21 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
           </AnimatePresence>
 
           {/* Cart Items */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-5 space-y-4">
             <AnimatePresence>
               {currentOrder.items.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-center py-12 text-gray-400"
+                  className="text-center py-16 text-neutral-400"
                 >
-                  <Bell className="w-12 h-12 mx-auto mb-3 text-red-300" />
-                  <p className="text-lg font-black">Cart is empty</p>
-                  <p className="mt-2 text-sm text-red-100/80">Start by picking a category, then tap items to build the order.</p>
-                  <div className="mt-4 flex flex-wrap justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-red-200">
-                    <span className="rounded-full bg-white/10 px-3 py-1">Fast add</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1">Notes</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1">Hold order</span>
+                  <Bell className="w-16 h-16 mx-auto mb-4 text-primary-300" />
+                  <p className="text-xl font-black text-neutral-600">Cart is empty</p>
+                  <p className="mt-2 text-sm text-neutral-500">Start by picking a category, then tap items to build the order.</p>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs font-bold uppercase tracking-wider text-primary-400">
+                    <span className="rounded-full bg-primary-50 px-4 py-2 border border-primary-200">Fast add</span>
+                    <span className="rounded-full bg-primary-50 px-4 py-2 border border-primary-200">Notes</span>
+                    <span className="rounded-full bg-primary-50 px-4 py-2 border border-primary-200">Hold order</span>
                   </div>
                 </motion.div>
               ) : (
@@ -487,48 +568,51 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    className="bg-gray-50 rounded-xl p-4 border border-gray-200"
+                    className="bg-white rounded-2xl p-5 border-2 border-neutral-200 shadow-sm hover:shadow-md transition-shadow"
                   >
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{item.name}</h4>
-                        <p className="text-sm text-gray-600">{formatCurrency(item.price)} each</p>
+                        <h4 className="font-bold text-neutral-900 text-lg">{item.name}</h4>
+                        <p className="text-sm text-neutral-600">{formatCurrency(item.price)} each</p>
                       </div>
                       <motion.button
+                        whileHover={{ scale: 1.1, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => {
                           setVoidItemId(item.id);
                           setVoidReason('');
                           setShowVoidModal(true);
                         }}
-                        className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                        className="p-2 hover:bg-error-100 rounded-xl transition-colors"
                       >
-                        <Trash2 className="w-4 h-4 text-red-600" />
+                        <Trash2 className="w-5 h-5 text-error-600" />
                       </motion.button>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 bg-white rounded-lg p-1 border border-gray-200">
+                      <div className="flex items-center gap-2 bg-neutral-100 rounded-2xl p-1.5 border border-neutral-200">
                         <motion.button
+                          whileHover={{ scale: 1.1, backgroundColor: 'rgba(229, 57, 53, 0.1)' }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                          className="w-8 h-8 rounded-md hover:bg-gray-100 flex items-center justify-center"
+                          className="w-9 h-9 rounded-xl hover:bg-neutral-50 flex items-center justify-center"
                         >
-                          <Minus className="w-4 h-4 text-gray-700" />
+                          <Minus className="w-4 h-4 text-neutral-700" />
                         </motion.button>
-                        <span className="w-8 text-center font-bold text-gray-900">{item.quantity}</span>
+                        <span className="w-10 text-center font-black text-neutral-900 text-lg">{item.quantity}</span>
                         <motion.button
+                          whileHover={{ scale: 1.1, backgroundColor: 'rgba(229, 57, 53, 0.1)' }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="w-8 h-8 rounded-md hover:bg-gray-100 flex items-center justify-center"
+                          className="w-9 h-9 rounded-xl hover:bg-neutral-50 flex items-center justify-center"
                         >
-                          <Plus className="w-4 h-4 text-gray-700" />
+                          <Plus className="w-4 h-4 text-neutral-700" />
                         </motion.button>
                       </div>
-                      <p className="text-lg font-black text-primary">{formatCurrency(item.price * item.quantity)}</p>
+                      <p className="text-xl font-black text-primary-600">{formatCurrency(item.price * item.quantity)}</p>
                     </div>
                     {item.notes && (
-                      <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-xs text-yellow-800 italic">"{item.notes}"</p>
+                      <div className="mt-3 p-3 bg-warning-50 border-2 border-warning-200 rounded-xl">
+                        <p className="text-xs text-warning-800 italic">"{item.notes}"</p>
                       </div>
                     )}
                     <button
@@ -536,7 +620,7 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
                         setShowItemNotes(item.id);
                         setNoteText(item.notes || '');
                       }}
-                      className="mt-2 text-xs text-primary hover:underline flex items-center gap-1"
+                      className="mt-3 text-xs text-primary-600 hover:underline flex items-center gap-1 font-semibold"
                     >
                       <Info className="w-3 h-3" />
                       {item.notes ? 'Edit Note' : 'Add Note'}
@@ -548,81 +632,80 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
           </div>
 
           {/* Cart Footer */}
-          <div className="border-t border-gray-800 p-6 space-y-4 bg-gray-900 flex-shrink-0">
+          <div className="border-t-2 border-primary-100 p-6 space-y-4 bg-neutral-0 flex-shrink-0">
             {/* Order Notes */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                <FileText className="w-3 h-3" />
+              <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+                <FileText className="w-3 h-3 text-primary-600" />
                 Order Notes
               </label>
               <textarea
                 value={currentOrder.notes || ''}
                 onChange={(e) => setOrderNotes(e.target.value)}
                 placeholder="Add special instructions for the kitchen..."
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white resize-none focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-gray-500"
+                className="w-full px-4 py-3 bg-neutral-50 border-2 border-neutral-200 rounded-xl text-sm text-neutral-900 resize-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 placeholder:text-neutral-400"
                 rows={2}
               />
             </div>
 
-            <div className="space-y-2 text-sm text-gray-300">
+            <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-400">Subtotal</span>
-                <span className="font-semibold text-white">{formatCurrency(subtotal)}</span>
+                <span className="text-neutral-600 font-medium">Subtotal</span>
+                <span className="font-bold text-neutral-900">{formatCurrency(subtotal)}</span>
               </div>
               {settings.taxRate > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Tax ({settings.taxRate}%)</span>
-                  <span className="font-semibold text-white">{formatCurrency(tax)}</span>
+                  <span className="text-neutral-600 font-medium">Tax ({settings.taxRate}%)</span>
+                  <span className="font-bold text-neutral-900">{formatCurrency(tax)}</span>
                 </div>
               )}
               {settings.serviceCharge > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Service ({settings.serviceCharge}%)</span>
-                  <span className="font-semibold text-white">{formatCurrency(serviceCharge)}</span>
+                  <span className="text-neutral-600 font-medium">Service ({settings.serviceCharge}%)</span>
+                  <span className="font-bold text-neutral-900">{formatCurrency(serviceCharge)}</span>
                 </div>
               )}
-              <div className="border-t border-gray-700 pt-2 flex justify-between">
-                <span className="text-lg font-bold text-white">Total</span>
-                <span className="text-2xl font-black text-primary">{formatCurrency(total)}</span>
+              <div className="border-t-2 border-neutral-200 pt-3 flex justify-between">
+                <span className="text-lg font-black text-neutral-900">Total</span>
+                <span className="text-3xl font-black text-primary-600">{formatCurrency(total)}</span>
               </div>
             </div>
 
             {/* Action Buttons */}
             <div className="space-y-3">
               <motion.button
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)' }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleHoldOrder}
                 disabled={currentOrder.items.length === 0}
-                className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl font-bold text-sm shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Pause className="w-5 h-5" />
                 Hold Order
               </motion.button>
               <motion.button
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)' }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onSendToKitchen}
                 disabled={currentOrder.items.length === 0}
-                className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-2xl font-bold text-sm shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <CookingPot className="w-5 h-5" />
                 Review & Send to Kitchen
               </motion.button>
               <motion.button
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)' }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onCheckout}
                 disabled={currentOrder.items.length === 0}
-                className="w-full py-3 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-2xl font-bold text-sm shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <CreditCard className="w-5 h-5" />
                 Checkout
               </motion.button>
             </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
       </div>
 
       {/* Void Item Modal */}
@@ -639,24 +722,56 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl"
+              className="bg-neutral-0 rounded-3xl p-8 max-w-md w-full shadow-2xl border-2 border-primary-200"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-                <Trash2 className="w-6 h-6 text-red-500" />
+              <h3 className="text-2xl font-black text-neutral-900 mb-2 flex items-center gap-3">
+                <Trash2 className="w-6 h-6 text-error-600" />
                 Void Item
               </h3>
-              <p className="text-gray-600 mb-6">
+              <p className="text-neutral-600 mb-6">
                 Please provide a reason for voiding this item.
               </p>
               <div className="space-y-3 mb-6">
-                <button onClick={() => setVoidReason('Customer Changed Mind')} className={`w-full py-3 px-4 rounded-xl text-left font-medium ${voidReason === 'Customer Changed Mind' ? 'bg-red-100 text-red-700 border-2 border-red-500' : 'bg-gray-100 text-gray-700'}`}>Customer Changed Mind</button>
-                <button onClick={() => setVoidReason('Kitchen Out of Stock')} className={`w-full py-3 px-4 rounded-xl text-left font-medium ${voidReason === 'Kitchen Out of Stock' ? 'bg-red-100 text-red-700 border-2 border-red-500' : 'bg-gray-100 text-gray-700'}`}>Kitchen Out of Stock</button>
-                <button onClick={() => setVoidReason('Order Mistake')} className={`w-full py-3 px-4 rounded-xl text-left font-medium ${voidReason === 'Order Mistake' ? 'bg-red-100 text-red-700 border-2 border-red-500' : 'bg-gray-100 text-gray-700'}`}>Order Mistake</button>
-                <input type="text" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} placeholder="Other reason..." className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl" />
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setVoidReason('Customer Changed Mind')} 
+                  className={`w-full py-3 px-4 rounded-2xl text-left font-bold transition-all ${voidReason === 'Customer Changed Mind' ? 'bg-error-100 text-error-700 border-2 border-error-500 shadow-md' : 'bg-neutral-100 text-neutral-700 border-2 border-neutral-200 hover:border-primary-300'}`}
+                >
+                  Customer Changed Mind
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setVoidReason('Kitchen Out of Stock')} 
+                  className={`w-full py-3 px-4 rounded-2xl text-left font-bold transition-all ${voidReason === 'Kitchen Out of Stock' ? 'bg-error-100 text-error-700 border-2 border-error-500 shadow-md' : 'bg-neutral-100 text-neutral-700 border-2 border-neutral-200 hover:border-primary-300'}`}
+                >
+                  Kitchen Out of Stock
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setVoidReason('Order Mistake')} 
+                  className={`w-full py-3 px-4 rounded-2xl text-left font-bold transition-all ${voidReason === 'Order Mistake' ? 'bg-error-100 text-error-700 border-2 border-error-500 shadow-md' : 'bg-neutral-100 text-neutral-700 border-2 border-neutral-200 hover:border-primary-300'}`}
+                >
+                  Order Mistake
+                </motion.button>
+                <input 
+                  type="text" 
+                  value={voidReason} 
+                  onChange={(e) => setVoidReason(e.target.value)} 
+                  placeholder="Other reason..." 
+                  className="w-full px-4 py-3 bg-neutral-50 border-2 border-neutral-200 rounded-2xl focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none" 
+                />
               </div>
               <div className="flex gap-3">
-                <button onClick={() => { setShowVoidModal(false); setVoidItemId(null); setVoidReason(''); }} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold">Cancel</button>
+                <button 
+                  onClick={() => { setShowVoidModal(false); setVoidItemId(null); setVoidReason(''); }} 
+                  className="flex-1 py-3 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors"
+                >
+                  Cancel
+                </button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -669,7 +784,6 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
                     const itemToVoid = currentOrder.items.find(item => item.id === voidItemId);
                     if (!itemToVoid) return;
 
-                    // Use proper void function with audit trail
                     voidItem(voidItemId!, voidReason, user?.fullName || 'Cashier');
                     
                     toast.success(`Item voided: ${voidReason}`);
@@ -678,7 +792,7 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
                     setVoidReason('');
                   }}
                   disabled={!voidReason.trim()}
-                  className="flex-1 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold disabled:opacity-50"
+                  className="flex-1 py-3 bg-gradient-to-r from-error-600 to-error-700 text-white rounded-2xl font-bold disabled:opacity-50 shadow-lg"
                 >
                   Confirm Void
                 </motion.button>
@@ -695,37 +809,39 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => setShowItemNotes(null)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              className="bg-neutral-0 rounded-3xl p-8 max-w-md w-full shadow-2xl border-2 border-primary-200"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Special Instructions</h3>
+              <h3 className="text-2xl font-black text-neutral-900 mb-4">Special Instructions</h3>
               <textarea
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 placeholder="E.g., No onions, extra cheese, well done..."
-                className="w-full h-32 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none resize-none text-base"
+                className="w-full h-32 px-4 py-3 border-2 border-neutral-200 rounded-2xl focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none resize-none text-base"
                 autoFocus
               />
-              <div className="flex gap-3 mt-4">
+              <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setShowItemNotes(null)}
-                  className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                  className="flex-1 py-3 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors"
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={() => handleSaveNote(showItemNotes)}
-                  className="flex-1 py-3 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => showItemNotes && handleSaveNote(showItemNotes)}
+                  className="flex-1 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-2xl font-bold hover:shadow-lg transition-all shadow-md"
                 >
                   Save
-                </button>
+                </motion.button>
               </div>
             </motion.div>
           </motion.div>

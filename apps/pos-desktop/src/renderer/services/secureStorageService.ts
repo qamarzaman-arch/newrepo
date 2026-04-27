@@ -18,11 +18,13 @@ class SecureStorageService {
 
   /**
    * Store authentication token securely
-   * Throws error if secure storage fails - no fallback to localStorage
+   * Falls back to localStorage for browser dev mode
    */
   async setToken(token: string): Promise<void> {
     if (!this.isElectron) {
-      throw new Error('Secure storage requires Electron environment');
+      // Fallback to localStorage for browser dev mode
+      localStorage.setItem(TOKEN_KEY, token);
+      return;
     }
     try {
       await (window as any).electronAPI.secureSetItem(TOKEN_KEY, token);
@@ -38,7 +40,8 @@ class SecureStorageService {
    */
   async getToken(): Promise<string | null> {
     if (!this.isElectron) {
-      return null;
+      // Fallback to localStorage for browser dev mode
+      return localStorage.getItem(TOKEN_KEY);
     }
     try {
       return await (window as any).electronAPI.secureGetItem(TOKEN_KEY);
@@ -53,6 +56,8 @@ class SecureStorageService {
    */
   async removeToken(): Promise<void> {
     if (!this.isElectron) {
+      // Fallback to localStorage for browser dev mode
+      localStorage.removeItem(TOKEN_KEY);
       return;
     }
     try {
@@ -65,11 +70,13 @@ class SecureStorageService {
 
   /**
    * Store user data securely
-   * Throws error if secure storage fails - no fallback
+   * Falls back to localStorage for browser dev mode
    */
   async setUser(user: any): Promise<void> {
     if (!this.isElectron) {
-      throw new Error('Secure storage requires Electron environment');
+      // Fallback to localStorage for browser dev mode
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      return;
     }
     const userJson = JSON.stringify(user);
     try {
@@ -86,6 +93,11 @@ class SecureStorageService {
    */
   async getUser(): Promise<any | null> {
     if (!this.isElectron) {
+      // Fallback to localStorage for browser dev mode
+      const userJson = localStorage.getItem(USER_KEY);
+      if (userJson) {
+        return JSON.parse(userJson);
+      }
       return null;
     }
     try {
@@ -105,6 +117,8 @@ class SecureStorageService {
    */
   async removeUser(): Promise<void> {
     if (!this.isElectron) {
+      // Fallback to localStorage for browser dev mode
+      localStorage.removeItem(USER_KEY);
       return;
     }
     try {

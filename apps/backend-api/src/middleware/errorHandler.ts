@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { ZodError } from 'zod';
 import { logger } from '../utils/logger';
 
 export class AppError extends Error {
@@ -14,23 +15,38 @@ export class AppError extends Error {
   }
 }
 
+interface PrismaError extends Error {
+  code?: string;
+  meta?: {
+    target?: string[];
+  };
+}
+
 export function errorHandler(
-  err: any,
+  err: Error | AppError | ZodError | PrismaError,
   req: Request,
   res: Response,
   next: NextFunction
 ) {
-  let statusCode = err.statusCode || 500;
-  let message = err.message || 'Internal Server Error';
+  let statusCode = 500;
+  let message = 'Internal Server Error';
+
+  // AppError handling
+  if (err instanceof AppError) {
+    statusCode = err.statusCode;
+    message = err.message;
+  } else {
+    message = err.message || 'Internal Server Error';
+  }
 
   // Prisma validation errors
-  if (err.code === 'P2002') {
+  if ((err as PrismaError).code === 'P2002') {
     statusCode = 409;
-    message = `Duplicate field value: ${err.meta?.target}`;
+    message = `Duplicate field value: ${(err as PrismaError).meta?.target}`;
   }
 
   // Prisma record not found
-  if (err.code === 'P2025') {
+  if ((err as PrismaError).code === 'P2025') {
     statusCode = 404;
     message = 'Record not found';
   }
@@ -47,9 +63,9 @@ export function errorHandler(
   }
 
   // Validation errors (Zod)
-  if (err.issues) {
+  if (err instanceof ZodError) {
     statusCode = 400;
-    message = 'Validation failed: ' + err.issues.map((i: any) => `${i.path.join('.')}: ${i.message}`).join(', ');
+    message = 'Validation failed: ' + err.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(', ');
   }
 
   logger.error(`Error [${statusCode}]: ${message}`, {
@@ -62,7 +78,7 @@ export function errorHandler(
     success: false,
     error: {
       message,
-      ...(err.issues && { issues: err.issues }),
+      ...(err instanceof ZodError && { issues: err.issues }),
       ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
     },
   });

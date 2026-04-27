@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Truck, MapPin, Clock, DollarSign, Phone, Mail,
   User, Navigation, Package, TrendingUp, Plus,
-  Search, Filter, CheckCircle, MoreVertical, X
+  Search, Filter, CheckCircle, MoreVertical, X, Star, Edit, Trash2, Eye, Calendar
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
 import { deliveryService, CreateDeliveryData } from '../services/deliveryService';
 import { staffService } from '../services/staffService';
 import toast from 'react-hot-toast';
 
 const DeliveryManagementScreen: React.FC = () => {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'deliveries' | 'riders' | 'zones' | 'analytics'>('deliveries');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -25,6 +26,20 @@ const DeliveryManagementScreen: React.FC = () => {
     address: '',
   });
   const { formatCurrency } = useCurrencyFormatter();
+
+  // Modals state
+  const [showRiderModal, setShowRiderModal] = useState(false);
+  const [selectedRider, setSelectedRider] = useState<any>(null);
+  const [showZoneEditModal, setShowZoneEditModal] = useState(false);
+  const [selectedZone, setSelectedZone] = useState<any>(null);
+  const [zoneFormData, setZoneFormData] = useState({
+    name: '',
+    radius: '',
+    fee: '',
+    color: 'bg-blue-500',
+    isActive: true,
+  });
+  const [showFilterModal, setShowFilterModal] = useState(false);
 
   // Load deliveries when tab changes to deliveries or on mount
   useEffect(() => {
@@ -141,6 +156,15 @@ const DeliveryManagementScreen: React.FC = () => {
     return Math.round((onTimeCount / deliveredWithTimes.length) * 100);
   };
   
+  // Calculate dynamic fees and tips from delivery data
+  const calculateFeesAndTips = () => {
+    const totalFees = displayDeliveries.reduce((sum: number, d: any) => sum + (d.deliveryFee || 0), 0);
+    const totalTips = displayDeliveries.reduce((sum: number, d: any) => sum + (d.tipAmount || 0), 0);
+    return { totalFees, totalTips };
+  };
+
+  const { totalFees, totalTips } = calculateFeesAndTips();
+
   const analytics = {
     totalDeliveries: displayDeliveries.length,
     avgDeliveryTime: calculateAvgDeliveryTime(),
@@ -148,6 +172,8 @@ const DeliveryManagementScreen: React.FC = () => {
     totalRevenue: displayDeliveries.reduce((sum: number, d: any) => sum + (d.orderTotal || 0), 0),
     avgOrderValue: displayDeliveries.length > 0 ? displayDeliveries.reduce((sum: number, d: any) => sum + (d.orderTotal || 0), 0) / displayDeliveries.length : 0,
     activeRiders: riders.filter((r: any) => r.isActive).length,
+    totalFees,
+    totalTips,
   };
 
   const stats = {
@@ -158,6 +184,54 @@ const DeliveryManagementScreen: React.FC = () => {
   };
 
   const zones = zoneData || [];
+
+  // Handlers
+  const handleViewRider = (rider: any) => {
+    setSelectedRider(rider);
+    setShowRiderModal(true);
+  };
+
+  const handleEditZone = (zone: any) => {
+    setSelectedZone(zone);
+    setZoneFormData({
+      name: zone.name,
+      radius: zone.radius,
+      fee: zone.fee?.toString() || '0',
+      color: zone.color || 'bg-blue-500',
+      isActive: zone.isActive !== false,
+    });
+    setShowZoneEditModal(true);
+  };
+
+  const handleUpdateZone = async () => {
+    if (!selectedZone) return;
+    try {
+      await deliveryService.updateZone(selectedZone.id, {
+        name: zoneFormData.name,
+        radius: zoneFormData.radius,
+        fee: parseFloat(zoneFormData.fee) || 0,
+        color: zoneFormData.color,
+        isActive: zoneFormData.isActive,
+      });
+      toast.success('Zone updated successfully');
+      setShowZoneEditModal(false);
+      setSelectedZone(null);
+      queryClient.invalidateQueries({ queryKey: ['delivery-zones'] });
+    } catch (error) {
+      toast.error('Failed to update zone');
+    }
+  };
+
+  const handleDeleteZone = async (zoneId: string) => {
+    if (!window.confirm('Are you sure you want to delete this zone?')) return;
+    try {
+      await deliveryService.deleteZone(zoneId);
+      toast.success('Zone deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['delivery-zones'] });
+    } catch (error) {
+      toast.error('Failed to delete zone');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -302,7 +376,10 @@ const DeliveryManagementScreen: React.FC = () => {
             <option value="DELIVERED">Delivered</option>
           </select>
 
-          <button className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-primary transition-colors">
+          <button 
+            onClick={() => setShowFilterModal(true)}
+            className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-primary transition-colors"
+          >
             <Filter className="w-5 h-5 text-gray-600" />
           </button>
         </div>
@@ -449,11 +526,11 @@ const DeliveryManagementScreen: React.FC = () => {
               </div>
 
               <div className="flex gap-2">
-                <button className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
+                <button 
+                  onClick={() => handleViewRider(rider)}
+                  className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors"
+                >
                   View Details
-                </button>
-                <button className="p-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
-                  <MoreVertical className="w-4 h-4" />
                 </button>
               </div>
             </motion.div>
@@ -494,11 +571,17 @@ const DeliveryManagementScreen: React.FC = () => {
               </div>
 
               <div className="flex gap-2">
-                <button className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
+                <button 
+                  onClick={() => handleEditZone(zone)}
+                  className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors"
+                >
                   Edit Zone
                 </button>
-                <button className="p-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
-                  <MoreVertical className="w-4 h-4" />
+                <button 
+                  onClick={() => handleDeleteZone(zone.id)}
+                  className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </motion.div>
@@ -559,11 +642,11 @@ const DeliveryManagementScreen: React.FC = () => {
               </div>
               <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
                 <span className="text-gray-600">Delivery Fees Collected</span>
-                <span className="text-2xl font-bold text-blue-600">$147.50</span>
+                <span className="text-2xl font-bold text-blue-600">{formatCurrency(analytics.totalFees)}</span>
               </div>
               <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
                 <span className="text-gray-600">Tips Received</span>
-                <span className="text-2xl font-bold text-purple-600">$89.25</span>
+                <span className="text-2xl font-bold text-purple-600">{formatCurrency(analytics.totalTips)}</span>
               </div>
             </div>
           </motion.div>
@@ -602,6 +685,225 @@ const DeliveryManagementScreen: React.FC = () => {
               <button onClick={handleCreateDelivery} className="flex-1 py-3 gradient-btn rounded-xl font-semibold">Create Delivery</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Rider Details Modal */}
+      {showRiderModal && selectedRider && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Rider Details</h2>
+              <button onClick={() => setShowRiderModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 pb-6 border-b">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary-container/20 flex items-center justify-center">
+                  <User className="w-10 h-10 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">{selectedRider.name}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                      selectedRider.status === 'AVAILABLE' ? 'bg-green-100 text-green-700' :
+                      selectedRider.status === 'ON_DELIVERY' ? 'bg-blue-100 text-blue-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {selectedRider.status?.replace('_', ' ') || 'Unknown'}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                      <span className="font-bold text-gray-900">{selectedRider.rating || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                  <Phone className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500">Phone</p>
+                    <p className="font-semibold text-gray-900">{selectedRider.phone || 'Not provided'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                  <Mail className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500">Email</p>
+                    <p className="font-semibold text-gray-900">{selectedRider.email || 'Not provided'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                  <Package className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500">Total Deliveries</p>
+                    <p className="font-semibold text-gray-900">{selectedRider.totalDeliveries || 0}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                  <Truck className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500">Role</p>
+                    <p className="font-semibold text-gray-900">{selectedRider.role || 'Rider'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {selectedRider.currentDelivery && (
+                <div className="p-4 bg-blue-50 rounded-xl">
+                  <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                    <Navigation className="w-4 h-4" />
+                    Current Delivery
+                  </h4>
+                  <p className="text-blue-700">{selectedRider.currentDelivery}</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Zone Edit Modal */}
+      {showZoneEditModal && selectedZone && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-lg mx-4"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Edit Zone</h2>
+              <button onClick={() => setShowZoneEditModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Zone Name *</label>
+                <input 
+                  type="text" 
+                  value={zoneFormData.name} 
+                  onChange={(e) => setZoneFormData({ ...zoneFormData, name: e.target.value })} 
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Radius</label>
+                <input 
+                  type="text" 
+                  value={zoneFormData.radius} 
+                  onChange={(e) => setZoneFormData({ ...zoneFormData, radius: e.target.value })} 
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl" 
+                  placeholder="e.g., 5km"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Delivery Fee ($)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  value={zoneFormData.fee} 
+                  onChange={(e) => setZoneFormData({ ...zoneFormData, fee: e.target.value })} 
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Color Theme</label>
+                <select 
+                  value={zoneFormData.color} 
+                  onChange={(e) => setZoneFormData({ ...zoneFormData, color: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl"
+                >
+                  <option value="bg-blue-500">Blue</option>
+                  <option value="bg-green-500">Green</option>
+                  <option value="bg-purple-500">Purple</option>
+                  <option value="bg-orange-500">Orange</option>
+                  <option value="bg-red-500">Red</option>
+                  <option value="bg-pink-500">Pink</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="zoneActive" 
+                  checked={zoneFormData.isActive} 
+                  onChange={(e) => setZoneFormData({ ...zoneFormData, isActive: e.target.checked })} 
+                  className="w-4 h-4" 
+                />
+                <label htmlFor="zoneActive" className="text-sm text-gray-700">Active</label>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowZoneEditModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleUpdateZone} className="flex-1 py-3 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Update Zone</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Filter Modal */}
+      {showFilterModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900">Filter Deliveries</h2>
+              <button onClick={() => setShowFilterModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+                <div className="space-y-2">
+                  {['all', 'PENDING', 'PREPARING', 'IN_TRANSIT', 'DELIVERED'].map((status) => (
+                    <label key={status} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="statusFilter" 
+                        value={status}
+                        checked={statusFilter === status}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="w-4 h-4"
+                      />
+                      <span className="capitalize">{status.replace('_', ' ').toLowerCase()}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Date Range</label>
+                <select className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                  <option value="today">Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="all">All Time</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowFilterModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button 
+                onClick={() => setShowFilterModal(false)} 
+                className="flex-1 py-3 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </div>

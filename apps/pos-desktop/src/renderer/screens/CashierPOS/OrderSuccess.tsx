@@ -24,9 +24,10 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder, change = 0 }) =
   const [isPrinting, setIsPrinting] = useState(false);
 
   // Use real order ID from store (set by KitchenDispatchConfirmation or CheckoutPayment)
+  // Fallback to timestamp-based number for uniqueness if no order ID exists
   const orderNumber = currentOrder.completedOrderId
     ? `#${currentOrder.completedOrderId.slice(-4)}`
-    : `#${Math.floor(1000 + Math.random() * 9000)}`;
+    : `#${Date.now().toString().slice(-4)}`;
   const timestamp = new Date().toLocaleString();
 
   // Snapshot receipt data before any clearOrder happens
@@ -191,7 +192,7 @@ const OrderSuccess: React.FC<OrderSuccessProps> = ({ onNewOrder, change = 0 }) =
                      receiptData.orderType === 'PICKUP' ? 'Pickup' :
                      receiptData.orderType === 'TAKEAWAY' ? 'Takeaway' :
                      receiptData.orderType === 'DELIVERY' ? 'Delivery' :
-                     receiptData.orderType === 'PICKUP' ? 'Pickup' :
+                     receiptData.orderType === 'RESERVATION' ? 'Reservation' :
                      receiptData.orderType}
                   </span>
                 </div>

@@ -5,6 +5,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 import { paymentLimiter } from '../middleware/rateLimiter';
+import { paymentGatewayService } from '../services/paymentGateway.service';
 
 const router = Router();
 
@@ -45,43 +46,31 @@ router.post('/validate-card', authenticate, paymentLimiter, async (req: AuthRequ
       throw new AppError('Invalid card last four digits format', 400);
     }
 
-    // TODO: Integrate with actual payment gateway
-    // Example integration points:
-    // 1. Stripe: stripe.paymentIntents.create()
-    // 2. Square: squareClient.paymentsApi.createPayment()
-    // 3. PayPal: paypal.payment.create()
-
-    // Improved simulation with deterministic transaction ID
-    const simulatePaymentGateway = async () => {
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Generate deterministic transaction ID based on timestamp and user
-      const timestamp = Date.now();
-      const transactionId = `TXN-${timestamp}-${req.user?.userId?.slice(-4).toUpperCase()}`;
-
-      return {
-        transactionId,
-        status: 'approved',
-        amount,
-        timestamp: new Date().toISOString(),
+    // Create Stripe Payment Intent
+    const paymentIntentData = {
+      amount: Math.round(amount * 100), // Convert to cents
+      currency: 'usd',
+      orderId: `manual-${Date.now()}`,
+      metadata: {
+        userId: req.user?.userId,
+        username: req.user?.username,
         cardLastFour: cardDetails?.lastFour,
-      };
+      },
     };
 
-    const paymentResult = await simulatePaymentGateway();
+    const stripeResult = await paymentGatewayService.createStripePaymentIntent(paymentIntentData);
 
     // Log successful validation
-    logger.info(`Card payment validated successfully: ${sanitize(paymentResult.transactionId)}`);
+    logger.info(`Stripe PaymentIntent created: ${sanitize(stripeResult.paymentIntentId)}`);
 
     await prisma.paymentValidation.create({
       data: {
-        transactionId: paymentResult.transactionId,
-        amount,
+        transactionId: stripeResult.paymentIntentId,
+        amount: amount,
         method: 'CARD',
-        status: 'APPROVED',
+        status: stripeResult.status.toUpperCase(),
         cardLastFour: cardDetails?.lastFour,
-        gatewayResponse: JSON.stringify(paymentResult),
+        gatewayResponse: JSON.stringify(stripeResult),
       },
     }).catch((err) => {
       logger.warn('Could not store payment validation record:', err.message);
@@ -90,9 +79,10 @@ router.post('/validate-card', authenticate, paymentLimiter, async (req: AuthRequ
     res.json({
       success: true,
       data: {
-        transactionId: paymentResult.transactionId,
-        status: paymentResult.status,
-        amount: paymentResult.amount,
+        transactionId: stripeResult.paymentIntentId,
+        status: stripeResult.status,
+        amount: amount,
+        clientSecret: stripeResult.clientSecret,
       },
     });
   } catch (error: any) {

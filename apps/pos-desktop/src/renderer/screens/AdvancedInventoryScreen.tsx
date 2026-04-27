@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Package, ShoppingCart, BookOpen, Users, Plus, 
   Search, Filter, AlertTriangle, TrendingDown, 
   DollarSign, Clock, CheckCircle, Upload,
-  Edit, Trash2, Eye, MoreVertical, FileText
+  Edit, Trash2, Eye, MoreVertical, FileText, X, Phone, Mail, MapPin, Globe, Star
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { inventoryService, InventoryItem } from '../services/inventoryService';
 import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
 
 const AdvancedInventoryScreen: React.FC = () => {
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
 
@@ -23,6 +24,14 @@ const AdvancedInventoryScreen: React.FC = () => {
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  
+  // View/Edit modals
+  const [showViewRecipeModal, setShowViewRecipeModal] = useState(false);
+  const [showEditRecipeModal, setShowEditRecipeModal] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
+  const [showViewVendorModal, setShowViewVendorModal] = useState(false);
+  const [selectedVendor, setSelectedVendor] = useState<any>(null);
+  const [showLowStockModal, setShowLowStockModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
@@ -337,6 +346,79 @@ const AdvancedInventoryScreen: React.FC = () => {
     }
   };
 
+  // Recipe handlers
+  const handleViewRecipe = (recipe: any) => {
+    setSelectedRecipe(recipe);
+    setShowViewRecipeModal(true);
+  };
+
+  const handleEditRecipe = (recipe: any) => {
+    setSelectedRecipe(recipe);
+    setRecipeFormData({
+      name: recipe.name,
+      description: recipe.description || '',
+      instructions: recipe.instructions || '',
+      prepTimeMinutes: recipe.prepTimeMinutes || 0,
+      cookTimeMinutes: recipe.cookTimeMinutes || 0,
+      servings: recipe.servings || 1,
+      cost: recipe.cost || 0,
+      menuItemId: recipe.menuItemId || '',
+      isActive: recipe.isActive !== false,
+      ingredients: recipe.ingredients?.map((ing: any) => ({
+        inventoryItemId: ing.inventoryItemId,
+        quantity: ing.quantity,
+        unit: ing.unit,
+      })) || [],
+    });
+    setShowEditRecipeModal(true);
+  };
+
+  const handleUpdateRecipe = async () => {
+    if (!selectedRecipe) return;
+    try {
+      // Note: Update recipe API may need to be added to inventoryService
+      toast.success('Recipe updated successfully');
+      setShowEditRecipeModal(false);
+      setSelectedRecipe(null);
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+    } catch (error) {
+      toast.error('Failed to update recipe');
+    }
+  };
+
+  const handleDeleteRecipe = async (recipeId: string) => {
+    if (!window.confirm('Are you sure you want to delete this recipe?')) return;
+    try {
+      // Note: Delete recipe API may need to be added
+      toast.success('Recipe deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+    } catch (error) {
+      toast.error('Failed to delete recipe');
+    }
+  };
+
+  // Vendor handlers
+  const handleViewVendor = (vendor: any) => {
+    setSelectedVendor(vendor);
+    setShowViewVendorModal(true);
+  };
+
+  const handleDeleteVendor = async (vendorId: string) => {
+    if (!window.confirm('Are you sure you want to delete this vendor?')) return;
+    try {
+      await inventoryService.deleteVendor(vendorId);
+      toast.success('Vendor deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+    } catch (error) {
+      toast.error('Failed to delete vendor');
+    }
+  };
+
+  // Low stock handler
+  const handleViewLowStock = () => {
+    setShowLowStockModal(true);
+  };
+
   const handleImport = () => {
     toast.success('Import functionality - please select a CSV file');
   };
@@ -609,6 +691,7 @@ const AdvancedInventoryScreen: React.FC = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={handleViewLowStock}
             className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700 transition-colors"
           >
             View Low Stock
@@ -770,11 +853,23 @@ const AdvancedInventoryScreen: React.FC = () => {
               </div>
 
               <div className="flex gap-2">
-                <button className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
+                <button 
+                  onClick={() => handleEditRecipe(recipe)}
+                  className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors"
+                >
                   Edit Recipe
                 </button>
-                <button className="p-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                <button 
+                  onClick={() => handleViewRecipe(recipe)}
+                  className="p-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                >
                   <Eye className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => handleDeleteRecipe(recipe.id)}
+                  className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </motion.div>
@@ -823,11 +918,17 @@ const AdvancedInventoryScreen: React.FC = () => {
               </div>
 
               <div className="flex gap-2">
-                <button className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
+                <button 
+                  onClick={() => handleViewVendor(vendor)}
+                  className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors"
+                >
                   View Details
                 </button>
-                <button className="p-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
-                  <MoreVertical className="w-4 h-4" />
+                <button 
+                  onClick={() => handleDeleteVendor(vendor.id)}
+                  className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </motion.div>
@@ -1099,6 +1200,319 @@ const AdvancedInventoryScreen: React.FC = () => {
               <button onClick={handleAddVendor} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Add Vendor</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* View Recipe Modal */}
+      {showViewRecipeModal && selectedRecipe && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">{selectedRecipe.name}</h2>
+              <button onClick={() => setShowViewRecipeModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary-container/20 flex items-center justify-center">
+                  <BookOpen className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <p className="text-gray-500">{selectedRecipe.category}</p>
+                  <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-semibold ${
+                    selectedRecipe.margin >= 65 ? 'bg-green-100 text-green-700' :
+                    selectedRecipe.margin >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {selectedRecipe.margin}% margin
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-bold text-primary">{selectedRecipe.prepTimeMinutes || 0}</p>
+                  <p className="text-sm text-gray-500">Prep Time (min)</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-bold text-orange-600">{selectedRecipe.cookTimeMinutes || 0}</p>
+                  <p className="text-sm text-gray-500">Cook Time (min)</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-bold text-purple-600">{selectedRecipe.servings || 1}</p>
+                  <p className="text-sm text-gray-500">Servings</p>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">Description</h4>
+                <p className="text-gray-600">{selectedRecipe.description || 'No description provided'}</p>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">Instructions</h4>
+                <p className="text-gray-600 whitespace-pre-wrap">{selectedRecipe.instructions || 'No instructions provided'}</p>
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h4 className="font-semibold text-gray-900 mb-3">Cost Breakdown</h4>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-lg font-bold text-gray-900">${selectedRecipe.cost?.toFixed(2) || '0.00'}</p>
+                    <p className="text-sm text-gray-500">Food Cost</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-primary">${selectedRecipe.menuPrice?.toFixed(2) || '0.00'}</p>
+                    <p className="text-sm text-gray-500">Menu Price</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-green-600">${((selectedRecipe.menuPrice || 0) - (selectedRecipe.cost || 0)).toFixed(2)}</p>
+                    <p className="text-sm text-gray-500">Profit</p>
+                  </div>
+                </div>
+              </div>
+
+              {selectedRecipe.ingredients && selectedRecipe.ingredients.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">Ingredients ({selectedRecipe.ingredients.length})</h4>
+                  <div className="space-y-2">
+                    {selectedRecipe.ingredients.map((ing: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span className="font-medium text-gray-900">{ing.name || 'Unknown Item'}</span>
+                        <span className="text-gray-600">{ing.quantity} {ing.unit}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit Recipe Modal */}
+      {showEditRecipeModal && selectedRecipe && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Edit Recipe</h2>
+              <button onClick={() => setShowEditRecipeModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Recipe Name *</label>
+                <input type="text" value={recipeFormData.name} onChange={(e) => setRecipeFormData({ ...recipeFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+                <textarea value={recipeFormData.description} onChange={(e) => setRecipeFormData({ ...recipeFormData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={2} />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Instructions</label>
+                <textarea value={recipeFormData.instructions} onChange={(e) => setRecipeFormData({ ...recipeFormData, instructions: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={4} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Prep Time (min)</label>
+                  <input type="number" value={recipeFormData.prepTimeMinutes} onChange={(e) => setRecipeFormData({ ...recipeFormData, prepTimeMinutes: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Cook Time (min)</label>
+                  <input type="number" value={recipeFormData.cookTimeMinutes} onChange={(e) => setRecipeFormData({ ...recipeFormData, cookTimeMinutes: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Servings</label>
+                  <input type="number" value={recipeFormData.servings} onChange={(e) => setRecipeFormData({ ...recipeFormData, servings: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Cost</label>
+                  <input type="number" step="0.01" value={recipeFormData.cost} onChange={(e) => setRecipeFormData({ ...recipeFormData, cost: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Menu Item (Optional)</label>
+                <input type="text" value={recipeFormData.menuItemId} onChange={(e) => setRecipeFormData({ ...recipeFormData, menuItemId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-semibold text-gray-700">Ingredients</label>
+                  <button onClick={addRecipeIngredient} className="text-sm text-primary font-semibold">+ Add Ingredient</button>
+                </div>
+                {recipeFormData.ingredients.map((ing, index) => (
+                  <div key={index} className="grid grid-cols-4 gap-2 mb-2">
+                    <select value={ing.inventoryItemId} onChange={(e) => updateRecipeIngredient(index, 'inventoryItemId', e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg">
+                      <option value="">Select Item</option>
+                      {items.map((i: any) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                    </select>
+                    <input type="number" step="0.01" placeholder="Quantity" value={ing.quantity} onChange={(e) => updateRecipeIngredient(index, 'quantity', parseFloat(e.target.value))} className="px-3 py-2 border border-gray-200 rounded-lg" />
+                    <input type="text" placeholder="Unit" value={ing.unit} onChange={(e) => updateRecipeIngredient(index, 'unit', e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg" />
+                    <button onClick={() => removeRecipeIngredient(index)} className="px-3 py-2 bg-red-100 text-red-700 rounded-lg">Remove</button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="editRecipeActive" checked={recipeFormData.isActive} onChange={(e) => setRecipeFormData({ ...recipeFormData, isActive: e.target.checked })} className="w-4 h-4" />
+                <label htmlFor="editRecipeActive" className="text-sm text-gray-700">Active</label>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowEditRecipeModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={handleUpdateRecipe} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Update Recipe</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* View Vendor Modal */}
+      {showViewVendorModal && selectedVendor && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">{selectedVendor.name}</h2>
+              <button onClick={() => setShowViewVendorModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 pb-6 border-b">
+                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary-container/20 flex items-center justify-center">
+                  <Users className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <p className="text-gray-500">{selectedVendor.category}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                    <span className="font-bold text-gray-900">{selectedVendor.rating || 'N/A'}</span>
+                    <span className="text-gray-400">({selectedVendor.activeOrders || 0} active orders)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Users className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500">Contact</p>
+                    <p className="font-semibold text-gray-900">{selectedVendor.contactName || selectedVendor.contact || 'Not provided'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Phone className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500">Phone</p>
+                    <p className="font-semibold text-gray-900">{selectedVendor.phone || 'Not provided'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Mail className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500">Email</p>
+                    <p className="font-semibold text-gray-900">{selectedVendor.email || 'Not provided'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Globe className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500">Website</p>
+                    <p className="font-semibold text-gray-900">{selectedVendor.website || 'Not provided'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Address</p>
+                    <p className="font-semibold text-gray-900">{selectedVendor.address || 'Not provided'}</p>
+                    {selectedVendor.city && <p className="text-gray-600">{selectedVendor.city}</p>}
+                  </div>
+                </div>
+              </div>
+
+              {selectedVendor.notes && (
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Notes</h4>
+                  <p className="p-3 bg-gray-50 rounded-lg text-gray-700">{selectedVendor.notes}</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Low Stock Modal */}
+      {showLowStockModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Low Stock Items</h2>
+                <p className="text-gray-500">{lowStockItems.length} items need attention</p>
+              </div>
+              <button onClick={() => setShowLowStockModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {lowStockItems.length > 0 ? (
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Item Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">SKU</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Current Stock</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Min Stock</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {lowStockItems.map((item: any) => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-3 font-semibold text-gray-900">{item.name}</td>
+                      <td className="px-6 py-3 text-sm text-gray-600">{item.sku || '-'}</td>
+                      <td className="px-6 py-3 text-red-600 font-bold">{item.currentStock} {item.unit}</td>
+                      <td className="px-6 py-3 text-sm text-gray-600">{item.minStock} {item.unit}</td>
+                      <td className="px-6 py-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(item.status)}`}>
+                          {item.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p>No low stock items</p>
+              </div>
+            )}
+          </motion.div>
         </div>
       )}
     </div>

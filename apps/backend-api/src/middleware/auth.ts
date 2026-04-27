@@ -11,6 +11,12 @@ export interface AuthRequest extends Request {
   };
 }
 
+export interface JwtPayload {
+  userId: string;
+  username: string;
+  role: string;
+}
+
 export async function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -39,10 +45,7 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
     }
 
     // Verify JWT
-    const decoded: any = jwt.verify(
-      token,
-      process.env.JWT_SECRET as string
-    );
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload;
 
     req.user = {
       userId: decoded.userId,

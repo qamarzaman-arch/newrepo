@@ -988,3 +988,17 @@ model PurchaseOrderItem {
   @@index([purchaseOrderId])
   @@index([inventoryItemId])
 }
+
+// Feature Access Control
+model FeatureAccess {
+  id        String   @id @default(uuid())
+  feature   String   // Feature identifier (e.g., 'orders', 'inventory', 'reports')
+  role      String   // Role name (e.g., 'ADMIN', 'MANAGER', 'STAFF', 'RIDER')
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([feature, role])
+  @@index([feature])
+  @@index([role])
+}

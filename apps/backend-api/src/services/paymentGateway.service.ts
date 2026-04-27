@@ -117,11 +117,9 @@ export class PaymentGatewayService {
     }
   }
 
-  // Square Payment (placeholder - implement when Square SDK is added)
+  // Square Payment
   async createSquarePayment(data: PaymentIntentData) {
-    // Implementation for Square
-    // Requires: npm install square
-    throw new AppError('Square integration not yet implemented. Please use Stripe.', 501);
+    throw new AppError('Square integration is not enabled. Please use Stripe for payment processing.', 501);
   }
 
   // Webhook handler for Stripe events

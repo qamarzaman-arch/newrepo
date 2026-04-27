@@ -28,6 +28,7 @@ import staffScheduleRoutes from './staff-schedule.routes';
 import riderRoutes from './rider.routes';
 import commissionRoutes from './commission.routes';
 import tableLockRoutes from './table-lock.routes';
+import featureAccessRoutes from './feature-access.routes';
 
 export function setupRoutes(app: Application) {
   const apiPrefix = '/api/v1';
@@ -62,6 +63,7 @@ export function setupRoutes(app: Application) {
   app.use(`${apiPrefix}/riders`, riderRoutes);
   app.use(`${apiPrefix}/commissions`, commissionRoutes);
   app.use(`${apiPrefix}/table-locks`, tableLockRoutes);
+  app.use(`${apiPrefix}/feature-access`, featureAccessRoutes);
 
   // 404 handler
   app.use((_req, res) => {

@@ -6,14 +6,14 @@ import {
   ArrowLeft, Printer, Download, CheckCircle,
   CreditCard, Shield, AlertTriangle
 } from 'lucide-react';
-import { useAuthStore } from '@/stores/authStore';
-import { staffService } from '@/services/staffService';
-import { reportService } from '@/services/reportService';
-import { validationService } from '@/services/validationService';
-import { cashDrawerService, CashDrawer } from '@/services/cashDrawerService';
-import { logAction } from '@/services/auditLogService';
+import { useAuthStore } from '../../stores/authStore';
+import { staffService } from '../../services/staffService';
+import { reportService } from '../../services/reportService';
+import { validationService } from '../../services/validationService';
+import { cashDrawerService, CashDrawer } from '../../services/cashDrawerService';
+import { logAction } from '../../services/auditLogService';
 import { useQuery } from '@tanstack/react-query';
-import { useCurrencyFormatter } from '@/hooks/useCurrency';
+import { useCurrencyFormatter } from '../../hooks/useCurrency';
 import toast from 'react-hot-toast';
 
 const ShiftSummary: React.FC = () => {
@@ -561,17 +561,13 @@ Voided Orders: ${shiftData.voidedOrders}
 
                   setIsEndingShift(true);
                   try {
-                    console.log('[ShiftSummary] Starting shift end process...');
-                    
                     // Validate manager PIN
-                    console.log('[ShiftSummary] Validating manager PIN...');
                     const isValid = await validationService.validateManagerPin(
                       managerPin,
                       'shift_management'
                     );
 
                     if (!isValid) {
-                      console.warn('[ShiftSummary] PIN validation failed');
                       setPinError('Invalid manager PIN');
                       setManagerPin('');
                       setIsEndingShift(false);
@@ -581,26 +577,21 @@ Voided Orders: ${shiftData.voidedOrders}
                     // Close cash drawer if exists
                     const drawerId = cashDrawer?.id;
                     if (drawerId) {
-                      console.log('[ShiftSummary] Closing cash drawer:', drawerId);
                       try {
                         const closeResponse = await cashDrawerService.close(drawerId, {
                           closingBalance: parseFloat(closingBalanceInput),
                           closingNotes: closingNotes || undefined,
                           expectedBalance: expectedDrawer,
                         });
-                        console.log('[ShiftSummary] Cash drawer close response:', closeResponse.data);
-                        console.log('[ShiftSummary] Cash drawer closed successfully');
                       } catch (closeError: any) {
-                        console.error('[ShiftSummary] Cash drawer close failed:', closeError);
-                        console.error('[ShiftSummary] Close error details:', closeError.response?.data);
                         // If it's already closed, that's okay
                         if (closeError.response?.data?.message === 'Cash drawer is already closed') {
-                          console.warn('[ShiftSummary] Drawer was already closed, continuing...');
+                          // Drawer was already closed, continuing...
                         } else {
                           throw closeError; // Re-throw other errors
                         }
                       }
-                      
+                       
                       // Log cash drawer close
                       await logAction('CASH_DRAWER_CLOSE', 'CashDrawer', drawerId, {
                         closingBalance: parseFloat(closingBalanceInput),
@@ -608,12 +599,11 @@ Voided Orders: ${shiftData.voidedOrders}
                         discrepancy: parseFloat(closingBalanceInput) - expectedDrawer,
                         notes: closingNotes,
                       });
-                      
+                       
                       // Drawer closed
                     }
 
                     if (user?.id) {
-                      console.log('[ShiftSummary] Clocking out user:', user.id);
                       try {
                         await staffService.clockInOut(user.id, 'clock-out');
                         // Log shift end
@@ -622,17 +612,13 @@ Voided Orders: ${shiftData.voidedOrders}
                           expectedDrawer,
                         });
                       } catch (clockOutError) {
-                        console.warn('[ShiftSummary] Clock-out failed, continuing anyway:', clockOutError);
                         // Don't fail the entire shift end if clock-out fails
                       }
                     }
                     
-                    console.log('[ShiftSummary] Shift ended successfully');
                     toast.success('Shift ended successfully!');
                     navigate('/dashboard');
                   } catch (error: any) {
-                    console.error('[ShiftSummary] Failed to end shift:', error);
-                    console.error('[ShiftSummary] Error details:', error.response?.data || error.message);
                     toast.error(error.response?.data?.message || 'Failed to end shift');
                   } finally {
                     setIsEndingShift(false);

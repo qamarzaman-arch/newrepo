@@ -6,6 +6,42 @@ import { logger } from './logger';
  * Manages all Socket.IO events across the application
  */
 
+// Type definitions for WebSocket event payloads
+interface Order {
+  id: string;
+  orderNumber?: string;
+  customerName?: string;
+  customerPhone?: string;
+  delivery?: {
+    address?: string;
+  };
+}
+
+interface Ticket {
+  id: string;
+}
+
+interface InventoryItem {
+  id: string;
+  name: string;
+}
+
+interface Delivery {
+  id: string;
+}
+
+interface Notification {
+  [key: string]: unknown;
+}
+
+interface AnalyticsData {
+  [key: string]: unknown;
+}
+
+interface ShiftSummary {
+  [key: string]: unknown;
+}
+
 export class WebSocketManager {
   private io: SocketIOServer;
 
@@ -16,13 +52,13 @@ export class WebSocketManager {
   /**
    * Emit order-related events
    */
-  emitOrderCreated(order: any) {
+  emitOrderCreated(order: Order) {
     this.io.emit('order:created', order);
     this.io.to('kitchen').emit('order:new', order);
     logger.info(`WebSocket: Order created - ${order.id}`);
   }
 
-  emitOrderUpdated(orderId: string, order: any) {
+  emitOrderUpdated(orderId: string, order: Order) {
     this.io.emit(`order:${orderId}:updated`, order);
     this.io.to('kitchen').emit('order:updated', order);
     logger.info(`WebSocket: Order updated - ${orderId}`);
@@ -42,12 +78,12 @@ export class WebSocketManager {
   /**
    * Emit kitchen-related events
    */
-  emitTicketCreated(ticket: any) {
+  emitTicketCreated(ticket: Ticket) {
     this.io.to('kitchen').emit('ticket:created', ticket);
     logger.info(`WebSocket: Kitchen ticket created - ${ticket.id}`);
   }
 
-  emitTicketUpdated(ticketId: string, ticket: any) {
+  emitTicketUpdated(ticketId: string, ticket: Ticket) {
     this.io.to('kitchen').emit(`ticket:${ticketId}:updated`, ticket);
     logger.info(`WebSocket: Kitchen ticket updated - ${ticketId}`);
   }
@@ -60,12 +96,12 @@ export class WebSocketManager {
   /**
    * Emit inventory-related events
    */
-  emitInventoryLow(item: any) {
+  emitInventoryLow(item: InventoryItem) {
     this.io.to('admin').emit('inventory:low-stock', item);
     logger.info(`WebSocket: Low stock alert - ${item.name}`);
   }
 
-  emitInventoryUpdated(itemId: string, item: any) {
+  emitInventoryUpdated(itemId: string, item: InventoryItem) {
     this.io.emit(`inventory:${itemId}:updated`, item);
     logger.info(`WebSocket: Inventory updated - ${itemId}`);
   }
@@ -81,7 +117,7 @@ export class WebSocketManager {
   /**
    * Emit delivery-related events
    */
-  emitDeliveryCreated(delivery: any) {
+  emitDeliveryCreated(delivery: Delivery) {
     this.io.to('delivery').emit('delivery:created', delivery);
     logger.info(`WebSocket: Delivery created - ${delivery.id}`);
   }
@@ -98,7 +134,7 @@ export class WebSocketManager {
   /**
    * Emit rider-specific events
    */
-  emitRiderPickupNotification(riderId: string, order: any) {
+  emitRiderPickupNotification(riderId: string, order: Order) {
     this.io.to(`rider:${riderId}`).emit('rider:pickup-ready', {
       orderId: order.id,
       orderNumber: order.orderNumber,
@@ -131,7 +167,7 @@ export class WebSocketManager {
   /**
    * Broadcast system-wide notifications
    */
-  broadcastNotification(notification: any) {
+  broadcastNotification(notification: Notification) {
     this.io.emit('notification:new', notification);
     logger.info(`WebSocket: Notification broadcast`);
   }
@@ -139,7 +175,7 @@ export class WebSocketManager {
   /**
    * Generic broadcast to all connected clients
    */
-  broadcast(event: string, data: any) {
+  broadcast(event: string, data: unknown) {
     this.io.emit(event, data);
     logger.info(`WebSocket: Broadcast ${event}`);
   }
@@ -147,7 +183,7 @@ export class WebSocketManager {
   /**
    * Send real-time analytics updates
    */
-  emitAnalyticsUpdate(data: any) {
+  emitAnalyticsUpdate(data: AnalyticsData) {
     this.io.to('admin').emit('analytics:update', data);
     logger.info(`WebSocket: Analytics update sent`);
   }
@@ -175,7 +211,7 @@ export class WebSocketManager {
     logger.info(`WebSocket: Shift started - ${cashierId}`);
   }
 
-  emitShiftEnded(cashierId: string, summary: any) {
+  emitShiftEnded(cashierId: string, summary: ShiftSummary) {
     this.io.to('admin').emit('shift:ended', { cashierId, summary, timestamp: new Date() });
     logger.info(`WebSocket: Shift ended - ${cashierId}`);
   }

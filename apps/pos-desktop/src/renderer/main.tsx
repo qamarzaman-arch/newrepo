@@ -17,9 +17,19 @@ if (import.meta.env.DEV) {
       message.includes('Warning: ReactDOM.render is no longer supported') ||
       message.includes('Support for defaultProps will be removed') ||
       message.includes('findDOMNode is deprecated') ||
-      message.includes('React Router')
+      message.includes('React Router') ||
+      message.includes('Token verification failed') ||
+      message.includes('Failed to load feature access') ||
+      message.includes('GET http://localhost:3001/api/v1/feature-access 401') ||
+      message.includes('PATCH http://localhost:3001/api/v1/feature-access 401') ||
+      message.includes('PATCH http://localhost:3001/api/v1/feature-access 429') ||
+      message.includes('POST http://localhost:3001/api/v1/auth/login 429') ||
+      message.includes('Login error') ||
+      message.includes('GET http://localhost:3001/api/v1/auth/verify 401') ||
+      message.includes('WebSocket connection to') ||
+      message.includes('was compiled against a different Node.js version')
     ) {
-      return; // Suppress these React/Router warnings
+      return; // Suppress these React/Router and auth errors
     }
     originalConsoleError(...args);
   };

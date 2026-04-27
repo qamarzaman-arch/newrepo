@@ -86,19 +86,15 @@ const AdvancedCashierPOS: React.FC = () => {
 
     // Handle collect payment event from Active Orders
     const handleCollectPayment = async (e: any) => {
-      console.log('[AdvancedCashierPOS] Collect payment event received:', e.detail);
       const { orderId } = e.detail;
       if (!orderId) {
-        console.log('[AdvancedCashierPOS] No orderId in event detail');
         return;
       }
 
       try {
         // Load order details
-        console.log('[AdvancedCashierPOS] Fetching order:', orderId);
         const response = await orderService.getOrder(orderId);
         const order = response.data.data.order;
-        console.log('[AdvancedCashierPOS] Order loaded:', order);
         
         if (!order) {
           toast.error('Order not found');
@@ -131,12 +127,9 @@ const AdvancedCashierPOS: React.FC = () => {
         });
         
         // Navigate to checkout
-        console.log('[AdvancedCashierPOS] Navigating to CHECKOUT');
         setCurrentStep('CHECKOUT');
         toast.success('Order loaded for payment collection');
       } catch (error: any) {
-        console.error('[AdvancedCashierPOS] Failed to load order:', error);
-        console.error('[AdvancedCashierPOS] Error response:', error.response?.data);
         toast.error(error.response?.data?.error?.message || 'Failed to load order for payment');
       }
     };
@@ -153,9 +146,7 @@ const AdvancedCashierPOS: React.FC = () => {
   // Handle collect payment from sessionStorage (when coming from Active Orders)
   useEffect(() => {
     const collectPaymentOrderId = sessionStorage.getItem('collectPaymentOrderId');
-    console.log('[AdvancedCashierPOS] collectPaymentOrderId from sessionStorage:', collectPaymentOrderId);
     if (collectPaymentOrderId) {
-      console.log('[AdvancedCashierPOS] Found collectPaymentOrderId:', collectPaymentOrderId);
       // Load order and go to checkout
       const loadOrderForPayment = async () => {
         try {
@@ -178,7 +169,6 @@ const AdvancedCashierPOS: React.FC = () => {
               phone: order.customerPhone,
             });
           }
-          console.log('[AdvancedCashierPOS] Loading', order.items?.length, 'items into order store');
           order.items?.forEach((item: any) => {
             useOrderStore.getState().addItem({
               menuItemId: item.menuItemId || item.menuItem?.id,
@@ -189,7 +179,6 @@ const AdvancedCashierPOS: React.FC = () => {
               modifiers: item.modifiers,
             });
           });
-          console.log('[AdvancedCashierPOS] Items loaded, store now has:', useOrderStore.getState().currentOrder.items.length, 'items');
           // Small delay to ensure store is updated before navigation
           setTimeout(() => {
             // Clear sessionStorage to prevent re-processing on refresh
@@ -199,7 +188,6 @@ const AdvancedCashierPOS: React.FC = () => {
             toast.success('Order loaded for payment collection');
           }, 100);
         } catch (error: any) {
-          console.error('[AdvancedCashierPOS] Failed to load order:', error);
           toast.error(error.response?.data?.error?.message || 'Failed to load order for payment');
         }
       };
@@ -288,63 +276,87 @@ const AdvancedCashierPOS: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+      <div className="h-screen flex flex-col bg-neutral-50 overflow-hidden">
 
       {/* ── Top Bar ── */}
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm z-40 flex-shrink-0">
+      <motion.header
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className="bg-neutral-0 border-b-2 border-primary-100 px-8 py-4 flex items-center justify-between shadow-sm z-40 flex-shrink-0"
+      >
         {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
-            <span className="text-white font-black text-lg">P</span>
-          </div>
+        <div className="flex items-center gap-4">
+          <motion.div
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            transition={{ type: "spring", stiffness: 300 }}
+            className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-500/30"
+          >
+            <span className="text-white font-black text-xl">P</span>
+          </motion.div>
           <div>
-            <h1 className="font-manrope text-xl font-bold text-gray-900">POSLytic</h1>
-            <p className="text-xs text-gray-500">Cashier Terminal</p>
+            <h1 className="font-display text-2xl font-black text-neutral-900">POSLytic</h1>
+            <p className="text-sm text-neutral-600 font-medium">Cashier Terminal</p>
           </div>
         </div>
 
         {/* Daily Stats */}
-        <div className="flex items-center gap-6">
-          <div className="text-center">
-            <p className="text-xs text-gray-500">Orders Today</p>
-            <p className="text-lg font-bold text-gray-900">{todayStats.ordersCompleted}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs text-gray-500">Revenue</p>
-            <p className="text-lg font-bold text-green-600">{formatCurrency(todayStats.revenue)}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs text-gray-500">Avg Order</p>
-            <p className="text-lg font-bold text-primary">{formatCurrency(todayStats.avgOrderValue)}</p>
-          </div>
+        <div className="flex items-center gap-8">
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="text-center px-4 py-2 bg-neutral-50 rounded-2xl border-2 border-neutral-200"
+          >
+            <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Orders Today</p>
+            <p className="text-2xl font-black text-neutral-900">{todayStats.ordersCompleted}</p>
+          </motion.div>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="text-center px-4 py-2 bg-neutral-50 rounded-2xl border-2 border-neutral-200"
+          >
+            <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Revenue</p>
+            <p className="text-2xl font-black text-success-600">{formatCurrency(todayStats.revenue)}</p>
+          </motion.div>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="text-center px-4 py-2 bg-neutral-50 rounded-2xl border-2 border-neutral-200"
+          >
+            <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Avg Order</p>
+            <p className="text-2xl font-black text-primary-600">{formatCurrency(todayStats.avgOrderValue)}</p>
+          </motion.div>
         </div>
 
         {/* Right Controls */}
         <div className="flex items-center gap-3">
           {/* Online/Offline */}
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-            {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-sm ${isOnline ? 'bg-success-100 text-success-700 border-2 border-success-200' : 'bg-error-100 text-error-700 border-2 border-error-200'}`}
+          >
+            {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
             {isOnline ? 'Online' : 'Offline'}
-          </div>
+          </motion.div>
 
           {/* Keyboard shortcuts hint */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.1, backgroundColor: 'rgba(229, 57, 53, 0.1)' }}
+            whileTap={{ scale: 0.9 }}
             onClick={() => setShowKeyboardShortcuts(true)}
-            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            className="p-3 bg-neutral-100 hover:bg-primary-50 rounded-xl transition-colors border-2 border-neutral-200"
             title="Keyboard Shortcuts (?)"
           >
-            <Keyboard className="w-4 h-4 text-gray-600" />
-          </button>
+            <Keyboard className="w-5 h-5 text-primary-600" />
+          </motion.button>
 
           {/* Quick Actions */}
           <div className="relative">
             <motion.button
-              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.05, backgroundColor: 'rgba(229, 57, 53, 0.1)' }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowQuickActions(!showQuickActions)}
-              className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              className="p-3 bg-neutral-100 hover:bg-primary-50 rounded-xl transition-colors border-2 border-neutral-200"
               title="Quick Actions"
             >
-              <Settings className="w-4 h-4 text-gray-600" />
+              <Settings className="w-5 h-5 text-primary-600" />
             </motion.button>
             <AnimatePresence>
               {showQuickActions && (
@@ -352,17 +364,19 @@ const AdvancedCashierPOS: React.FC = () => {
                   initial={{ opacity: 0, y: -8, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                  className="absolute top-11 right-0 bg-white rounded-xl shadow-xl border border-gray-200 p-2 z-50 min-w-[200px]"
+                  className="absolute top-14 right-0 bg-neutral-0 rounded-2xl shadow-2xl border-2 border-primary-200 p-2 z-50 min-w-[220px]"
                 >
                   {quickActions.map(({ icon: Icon, label, action }) => (
-                    <button
+                    <motion.button
                       key={label}
+                      whileHover={{ scale: 1.02, backgroundColor: 'rgba(229, 57, 53, 0.05)' }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => { action(); setShowQuickActions(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-sm text-gray-700"
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-primary-50 rounded-xl transition-colors text-sm text-neutral-700 font-semibold"
                     >
-                      <Icon className="w-4 h-4 text-gray-500" />
+                      <Icon className="w-4 h-4 text-primary-600" />
                       {label}
-                    </button>
+                    </motion.button>
                   ))}
                 </motion.div>
               )}
@@ -370,28 +384,37 @@ const AdvancedCashierPOS: React.FC = () => {
           </div>
 
           {/* User + Logout */}
-          <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
+          <div className="flex items-center gap-3 pl-4 border-l-2 border-neutral-200">
             <div className="text-right">
-              <p className="text-sm font-semibold text-gray-900">{user?.fullName || 'Cashier'}</p>
-              <p className="text-xs text-gray-500 capitalize">{user?.role?.toLowerCase()}</p>
+              <p className="text-sm font-bold text-neutral-900">{user?.fullName || 'Cashier'}</p>
+              <p className="text-xs font-semibold text-neutral-600 capitalize">{user?.role?.toLowerCase()}</p>
             </div>
-            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-black text-sm border-2 border-primary-200"
+            >
               {user?.fullName?.charAt(0) || 'C'}
-            </div>
+            </motion.div>
             <motion.button
-              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.05, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+              whileTap={{ scale: 0.95 }}
               onClick={handleLogout}
-              className="p-2 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+              className="p-3 bg-error-50 hover:bg-error-100 rounded-xl transition-colors border-2 border-error-200"
               title="Logout"
             >
-              <LogOut className="w-4 h-4 text-red-600" />
+              <LogOut className="w-5 h-5 text-error-600" />
             </motion.button>
           </div>
         </div>
-      </header>
+      </motion.header>
 
       {/* ── Step Progress Bar ── */}
-      <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-2 flex-shrink-0">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="bg-neutral-0 border-b-2 border-primary-100 px-8 py-3 flex items-center gap-2 flex-shrink-0"
+      >
         {(['ORDER_TYPE', 'TABLE_CUSTOMER', 'RESERVATION_DETAILS', 'MENU_ORDERING', 'CHECKOUT', 'SUCCESS'] as POSStep[]).map((step, i) => {
           const labels: Record<POSStep, string> = {
             ORDER_TYPE: 'Order Type', TABLE_CUSTOMER: 'Table / Customer',
@@ -408,17 +431,28 @@ const AdvancedCashierPOS: React.FC = () => {
           if (orderType === 'RESERVATION' && (step === 'MENU_ORDERING' || step === 'CHECKOUT')) return null;
           return (
             <React.Fragment key={step}>
-              {i > 0 && <div className={`flex-1 h-0.5 ${isDone || isActive ? 'bg-primary' : 'bg-gray-200'}`} />}
-              <div className={`flex items-center gap-1.5 text-xs font-semibold ${isActive ? 'text-primary' : isDone ? 'text-primary/60' : 'text-gray-400'}`}>
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isActive ? 'bg-primary text-white' : isDone ? 'bg-primary/20 text-primary' : 'bg-gray-200 text-gray-400'}`}>
+              {i > 0 && <motion.div 
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: isDone || isActive ? 1 : 0 }}
+                className={`flex-1 h-1 ${isDone || isActive ? 'bg-primary-600' : 'bg-neutral-200'} rounded-full`}
+              />}
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                className={`flex items-center gap-2 text-xs font-bold ${isActive ? 'text-primary-600' : isDone ? 'text-primary-400' : 'text-neutral-400'}`}
+              >
+                <motion.div
+                  animate={{ scale: isActive ? [1, 1.1, 1] : 1 }}
+                  transition={{ duration: 2, repeat: isActive ? Infinity : 0 }}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${isActive ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/50' : isDone ? 'bg-primary-100 text-primary-600 border-2 border-primary-300' : 'bg-neutral-200 text-neutral-400 border-2 border-neutral-300'}`}
+                >
                   {isDone ? '✓' : i + 1}
-                </div>
+                </motion.div>
                 <span className="hidden sm:inline">{labels[step]}</span>
-              </div>
+              </motion.div>
             </React.Fragment>
           );
         })}
-      </div>
+      </motion.div>
 
       {/* ── Main Content ── */}
       <main className="flex-1 overflow-hidden">
@@ -478,10 +512,19 @@ const AdvancedCashierPOS: React.FC = () => {
       {/* Offline Banner */}
       <AnimatePresence>
         {!isOnline && (
-          <motion.div initial={{ y: 60 }} animate={{ y: 0 }} exit={{ y: 60 }}
-            className="fixed bottom-0 left-0 right-0 bg-red-600 text-white px-6 py-3 flex items-center justify-center gap-3 shadow-lg z-50">
-            <WifiOff className="w-5 h-5" />
-            <span className="font-semibold text-sm">Offline — Orders will sync when connection is restored</span>
+          <motion.div 
+            initial={{ y: 60 }} 
+            animate={{ y: 0 }} 
+            exit={{ y: 60 }}
+            className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-error-600 to-error-700 text-white px-8 py-4 flex items-center justify-center gap-3 shadow-2xl z-50"
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            >
+              <WifiOff className="w-6 h-6" />
+            </motion.div>
+            <span className="font-bold text-base">Offline — Orders will sync when connection is restored</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -489,22 +532,35 @@ const AdvancedCashierPOS: React.FC = () => {
       {/* Keyboard Shortcuts Overlay */}
       <AnimatePresence>
         {showKeyboardShortcuts && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-            onClick={() => setShowKeyboardShortcuts(false)}>
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl"
-              onClick={(e) => e.stopPropagation()}>
+            onClick={() => setShowKeyboardShortcuts(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-neutral-0 rounded-3xl p-8 max-w-md w-full shadow-2xl border-2 border-primary-200"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                  <Keyboard className="w-7 h-7 text-primary" />
+                <h2 className="text-3xl font-black text-neutral-900 flex items-center gap-3">
+                  <Keyboard className="w-8 h-8 text-primary-600" />
                   Keyboard Shortcuts
                 </h2>
-                <button onClick={() => setShowKeyboardShortcuts(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
+                <motion.button
+                  whileHover={{ scale: 1.1, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowKeyboardShortcuts(false)} 
+                  className="p-2 hover:bg-error-50 rounded-xl border-2 border-neutral-200"
+                >
+                  <X className="w-6 h-6 text-error-600" />
+                </motion.button>
               </div>
-              <div className="bg-gray-50 rounded-xl divide-y divide-gray-200">
+              <div className="bg-neutral-50 rounded-2xl divide-y divide-neutral-200 border-2 border-neutral-200">
                 {[
                   { key: 'F1', label: 'New Order' },
                   { key: 'F2', label: 'Hold Current Order' },
@@ -512,13 +568,17 @@ const AdvancedCashierPOS: React.FC = () => {
                   { key: '?', label: 'Show This Overlay' },
                   { key: 'Esc', label: 'Close / Cancel' },
                 ].map(({ key, label }) => (
-                  <div key={key} className="flex justify-between items-center px-4 py-3">
-                    <span className="text-gray-700 text-sm">{label}</span>
-                    <kbd className="px-3 py-1 bg-white border border-gray-300 rounded-lg text-sm font-mono font-bold shadow-sm">{key}</kbd>
-                  </div>
+                  <motion.div
+                    key={key}
+                    whileHover={{ backgroundColor: 'rgba(229, 57, 53, 0.05)' }}
+                    className="flex justify-between items-center px-5 py-4"
+                  >
+                    <span className="text-neutral-700 text-sm font-semibold">{label}</span>
+                    <kbd className="px-4 py-2 bg-white border-2 border-neutral-300 rounded-xl text-sm font-mono font-bold shadow-sm text-neutral-900">{key}</kbd>
+                  </motion.div>
                 ))}
               </div>
-              <p className="text-xs text-gray-400 text-center mt-4">Click anywhere or press Esc to close</p>
+              <p className="text-xs font-bold text-neutral-400 text-center mt-6 uppercase tracking-wider">Click anywhere or press Esc to close</p>
             </motion.div>
           </motion.div>
         )}

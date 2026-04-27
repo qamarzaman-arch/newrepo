@@ -3,12 +3,10 @@ import { getHardwareManager } from './services/hardwareManager';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import LoginScreen from './screens/LoginScreen';
-import POSScreen from './screens/POSScreen';
 import CashierPOS from './screens/CashierPOS/AdvancedCashierPOS';
 import ShiftSummary from './screens/CashierPOS/ShiftSummary';
 import CashierOrderHistory from './screens/CashierPOS/CashierOrderHistory';
 import CashierActiveOrders from './screens/CashierPOS/CashierActiveOrders';
-import DashboardScreen from './screens/DashboardScreen';
 import AdminDashboard from './screens/AdminDashboard';
 import OrdersScreen from './screens/AdvancedOrdersScreen';
 import KitchenScreen from './screens/AdvancedKitchenScreen';
@@ -16,12 +14,13 @@ import TablesScreen from './screens/TablesScreen';
 import MenuScreen from './screens/AdvancedMenuScreen';
 import CustomersScreen from './screens/AdvancedCustomersScreen';
 import InventoryScreen from './screens/AdvancedInventoryScreen';
-import ReportsScreen from './screens/ReportsScreen';
 import SettingsScreen from './screens/AdvancedSettingsScreen';
 import StaffScreen from './screens/AdvancedStaffScreen';
 import VendorsScreen from './screens/VendorsScreen';
 import DeliveryManagementScreen from './screens/DeliveryManagementScreen';
 import FinancialManagementScreen from './screens/FinancialManagementScreen';
+import { FeatureAccessScreen } from './screens/FeatureAccessScreen';
+import AttendanceScreen from './screens/AttendanceScreen';
 import AdminLayout from './layouts/AdminLayout';
 import CashierLayout from './layouts/CashierLayout';
 import KitchenLayout from './layouts/KitchenLayout';
@@ -36,10 +35,10 @@ const ALLOWED_ROUTES: Record<string, string[]> = {
   '/menu': ['ADMIN', 'MANAGER', 'CASHIER'],
   '/customers': ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER'],
   '/inventory': ['ADMIN', 'MANAGER'],
-  '/reports': ['ADMIN', 'MANAGER', 'CASHIER'],
   '/settings': ['ADMIN', 'MANAGER'],
   '/staff': ['ADMIN', 'MANAGER', 'CASHIER'],
   '/staff-attendance': ['ADMIN', 'MANAGER', 'CASHIER'],
+  '/attendance': ['ADMIN', 'MANAGER', 'CASHIER'],
   '/vendors': ['ADMIN', 'MANAGER'],
   '/delivery': ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER', 'RIDER'],
   '/rider-deliveries': ['RIDER', 'ADMIN', 'MANAGER'],
@@ -51,6 +50,7 @@ const ALLOWED_ROUTES: Record<string, string[]> = {
   '/cashier-history': ['CASHIER', 'ADMIN', 'MANAGER'],
   '/cashier-tables': ['CASHIER', 'ADMIN', 'MANAGER'],
   '/shift-summary': ['CASHIER', 'RIDER', 'ADMIN', 'MANAGER', 'STAFF'],
+  '/feature-access': ['ADMIN'],
 };
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRoles?: string[] }> = ({ 
@@ -148,11 +148,8 @@ const DefaultRedirect: React.FC = () => {
 const DashboardWrapper: React.FC = () => {
   const { user } = useAuthStore();
   
-  if (user?.role === 'ADMIN' || user?.role === 'MANAGER') {
-    return <AdminDashboard />;
-  }
-  
-  return <DashboardScreen />;
+  // All users use AdminDashboard for now
+  return <AdminDashboard />;
 };
 
 function AnimatedRoutes() {
@@ -191,14 +188,6 @@ function AnimatedRoutes() {
           element={
             <ProtectedRoute>
               <CashierOrderHistory />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/pos"
-          element={
-            <ProtectedRoute>
-              <POSScreen />
             </ProtectedRoute>
           }
         />
@@ -259,14 +248,6 @@ function AnimatedRoutes() {
           }
         />
         <Route
-          path="/reports"
-          element={
-            <ProtectedRoute>
-              <ReportsScreen />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/settings"
           element={
             <ProtectedRoute>
@@ -303,6 +284,22 @@ function AnimatedRoutes() {
           element={
             <ProtectedRoute>
               <FinancialManagementScreen />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/feature-access"
+          element={
+            <ProtectedRoute>
+              <FeatureAccessScreen />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/attendance"
+          element={
+            <ProtectedRoute>
+              <AttendanceScreen />
             </ProtectedRoute>
           }
         />

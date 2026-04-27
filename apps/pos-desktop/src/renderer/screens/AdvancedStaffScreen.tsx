@@ -3,10 +3,10 @@ import { motion } from 'framer-motion';
 import {
   Users, Clock, Calendar, TrendingUp, Plus, Search, Filter,
   UserCheck, DollarSign, Briefcase, Mail, Phone,
-  Edit, Eye, CheckCircle, XCircle, Star
+  Edit, Eye, CheckCircle, XCircle, Star, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { staffService } from '../services/staffService';
 import { reportService } from '../services/reportService';
 import { useAuthStore } from '../stores/authStore';
@@ -22,6 +22,7 @@ const formatDate = (dateString: string, format: 'short' | 'time' = 'short') => {
 
 const AdvancedStaffScreen: React.FC = () => {
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
 
   const [activeTab, setActiveTab] = useState<'employees' | 'schedule' | 'time-tracking' | 'performance'>('employees');
@@ -145,9 +146,16 @@ const AdvancedStaffScreen: React.FC = () => {
     setShowEmployeeModal(true);
   };
 
+  const handleRefresh = () => {
+    queryClient.invalidateQueries(['staff-management']);
+    queryClient.invalidateQueries(['staff-shifts']);
+    queryClient.invalidateQueries(['staff-performance']);
+    toast.success('Data refreshed successfully');
+  };
+
   const handleEditEmployee = async () => {
-    const requiresCredentials = ['CASHIER', 'MANAGER', 'RIDER'].includes(formData.role);
-    
+    const requiresCredentials = ['CASHIER', 'MANAGER', 'RIDER', 'KITCHEN'].includes(formData.role);
+
     if (!selectedEmployee || !formData.username || !formData.fullName) {
       toast.error('Please fill required fields (Username, Full Name)');
       return;
@@ -183,7 +191,7 @@ const AdvancedStaffScreen: React.FC = () => {
   };
 
   const handleAddEmployee = async () => {
-    const requiresCredentials = ['CASHIER', 'MANAGER', 'RIDER'].includes(formData.role);
+    const requiresCredentials = ['CASHIER', 'MANAGER', 'RIDER', 'KITCHEN'].includes(formData.role);
 
     if (!formData.username || !formData.fullName) {
       toast.error('Please fill required fields (Username, Full Name)');
@@ -240,6 +248,14 @@ const AdvancedStaffScreen: React.FC = () => {
       return;
     }
     try {
+      // Clock in the user
+      await staffService.clockInOut(timeEntryFormData.userId, 'clock-in');
+      
+      // If clock out time is provided, clock out as well
+      if (timeEntryFormData.clockOut) {
+        await staffService.clockInOut(timeEntryFormData.userId, 'clock-out');
+      }
+      
       toast.success('Time entry recorded successfully');
       setShowTimeEntryModal(false);
       setTimeEntryFormData({ userId: '', clockIn: '', clockOut: '' });
@@ -256,43 +272,54 @@ const AdvancedStaffScreen: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 font-manrope">Staff Management</h1>
           <p className="text-gray-600 mt-1">Manage employees, schedules, and performance</p>
         </div>
-        {isAdminOrManager && (
-          <>
-            {activeTab === 'employees' && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => { setSelectedEmployee(null); setFormData({ username: '', fullName: '', email: '', phone: '', role: 'STAFF', pin: '', password: '' }); setShowEmployeeModal(true); }}
-                className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
-              >
-                <Plus className="w-5 h-5" />
-                Add Employee
-              </motion.button>
-            )}
-            {activeTab === 'schedule' && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowShiftModal(true)}
-                className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
-              >
-                <Plus className="w-5 h-5" />
-                Add Shift
-              </motion.button>
-            )}
-            {activeTab === 'time-tracking' && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowTimeEntryModal(true)}
-                className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
-              >
-                <Plus className="w-5 h-5" />
-                Add Time Entry
-              </motion.button>
-            )}
-          </>
-        )}
+        <div className="flex items-center gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleRefresh}
+            className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold flex items-center gap-2 shadow-lg hover:bg-gray-50"
+          >
+            <RefreshCw className="w-5 h-5" />
+            Refresh
+          </motion.button>
+          {isAdminOrManager && (
+            <>
+              {activeTab === 'employees' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => { setSelectedEmployee(null); setFormData({ username: '', fullName: '', email: '', phone: '', role: 'STAFF', pin: '', password: '' }); setShowEmployeeModal(true); }}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Employee
+                </motion.button>
+              )}
+              {activeTab === 'schedule' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowShiftModal(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Shift
+                </motion.button>
+              )}
+              {activeTab === 'time-tracking' && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowTimeEntryModal(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Time Entry
+                </motion.button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -702,13 +729,13 @@ const AdvancedStaffScreen: React.FC = () => {
                   <option value="RIDER">Rider</option>
                 </select>
               </div>
-              {(['CASHIER', 'MANAGER', 'RIDER'].includes(formData.role) || selectedEmployee) && (
+              {(['CASHIER', 'MANAGER', 'RIDER', 'KITCHEN'].includes(formData.role) || selectedEmployee) && (
                 <>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">PIN {['CASHIER', 'MANAGER', 'RIDER'].includes(formData.role) ? '*' : '(optional)'}</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">PIN {['CASHIER', 'MANAGER', 'RIDER', 'KITCHEN'].includes(formData.role) ? '*' : '(optional)'}</label>
                     <input type="password" maxLength={4} value={formData.pin} onChange={(e) => setFormData({ ...formData, pin: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="4-digit PIN" />
                   </div>
-                  {['CASHIER', 'MANAGER', 'RIDER'].includes(formData.role) && !selectedEmployee && (
+                  {['CASHIER', 'MANAGER', 'RIDER', 'KITCHEN'].includes(formData.role) && !selectedEmployee && (
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1">Password *</label>
                       <input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Password" />
