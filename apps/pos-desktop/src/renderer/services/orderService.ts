@@ -90,6 +90,9 @@ export const orderService = {
 
   getOrder: (id: string) => api.get(`/orders/${id}`),
 
+  // Server-side reprint endpoint — also logs the action to the audit trail
+  reprintBill: (id: string) => api.post(`/orders/${id}/reprint`),
+
   createOrder: async (data: CreateOrderData, paymentData?: PaymentPayload): Promise<CreateOrderResponse> => {
     const offlineManager = getOfflineQueueManager();
     const queueStatus = offlineManager.getQueueStatus();

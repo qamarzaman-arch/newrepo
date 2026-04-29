@@ -29,6 +29,7 @@ const AVAILABLE_FEATURES: Feature[] = [
   { id: 'vendors', name: 'Vendor Management', description: 'Manage vendors and purchase orders' },
   { id: 'customers', name: 'Customer Management', description: 'Manage customer data and loyalty' },
   { id: 'staff', name: 'Staff Management', description: 'Manage staff and schedules' },
+  { id: 'attendance', name: 'Attendance Management', description: 'Mark and track employee attendance' },
   { id: 'delivery', name: 'Delivery Management', description: 'Manage deliveries and riders' },
   { id: 'tables', name: 'Table Management', description: 'Manage dining tables' },
   { id: 'menu', name: 'Menu Management', description: 'Manage menu items and categories' },
@@ -96,11 +97,11 @@ export const FeatureAccessScreen: React.FC = () => {
       initialAccess[feature.id] = {};
       ROLES.forEach((role) => {
         // Default: ADMIN has all features, others have limited access
-        initialAccess[feature.id][role] = role === 'ADMIN' || 
+        initialAccess[feature.id][role] = role === 'ADMIN' ||
           (role === 'MANAGER' && feature.id !== 'settings') ||
-          (role === 'STAFF' && ['orders', 'kitchen'].includes(feature.id)) ||
-          (role === 'RIDER' && ['delivery'].includes(feature.id)) ||
-          (role === 'CASHIER' && ['orders', 'menu', 'tables'].includes(feature.id));
+          (role === 'STAFF' && ['orders', 'kitchen', 'tables', 'customers', 'attendance'].includes(feature.id)) ||
+          (role === 'RIDER' && ['delivery', 'attendance'].includes(feature.id)) ||
+          (role === 'CASHIER' && ['orders', 'menu', 'tables', 'kitchen', 'customers', 'delivery', 'attendance'].includes(feature.id));
       });
     });
     setFeatureAccess(initialAccess);

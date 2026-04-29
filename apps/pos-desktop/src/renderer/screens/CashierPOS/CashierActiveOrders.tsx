@@ -7,8 +7,11 @@ import {
   CheckCircle2,
   CreditCard,
   Eye,
+  LayoutGrid,
+  List,
   Pencil,
   Plus,
+  Printer,
   Receipt,
   Search,
   Smartphone,
@@ -21,6 +24,7 @@ import { useCurrencyFormatter } from '../../hooks/useCurrency';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { orderService } from '../../services/orderService';
 import { validationService } from '../../services/validationService';
+import { getHardwareManager } from '../../services/hardwareManager';
 
 type ActiveOrder = {
   id: string;
@@ -66,6 +70,8 @@ const CashierActiveOrders: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
+  const [printingOrderId, setPrintingOrderId] = useState<string | null>(null);
   const [editableItems, setEditableItems] = useState<EditableOrderItem[]>([]);
   const [editNotes, setEditNotes] = useState('');
   const [menuSearch, setMenuSearch] = useState('');
@@ -285,6 +291,55 @@ const CashierActiveOrders: React.FC = () => {
     return 'border-l-4 border-l-emerald-500';
   };
 
+  const handlePrintReceipt = async (order: ActiveOrder) => {
+    setPrintingOrderId(order.id);
+    try {
+      // Fetch full order detail (with payments, customer, etc.)
+      const response = await orderService.reprintBill(order.id);
+      const fullOrder = response.data.data.order;
+
+      const items = (fullOrder.items || []).map((item: any) => ({
+        name: item.menuItem?.name || item.name || 'Item',
+        quantity: item.quantity,
+        price: Number(item.unitPrice ?? item.price ?? item.menuItem?.price ?? 0),
+        notes: item.notes,
+      }));
+
+      const subtotal = items.reduce(
+        (sum: number, item: any) => sum + item.price * item.quantity,
+        0
+      );
+
+      const tax = Number(fullOrder.taxAmount ?? 0);
+      const discount = Number(fullOrder.discountAmount ?? 0);
+      const total = Number(fullOrder.totalAmount ?? subtotal + tax - discount);
+      const lastPayment = fullOrder.payments?.[fullOrder.payments.length - 1];
+
+      const hw = getHardwareManager();
+      await hw.printReceipt({
+        restaurantName: settings.restaurantName || 'POSLytic Restaurant',
+        restaurantAddress: settings.address || '',
+        restaurantPhone: settings.phone || '',
+        orderNumber: fullOrder.orderNumber || order.orderNumber || order.id.slice(-6),
+        cashierName: fullOrder.cashier?.fullName || 'Cashier',
+        items,
+        subtotal,
+        tax,
+        taxRate: settings.taxRate || 0,
+        discount,
+        total,
+        paymentMethod: lastPayment?.method || 'PENDING',
+        change: lastPayment?.changeGiven ? Number(lastPayment.changeGiven) : 0,
+      });
+      toast.success('Receipt sent to printer');
+    } catch (error: any) {
+      console.error('Print receipt failed:', error);
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to print receipt');
+    } finally {
+      setPrintingOrderId(null);
+    }
+  };
+
   const renderOrderCard = (order: ActiveOrder) => {
     const total = order.totalAmount ?? 0;
     const tableNumber = order.table?.number || order.tableNumber;
@@ -385,6 +440,12 @@ const CashierActiveOrders: React.FC = () => {
                 }}
               />
             )}
+            <ActionButton
+              icon={<Printer className="h-3.5 w-3.5" />}
+              label={printingOrderId === order.id ? 'Printing…' : 'Print'}
+              onClick={() => handlePrintReceipt(order)}
+              disabled={printingOrderId === order.id}
+            />
             {(order.status === 'PENDING' || order.status === 'PREPARING') && (
               <ActionButton
                 icon={<Trash2 className="h-3.5 w-3.5" />}
@@ -418,7 +479,7 @@ const CashierActiveOrders: React.FC = () => {
             <h1 className="mt-0.5 text-2xl font-black text-neutral-900">Active Orders</h1>
           </div>
 
-          {/* Stats pills */}
+          {/* Stats pills + view toggle */}
           <div className="flex items-center gap-2 flex-wrap">
             <StatPill
               label="Pending"
@@ -438,6 +499,23 @@ const CashierActiveOrders: React.FC = () => {
               dotClass="bg-emerald-500"
               pillClass="bg-emerald-50 border-emerald-200 text-emerald-800"
             />
+
+            <div className="flex gap-1 bg-neutral-100 p-1 rounded-xl ml-2">
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`p-2 rounded-lg transition-colors ${viewMode === 'cards' ? 'bg-white shadow-sm text-primary-600' : 'text-neutral-500 hover:text-neutral-700'}`}
+                title="Card view"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm text-primary-600' : 'text-neutral-500 hover:text-neutral-700'}`}
+                title="List view"
+              >
+                <List className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </motion.header>
@@ -484,7 +562,7 @@ const CashierActiveOrders: React.FC = () => {
               New kitchen and ready-to-pay orders will appear here automatically.
             </p>
           </motion.div>
-        ) : (
+        ) : viewMode === 'cards' ? (
           <div className="space-y-8">
             <OrderSection
               title="Pending"
@@ -504,6 +582,96 @@ const CashierActiveOrders: React.FC = () => {
               orders={groupedOrders.READY}
               renderOrderCard={renderOrderCard}
             />
+          </div>
+        ) : (
+          // ── List view ──
+          <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-neutral-50 border-b border-neutral-200">
+                    {['Order #', 'Type', 'Customer / Table', 'Items', 'Total', 'Status', 'Elapsed', 'Actions'].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {orders.map(order => {
+                    const tableNumber = order.table?.number || order.tableNumber;
+                    const itemCount = (order.items || []).reduce((s, i) => s + i.quantity, 0);
+                    return (
+                      <tr key={order.id} className="hover:bg-neutral-50 transition-colors">
+                        <td className="px-4 py-3 font-bold text-neutral-900 whitespace-nowrap">#{order.orderNumber || order.id.slice(-6)}</td>
+                        <td className="px-4 py-3 text-neutral-600 whitespace-nowrap">{getOrderTypeLabel(order.orderType)}</td>
+                        <td className="px-4 py-3 text-neutral-700">
+                          {order.customerName || (tableNumber ? `Table ${tableNumber}` : 'Walk-in')}
+                        </td>
+                        <td className="px-4 py-3 text-neutral-600">{itemCount} item{itemCount === 1 ? '' : 's'}</td>
+                        <td className="px-4 py-3 font-bold text-primary-600 whitespace-nowrap">{formatCurrency(order.totalAmount ?? 0)}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${getStatusClasses(order.status)}`}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-neutral-500 text-xs whitespace-nowrap">{getElapsedTime(order)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            <ActionButton
+                              icon={<Eye className="h-3.5 w-3.5" />}
+                              label="View"
+                              onClick={() => { setSelectedOrder(order); setShowViewModal(true); }}
+                            />
+                            <ActionButton
+                              icon={<Pencil className="h-3.5 w-3.5" />}
+                              label="Edit"
+                              onClick={() => openEditModal(order)}
+                            />
+                            {(order.status === 'PENDING' || order.status === 'PREPARING') && (
+                              <ActionButton
+                                icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                                label="Ready"
+                                variant="primary"
+                                onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: 'READY' })}
+                              />
+                            )}
+                            {order.status === 'READY' && (
+                              <ActionButton
+                                icon={<Receipt className="h-3.5 w-3.5" />}
+                                label="Pay"
+                                variant="collect"
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setCashReceived(String(order.totalAmount || 0));
+                                  setShowPaymentModal(true);
+                                }}
+                              />
+                            )}
+                            <ActionButton
+                              icon={<Printer className="h-3.5 w-3.5" />}
+                              label={printingOrderId === order.id ? '…' : 'Print'}
+                              onClick={() => handlePrintReceipt(order)}
+                              disabled={printingOrderId === order.id}
+                            />
+                            {(order.status === 'PENDING' || order.status === 'PREPARING') && (
+                              <ActionButton
+                                icon={<Trash2 className="h-3.5 w-3.5" />}
+                                label="Cancel"
+                                variant="danger"
+                                onClick={() => {
+                                  if (window.confirm(`Cancel order #${order.orderNumber || order.id.slice(-6)}?`)) {
+                                    cancelOrderMutation.mutate({ orderId: order.id, reason: 'Cancelled by cashier' });
+                                  }
+                                }}
+                              />
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -894,7 +1062,8 @@ const ActionButton: React.FC<{
   label: string;
   onClick: () => void;
   variant?: 'default' | 'primary' | 'collect' | 'danger';
-}> = ({ icon, label, onClick, variant = 'default' }) => {
+  disabled?: boolean;
+}> = ({ icon, label, onClick, variant = 'default', disabled = false }) => {
   const variantClass =
     variant === 'collect'
       ? 'bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-sm shadow-primary-500/30 hover:shadow-md'
@@ -906,10 +1075,11 @@ const ActionButton: React.FC<{
 
   return (
     <motion.button
-      whileHover={{ scale: 1.04 }}
-      whileTap={{ scale: 0.96 }}
+      whileHover={disabled ? undefined : { scale: 1.04 }}
+      whileTap={disabled ? undefined : { scale: 0.96 }}
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${variantClass}`}
+      disabled={disabled}
+      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${variantClass}`}
     >
       {icon}
       {label}

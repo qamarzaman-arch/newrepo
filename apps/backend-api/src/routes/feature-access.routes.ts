@@ -151,11 +151,11 @@ router.post('/reset', authenticate, authorize('ADMIN'), async (_req: AuthRequest
         // Enable all features for ADMIN
         // Enable most features for MANAGER
         // Enable specific features for other roles
-        const enabled = role === 'ADMIN' || 
+        const enabled = role === 'ADMIN' ||
                         (role === 'MANAGER' && feature.id !== 'settings') ||
-                        (role === 'STAFF' && ['orders', 'kitchen'].includes(feature.id)) ||
-                        (role === 'RIDER' && ['delivery'].includes(feature.id)) ||
-                        (role === 'CASHIER' && ['orders', 'menu', 'tables'].includes(feature.id));
+                        (role === 'STAFF' && ['orders', 'kitchen', 'tables', 'customers', 'attendance'].includes(feature.id)) ||
+                        (role === 'RIDER' && ['delivery', 'attendance'].includes(feature.id)) ||
+                        (role === 'CASHIER' && ['orders', 'menu', 'tables', 'kitchen', 'customers', 'delivery', 'attendance'].includes(feature.id));
         
         defaults.push({
           feature: feature.id,

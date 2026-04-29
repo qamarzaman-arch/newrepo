@@ -32,7 +32,7 @@ import toast from 'react-hot-toast';
 // Role-based route access control
 const ALLOWED_ROUTES: Record<string, string[]> = {
   '/orders': ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER'],
-  '/kitchen': ['ADMIN', 'MANAGER', 'KITCHEN'],
+  '/kitchen': ['ADMIN', 'MANAGER', 'KITCHEN', 'CASHIER'],
   '/tables': ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER'],
   '/menu': ['ADMIN', 'MANAGER', 'CASHIER'],
   '/customers': ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER'],

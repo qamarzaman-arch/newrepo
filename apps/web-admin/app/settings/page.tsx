@@ -1,76 +1,72 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Settings, Save, RefreshCw, AlertTriangle, Check } from 'lucide-react';
+import { Settings, Save, RefreshCw, AlertTriangle, Check, Plus, Trash2 } from 'lucide-react';
 import apiClient from '../lib/api';
 
-const TABS = ['general', 'business', 'payment', 'notifications'] as const;
-type Tab = typeof TABS[number];
-
-interface SettingsData {
-  restaurantName?: string;
-  tagline?: string;
-  timezone?: string;
-  language?: string;
-  currency?: string;
-  taxRate?: number;
-  serviceCharge?: number;
-  acceptCash?: boolean;
-  acceptCard?: boolean;
-  acceptMobileWallet?: boolean;
-  splitPaymentEnabled?: boolean;
-  emailNotifications?: boolean;
-  smsNotifications?: boolean;
-  lowStockThreshold?: number;
-  fiscalYearStart?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  website?: string;
+interface Setting {
+  id?: string;
+  key: string;
+  value: string;
+  category: string;
+  description?: string | null;
 }
 
-const DEFAULTS: SettingsData = {
-  restaurantName: '',
-  tagline: '',
-  timezone: 'UTC',
-  language: 'en',
-  currency: 'USD',
-  taxRate: 0,
-  serviceCharge: 0,
-  acceptCash: true,
-  acceptCard: true,
-  acceptMobileWallet: false,
-  splitPaymentEnabled: false,
-  emailNotifications: true,
-  smsNotifications: false,
-  lowStockThreshold: 10,
-  fiscalYearStart: 'January',
-  address: '',
-  phone: '',
-  email: '',
-  website: '',
+const CATEGORY_LABELS: Record<string, string> = {
+  general:       'General',
+  business:      'Business',
+  payment:       'Payment',
+  tax:           'Tax & Service Charges',
+  notifications: 'Notifications',
+  loyalty:       'Loyalty Program',
+  printer:       'Printers & Hardware',
+  commission:    'Commission Rates',
 };
 
-const TIMEZONES = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Asia/Karachi', 'Asia/Dubai'];
-const CURRENCIES = ['USD', 'PKR', 'EUR', 'GBP', 'AED', 'CAD', 'AUD'];
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+// Common keys that should always exist; if missing on load, we surface them as empty rows
+const SUGGESTED_KEYS: { key: string; category: string; description: string; defaultValue: string }[] = [
+  { key: 'restaurant_name',          category: 'general',  description: 'Restaurant display name',                  defaultValue: '' },
+  { key: 'restaurant_address',       category: 'general',  description: 'Address printed on receipts',              defaultValue: '' },
+  { key: 'restaurant_phone',         category: 'general',  description: 'Contact phone number',                     defaultValue: '' },
+  { key: 'restaurant_email',         category: 'general',  description: 'Contact email',                            defaultValue: '' },
+  { key: 'currency',                 category: 'business', description: 'ISO currency code (USD, PKR, EUR…)',      defaultValue: 'USD' },
+  { key: 'timezone',                 category: 'business', description: 'IANA timezone',                            defaultValue: 'UTC' },
+  { key: 'tax_rate',                 category: 'tax',      description: 'Tax rate (%)',                             defaultValue: '0' },
+  { key: 'service_charge_rate',      category: 'tax',      description: 'Service charge rate (%)',                  defaultValue: '0' },
+  { key: 'loyalty_points_per_dollar',category: 'loyalty',  description: 'Points awarded per dollar spent',          defaultValue: '1' },
+  { key: 'loyalty_min_spend',        category: 'loyalty',  description: 'Minimum spend before earning points',      defaultValue: '0' },
+  { key: 'loyalty_points_value',     category: 'loyalty',  description: 'Dollar value per point on redemption',     defaultValue: '0.01' },
+];
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('general');
-  const [settings, setSettings] = useState<SettingsData>(DEFAULTS);
+  const [settings, setSettings] = useState<Setting[]>([]);
+  const [original, setOriginal] = useState<Setting[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('general');
 
   const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const res = await apiClient.get('/settings');
-      setSettings({ ...DEFAULTS, ...(res.data?.data?.settings || {}) });
-    } catch {
-      setSettings(DEFAULTS);
+      const fetched: Setting[] = res.data?.data?.settings || [];
+
+      // Merge with suggested keys: if a suggested key is not in DB, add a placeholder row
+      const fetchedKeys = new Set(fetched.map(s => s.key));
+      const merged: Setting[] = [...fetched];
+      for (const sug of SUGGESTED_KEYS) {
+        if (!fetchedKeys.has(sug.key)) {
+          merged.push({ key: sug.key, value: sug.defaultValue, category: sug.category, description: sug.description });
+        }
+      }
+      merged.sort((a, b) => (a.category + a.key).localeCompare(b.category + b.key));
+      setSettings(merged);
+      setOriginal(JSON.parse(JSON.stringify(merged)));
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to load settings');
     } finally {
       setLoading(false);
     }
@@ -78,12 +74,47 @@ export default function SettingsPage() {
 
   useEffect(() => { fetchSettings(); }, [fetchSettings]);
 
+  const updateValue = (key: string, value: string) => {
+    setSettings(prev => prev.map(s => s.key === key ? { ...s, value } : s));
+  };
+
+  const addCustomSetting = () => {
+    const key = prompt('Setting key (snake_case, e.g. "low_stock_threshold"):');
+    if (!key || !/^[a-z][a-z0-9_]*$/.test(key)) {
+      if (key) alert('Invalid key — use snake_case lowercase letters, numbers, and underscores only.');
+      return;
+    }
+    if (settings.some(s => s.key === key)) {
+      alert('A setting with that key already exists.');
+      return;
+    }
+    setSettings(prev => [...prev, { key, value: '', category: activeCategory, description: null }]);
+  };
+
+  const removeSetting = (key: string) => {
+    if (!confirm(`Remove setting "${key}"? It won't be deleted from the database — you'll need to delete it directly. This only removes it from the editor.`)) return;
+    setSettings(prev => prev.filter(s => s.key !== key));
+  };
+
   const saveSettings = async () => {
+    const changed = settings.filter(s => {
+      const orig = original.find(o => o.key === s.key);
+      return !orig || orig.value !== s.value;
+    });
+    if (changed.length === 0) {
+      setSuccessMsg('No changes to save');
+      setTimeout(() => setSuccessMsg(null), 2000);
+      return;
+    }
+
     setSaving(true);
-    setSuccessMsg(null);
+    setError(null);
     try {
-      await apiClient.put('/settings', settings);
-      setSuccessMsg('Settings saved successfully');
+      await apiClient.post('/settings/bulk-sync', {
+        settings: changed.map(s => ({ key: s.key, value: s.value, category: s.category })),
+      });
+      setOriginal(JSON.parse(JSON.stringify(settings)));
+      setSuccessMsg(`Saved ${changed.length} setting${changed.length === 1 ? '' : 's'}`);
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save settings');
@@ -92,51 +123,28 @@ export default function SettingsPage() {
     }
   };
 
-  const set = (key: keyof SettingsData, value: any) => setSettings(prev => ({ ...prev, [key]: value }));
+  const categories = Array.from(new Set([...settings.map(s => s.category), ...Object.keys(CATEGORY_LABELS)])).sort();
+  const categorySettings = settings.filter(s => s.category === activeCategory);
+  const hasChanges = JSON.stringify(settings) !== JSON.stringify(original);
 
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div>
-      <label className="block text-sm font-bold text-gray-700 mb-1.5">{label}</label>
-      {children}
-    </div>
-  );
-
-  const TextInput = ({ k, placeholder = '' }: { k: keyof SettingsData; placeholder?: string }) => (
-    <input type="text" value={(settings[k] as string) || ''} onChange={e => set(k, e.target.value)} placeholder={placeholder}
-      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-red-400 focus:outline-none" />
-  );
-
-  const NumberInput = ({ k, min = 0, step = 0.01 }: { k: keyof SettingsData; min?: number; step?: number }) => (
-    <input type="number" min={min} step={step} value={(settings[k] as number) || 0} onChange={e => set(k, parseFloat(e.target.value) || 0)}
-      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-red-400 focus:outline-none" />
-  );
-
-  const Toggle = ({ k, label }: { k: keyof SettingsData; label: string }) => (
-    <div className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
-      <span className="font-medium text-gray-700">{label}</span>
-      <button onClick={() => set(k, !settings[k])}
-        className={`relative w-11 h-6 rounded-full transition-colors ${settings[k] ? 'bg-red-500' : 'bg-gray-200'}`}>
-        <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${settings[k] ? 'translate-x-5 left-0.5' : 'left-0.5'}`} />
-      </button>
-    </div>
-  );
+  const formatLabel = (key: string) => key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
   return (
-    <div className="p-8 space-y-6 max-w-4xl mx-auto">
+    <div className="p-8 space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
             <Settings className="text-red-600" /> Settings
           </h1>
-          <p className="text-gray-500 mt-1">Configure your restaurant system</p>
+          <p className="text-gray-500 mt-1">Configure your restaurant system. All settings are stored as key-value pairs.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={fetchSettings} className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors">
             <RefreshCw size={16} /> Refresh
           </button>
-          <button onClick={saveSettings} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors disabled:opacity-50">
+          <button onClick={saveSettings} disabled={saving || !hasChanges} className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors disabled:opacity-50">
             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
-            Save Settings
+            Save Changes
           </button>
         </div>
       </div>
@@ -151,13 +159,18 @@ export default function SettingsPage() {
           <Check size={20} /> {successMsg}
         </div>
       )}
+      {hasChanges && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-700 p-3 rounded-2xl text-sm font-medium">
+          You have unsaved changes. Click "Save Changes" to apply.
+        </div>
+      )}
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-        {TABS.map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`px-5 py-2 rounded-lg text-sm font-bold transition-colors capitalize ${activeTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-            {tab}
+      {/* Category tabs */}
+      <div className="flex gap-1 flex-wrap bg-gray-100 p-1 rounded-xl w-fit">
+        {categories.map(cat => (
+          <button key={cat} onClick={() => setActiveCategory(cat)}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeCategory === cat ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+            {CATEGORY_LABELS[cat] || cat}
           </button>
         ))}
       </div>
@@ -167,73 +180,50 @@ export default function SettingsPage() {
           <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
-          {activeTab === 'general' && (
-            <>
-              <h2 className="text-lg font-extrabold text-gray-900 border-b border-gray-100 pb-4">General Settings</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <Field label="Restaurant Name"><TextInput k="restaurantName" placeholder="My Restaurant" /></Field>
-                <Field label="Tagline"><TextInput k="tagline" placeholder="Great food, great service" /></Field>
-                <Field label="Timezone">
-                  <select value={settings.timezone || 'UTC'} onChange={e => set('timezone', e.target.value)}
-                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-red-400 focus:outline-none">
-                    {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
-                  </select>
-                </Field>
-                <Field label="Currency">
-                  <select value={settings.currency || 'USD'} onChange={e => set('currency', e.target.value)}
-                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-red-400 focus:outline-none">
-                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </Field>
-                <Field label="Fiscal Year Start">
-                  <select value={settings.fiscalYearStart || 'January'} onChange={e => set('fiscalYearStart', e.target.value)}
-                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-red-400 focus:outline-none">
-                    {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </Field>
-                <Field label="Low Stock Threshold"><NumberInput k="lowStockThreshold" min={0} step={1} /></Field>
-              </div>
-            </>
-          )}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="font-extrabold text-gray-900">{CATEGORY_LABELS[activeCategory] || activeCategory}</h2>
+            <button onClick={addCustomSetting} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold text-gray-700 transition-colors">
+              <Plus size={14} /> Add Setting
+            </button>
+          </div>
 
-          {activeTab === 'business' && (
-            <>
-              <h2 className="text-lg font-extrabold text-gray-900 border-b border-gray-100 pb-4">Business Information</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <Field label="Address"><TextInput k="address" placeholder="123 Main St, City" /></Field>
-                <Field label="Phone"><TextInput k="phone" placeholder="+1 555 0000" /></Field>
-                <Field label="Email"><TextInput k="email" placeholder="info@restaurant.com" /></Field>
-                <Field label="Website"><TextInput k="website" placeholder="https://restaurant.com" /></Field>
-                <Field label="Tax Rate (%)"><NumberInput k="taxRate" /></Field>
-                <Field label="Service Charge (%)"><NumberInput k="serviceCharge" /></Field>
-              </div>
-            </>
-          )}
-
-          {activeTab === 'payment' && (
-            <>
-              <h2 className="text-lg font-extrabold text-gray-900 border-b border-gray-100 pb-4">Payment Methods</h2>
-              <div className="space-y-1">
-                <Toggle k="acceptCash" label="Accept Cash Payments" />
-                <Toggle k="acceptCard" label="Accept Card Payments" />
-                <Toggle k="acceptMobileWallet" label="Accept Mobile Wallet" />
-                <Toggle k="splitPaymentEnabled" label="Allow Split Payments" />
-              </div>
-            </>
-          )}
-
-          {activeTab === 'notifications' && (
-            <>
-              <h2 className="text-lg font-extrabold text-gray-900 border-b border-gray-100 pb-4">Notifications</h2>
-              <div className="space-y-1">
-                <Toggle k="emailNotifications" label="Email Notifications" />
-                <Toggle k="smsNotifications" label="SMS Notifications" />
-              </div>
-            </>
+          {categorySettings.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+              <Settings size={32} className="mb-2 text-gray-200" />
+              <p className="text-sm font-medium">No settings in this category</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {categorySettings.map(setting => {
+                const isChanged = original.find(o => o.key === setting.key)?.value !== setting.value;
+                return (
+                  <div key={setting.key} className={`px-5 py-4 flex items-start gap-4 ${isChanged ? 'bg-blue-50/40' : ''}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-900">{formatLabel(setting.key)}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 font-mono">{setting.key}</p>
+                      {setting.description && <p className="text-xs text-gray-500 mt-1">{setting.description}</p>}
+                    </div>
+                    <input
+                      value={setting.value}
+                      onChange={e => updateValue(setting.key, e.target.value)}
+                      className="w-64 px-3 py-2 border-2 border-gray-200 rounded-xl focus:border-red-400 focus:outline-none text-sm"
+                    />
+                    <button onClick={() => removeSetting(setting.key)} title="Remove from editor"
+                      className="p-2 hover:bg-red-100 text-gray-400 hover:text-red-600 rounded-lg transition-colors flex-shrink-0">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
+
+      <p className="text-xs text-gray-400 text-center">
+        Settings are stored in the database as key-value pairs. Removing a row only takes it out of the editor — it does not delete it from the database.
+      </p>
     </div>
   );
 }

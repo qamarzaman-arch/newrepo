@@ -21,29 +21,36 @@ export const useFeatureAccessStore = create<FeatureAccessState>((set, get) => ({
   isLoading: false,
 
   loadFeatureAccess: async (role: string) => {
-    set({ isLoading: true });
+    // Set role immediately so ADMIN bypass and loading-state defaults work
+    // even before the API responds.
+    set({ role, isLoading: true });
     try {
-      console.log('Loading feature access for role:', role);
       const response = await featureAccessService.getMyFeatureAccess();
-      console.log('Feature access loaded:', response.data);
       set({
         features: response.data.features,
-        role: response.data.role,
+        role: response.data.role || role,
         isLoading: false,
       });
     } catch (error) {
       console.error('Failed to load feature access:', error);
+      // Keep role set so ADMIN still gets full access; non-admins fall back
+      // to permissive defaults below.
       set({ isLoading: false });
     }
   },
 
   hasAccess: (feature: string) => {
-    const { features, role } = get();
+    const { features, role, isLoading } = get();
     // Admin always has access
     if (role === 'ADMIN') return true;
-    
+
     const featureItem = features.find(f => f.feature === feature);
-    return featureItem?.enabled ?? false; // Default to denied if not found
+    if (featureItem) return featureItem.enabled;
+
+    // Feature record not found in DB. While loading, optimistically allow
+    // (otherwise the sidebar collapses to empty before data arrives).
+    // Once loading is done, deny by default.
+    return isLoading;
   },
 
   clear: () => {

@@ -687,8 +687,8 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
   }
 });
 
-// Update order status
-router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Update order status — cashiers move orders through the workflow, kitchen marks food ready
+router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER', 'KITCHEN'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { status, cancelReason } = req.body;
 
@@ -1152,7 +1152,7 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
 });
 
 // Update existing order (for modifying active orders)
-router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { notes, items, kitchenNotes, notifyKitchen } = req.body;
 

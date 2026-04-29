@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { LogOut, HelpCircle, Clock, ShoppingCart, History, LayoutDashboard, X, Keyboard, Phone, ChevronLeft, ChevronRight, Users, Truck, Bell, Table as TableIcon, ChefHat, Package, BarChart3, Settings } from 'lucide-react';
+import { LogOut, HelpCircle, Clock, ShoppingCart, History, LayoutDashboard, X, Keyboard, Phone, ChevronLeft, ChevronRight, Users, Truck, Bell, Table as TableIcon, ChefHat, Package } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useFeatureAccessStore } from '../stores/featureAccessStore';
 import { useCashierWebSocket } from '../hooks/useWebSocket';
@@ -25,18 +25,15 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
   const [showHelp, setShowHelp] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // Cashier-specific menu items with delivery, tables, and attendance
+  // Cashier-specific menu — every entry must be in ALLOWED_ROUTES for CASHIER (App.tsx)
   const cashierMenuItems = [
     { icon: LayoutDashboard, label: 'POS Terminal', path: '/cashier-pos', feature: null },
     { icon: ShoppingCart, label: 'Active Orders', path: '/cashier-orders', feature: 'orders' },
     { icon: TableIcon, label: 'Tables', path: '/cashier-tables', feature: 'tables' },
     { icon: ChefHat, label: 'Kitchen Display', path: '/kitchen', feature: 'kitchen' },
-    { icon: Package, label: 'Inventory', path: '/inventory', feature: 'inventory' },
     { icon: Package, label: 'Menu', path: '/menu', feature: 'menu' },
     { icon: Users, label: 'Customers', path: '/customers', feature: 'customers' },
-    { icon: BarChart3, label: 'Vendors', path: '/vendors', feature: 'vendors' },
     { icon: Truck, label: 'Deliveries', path: '/delivery', feature: 'delivery' },
-    { icon: Users, label: 'Staff Attendance', path: '/staff-attendance', feature: 'staff' },
     { icon: Clock, label: 'Attendance', path: '/attendance', feature: 'attendance' },
     { icon: History, label: 'Order History', path: '/cashier-history', feature: null },
     { icon: Clock, label: 'Shift Summary', path: '/shift-summary', feature: null },

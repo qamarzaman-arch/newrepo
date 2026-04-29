@@ -5,18 +5,19 @@ import { Shield, RefreshCw, AlertTriangle, Save, RotateCcw, Check, X } from 'luc
 import apiClient from '../lib/api';
 
 const FEATURES = [
-  { key: 'orders',    label: 'Orders',     description: 'View and manage orders' },
-  { key: 'kitchen',   label: 'Kitchen',    description: 'Access kitchen display' },
-  { key: 'inventory', label: 'Inventory',  description: 'Manage inventory items' },
-  { key: 'vendors',   label: 'Vendors',    description: 'Manage suppliers' },
-  { key: 'customers', label: 'Customers',  description: 'Access customer records' },
-  { key: 'staff',     label: 'Staff',      description: 'Manage staff members' },
-  { key: 'delivery',  label: 'Delivery',   description: 'Delivery management' },
-  { key: 'tables',    label: 'Tables',     description: 'Table management' },
-  { key: 'menu',      label: 'Menu',       description: 'Edit menu items' },
-  { key: 'reports',   label: 'Reports',    description: 'View reports & analytics' },
-  { key: 'financial', label: 'Financial',  description: 'Financial management' },
-  { key: 'settings',  label: 'Settings',   description: 'System settings' },
+  { key: 'orders',     label: 'Orders',     description: 'View and manage orders' },
+  { key: 'kitchen',    label: 'Kitchen',    description: 'Access kitchen display' },
+  { key: 'inventory',  label: 'Inventory',  description: 'Manage inventory items' },
+  { key: 'vendors',    label: 'Vendors',    description: 'Manage suppliers' },
+  { key: 'customers',  label: 'Customers',  description: 'Access customer records' },
+  { key: 'staff',      label: 'Staff',      description: 'Manage staff members' },
+  { key: 'attendance', label: 'Attendance', description: 'Clock in/out and track attendance' },
+  { key: 'delivery',   label: 'Delivery',   description: 'Delivery management' },
+  { key: 'tables',     label: 'Tables',     description: 'Table management' },
+  { key: 'menu',       label: 'Menu',       description: 'Edit menu items' },
+  { key: 'reports',    label: 'Reports',    description: 'View reports & analytics' },
+  { key: 'financial',  label: 'Financial',  description: 'Financial management' },
+  { key: 'settings',   label: 'Settings',   description: 'System settings' },
 ];
 
 const ROLES = ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER', 'RIDER'];
@@ -44,7 +45,12 @@ export default function FeatureAccessPage() {
       setLoading(true);
       setError(null);
       const res = await apiClient.get('/feature-access');
-      const data: AccessMatrix = res.data?.data?.featureAccess || {};
+      const accessList: { feature: string; role: string; enabled: boolean }[] = res.data?.data?.access || [];
+      const data: AccessMatrix = {};
+      for (const a of accessList) {
+        if (!data[a.feature]) data[a.feature] = {};
+        data[a.feature][a.role] = a.enabled;
+      }
       setMatrix(JSON.parse(JSON.stringify(data)));
       setOriginal(JSON.parse(JSON.stringify(data)));
     } catch {
