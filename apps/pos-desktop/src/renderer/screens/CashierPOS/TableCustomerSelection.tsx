@@ -258,7 +258,7 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
                       lockedTables.has(table.id)
                         ? 'opacity-50 cursor-not-allowed border-orange-300 bg-orange-50'
                         : localTableId === table.id
-                        ? 'border-primary bg-primary/10 shadow-primary/20 shadow-lg'
+                        ? 'border-primary bg-primary-100 shadow-primary-500/30 shadow-lg'
                         : 'border-gray-200 hover:border-primary'
                     }`}
                   >
@@ -272,7 +272,7 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
                           In Use
                         </span>
                       ) : (
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-primary bg-primary-100 px-2 py-0.5 rounded-full">
                           Available
                         </span>
                       )}

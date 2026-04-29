@@ -101,7 +101,7 @@ const KitchenDispatchConfirmation: React.FC<Props> = ({ isOpen, onClose, onConfi
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/70 backdrop-blur-md"
+            className="absolute inset-0 bg-black/70"
           />
 
           <motion.div
@@ -115,7 +115,7 @@ const KitchenDispatchConfirmation: React.FC<Props> = ({ isOpen, onClose, onConfi
             <div className="p-8 pb-6 border-b border-gray-200">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-2xl bg-primary-100 flex items-center justify-center">
                     <CookingPot className="w-8 h-8 text-primary" />
                   </div>
                   <div>
@@ -178,7 +178,7 @@ const KitchenDispatchConfirmation: React.FC<Props> = ({ isOpen, onClose, onConfi
                     transition={{ delay: index * 0.05 }}
                     className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-200"
                   >
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                    <div className="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center text-primary font-bold text-lg">
                       {item.quantity}x
                     </div>
                     <div className="flex-1">

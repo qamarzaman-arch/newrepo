@@ -162,7 +162,7 @@ const SplitBilling: React.FC<Props> = ({ isOpen, onClose, onConfirm, totalAmount
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -181,7 +181,7 @@ const SplitBilling: React.FC<Props> = ({ isOpen, onClose, onConfirm, totalAmount
               </div>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+                className="p-2 hover:bg-neutral-100 rounded-xl transition-colors"
               >
                 <X className="w-6 h-6 text-white" />
               </button>
@@ -199,10 +199,10 @@ const SplitBilling: React.FC<Props> = ({ isOpen, onClose, onConfirm, totalAmount
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => handleSelectOption(option)}
-                        className="p-6 bg-gray-50 hover:bg-primary/5 border-2 border-gray-200 hover:border-primary rounded-2xl text-left transition-all"
+                        className="p-6 bg-gray-50 hover:bg-neutral-100 border-2 border-gray-200 hover:border-primary-600 rounded-2xl text-left transition-all"
                       >
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                          <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
                             <Users className="w-6 h-6 text-primary" />
                           </div>
                           <h4 className="font-bold text-gray-900">{option.name}</h4>
@@ -292,7 +292,7 @@ const SplitBilling: React.FC<Props> = ({ isOpen, onClose, onConfirm, totalAmount
                     <div className="space-y-3">
                       {customSplits.map((split, index) => (
                         <div key={split.id} className="flex items-center gap-4 bg-white p-4 rounded-xl border border-gray-200">
-                          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                          <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
                             <Users className="w-5 h-5 text-primary" />
                           </div>
                           <div className="flex-1">

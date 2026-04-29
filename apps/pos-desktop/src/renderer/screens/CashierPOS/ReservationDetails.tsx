@@ -150,7 +150,7 @@ const ReservationDetails: React.FC<Props> = ({ onSelect, onBack }) => {
                   }}
                   className={`p-3 rounded-xl border-2 transition-all ${
                     selectedDate === date
-                      ? 'border-primary bg-primary/10 shadow-md'
+                      ? 'border-primary bg-primary-100 shadow-md'
                       : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
                   }`}
                 >
@@ -191,7 +191,7 @@ const ReservationDetails: React.FC<Props> = ({ onSelect, onBack }) => {
                       }}
                       className={`p-3 rounded-xl border-2 transition-all ${
                         selectedTime === time
-                          ? 'border-primary bg-primary/10 shadow-md'
+                          ? 'border-primary bg-primary-100 shadow-md'
                           : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
                       }`}
                     >
@@ -221,7 +221,7 @@ const ReservationDetails: React.FC<Props> = ({ onSelect, onBack }) => {
                   }}
                   className={`p-3 rounded-xl border-2 transition-all ${
                     guestCount === count
-                      ? 'border-primary bg-primary/10 shadow-md'
+                      ? 'border-primary bg-primary-100 shadow-md'
                       : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
                   }`}
                 >
@@ -259,7 +259,7 @@ const ReservationDetails: React.FC<Props> = ({ onSelect, onBack }) => {
                       table.capacity < guestCount
                         ? 'opacity-40 cursor-not-allowed border-gray-200'
                         : selectedTableId === table.id
-                        ? 'border-primary bg-primary/10 shadow-primary/20 shadow-lg'
+                        ? 'border-primary bg-primary-100 shadow-primary-500/30 shadow-lg'
                         : 'border-gray-200 hover:border-primary'
                     }`}
                   >
@@ -268,7 +268,7 @@ const ReservationDetails: React.FC<Props> = ({ onSelect, onBack }) => {
                     </span>
                     <Users className={`w-8 h-8 ${selectedTableId === table.id ? 'text-primary' : 'text-gray-400'}`} />
                     <div className="flex flex-col items-center gap-0.5">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-primary bg-primary-100 px-2 py-0.5 rounded-full">
                         Available
                       </span>
                       {table.capacity && (

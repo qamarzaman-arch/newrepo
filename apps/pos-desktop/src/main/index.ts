@@ -210,7 +210,7 @@ app.whenReady().then(() => {
   // Initialize offline database
   initializeDatabase();
   log.info('Offline database initialized successfully');
-  
+
   // Register IPC handlers after app is ready
   ipcMain.handle('db-query', (event, sql, params = []) => {
     try {
@@ -317,6 +317,9 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+}).catch((error) => {
+  log.error('Failed to initialize app:', error);
+  console.error('Failed to initialize app:', error);
 });
 
 app.on('window-all-closed', () => {

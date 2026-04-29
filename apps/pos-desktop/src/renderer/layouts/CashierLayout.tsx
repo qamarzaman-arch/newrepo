@@ -91,16 +91,16 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
   useCashierWebSocket(handleKitchenNotification);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-neutral-200">
       {/* Collapsible Sidebar for Cashiers */}
       <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-gradient-to-b from-primary to-primary-container flex flex-col shadow-lg transition-all duration-300 relative`}>
         {/* Logo */}
-        <div className={`p-6 border-b border-white/10 ${isSidebarCollapsed ? 'flex justify-center' : ''}`}>
+        <div className={`p-6 border-b ${isSidebarCollapsed ? 'flex justify-center' : ''}`}>
           <Link to="/cashier-pos" className={`flex items-center gap-3 group ${isSidebarCollapsed ? 'flex-col' : ''}`}>
             <motion.div
               whileHover={{ scale: 1.1, rotate: 5 }}
               transition={{ type: "spring", stiffness: 300 }}
-              className="bg-white/20 rounded-xl p-2"
+              className="rounded-xl p-2"
             >
               <span className="text-white font-black text-xl">P</span>
             </motion.div>
@@ -149,8 +149,8 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
                   to={item.path}
                   className={`relative flex items-center ${isSidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-xl transition-all duration-300 group ${
                     isActive
-                      ? 'bg-white/20 text-white font-semibold shadow-lg'
-                      : 'text-white/80 hover:bg-white/10 hover:text-white'
+                      ? 'text-white font-semibold shadow-lg'
+                      : 'text-white/90 hover:text-white'
                   }`}
                   title={isSidebarCollapsed ? item.label : undefined}
                 >
@@ -175,13 +175,13 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
         </nav>
 
         {/* Bottom Actions - Compact Row Layout */}
-        <div className="mt-auto p-3 border-t border-white/10">
+        <div className="mt-auto p-3 border-t">
           <div className="flex gap-2">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowHelp(true)}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 transition-colors text-sm"
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-white/90 transition-colors text-sm"
               title="Help"
             >
               <HelpCircle className="w-4 h-4" />
@@ -206,7 +206,7 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <ShiftManager>
           {/* Content Area - No duplicate header, sidebar has all navigation */}
-          <main className="flex-1 overflow-y-auto bg-gray-50">
+          <main className="flex-1 overflow-y-auto bg-neutral-200">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
