@@ -4,6 +4,7 @@ import { prisma } from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { getWebSocketManager } from '../utils/websocket';
 
 const router = Router();
 
@@ -206,10 +207,26 @@ router.post('/location', authenticate, async (req: AuthRequest, res: Response, n
         lastLocationLng: data.longitude,
         lastLocationAt: new Date(),
       },
+      select: { id: true, fullName: true, status: true, isAvailable: true, lastLocationAt: true },
     });
 
-    // Emit location update via WebSocket (if connected)
-    // io.emit('rider_location_update', { riderId: req.user!.userId, ...data });
+    // Real-time broadcast for tracking dashboards
+    try {
+      const ws = getWebSocketManager();
+      ws.emitRiderLocationUpdate(
+        req.user!.userId,
+        {
+          lat: data.latitude,
+          lng: data.longitude,
+          accuracy: data.accuracy,
+          speed: data.speed,
+          heading: data.heading,
+        },
+        { fullName: updated.fullName, status: updated.status, isAvailable: updated.isAvailable }
+      );
+    } catch (wsErr) {
+      logger.warn('Rider location WS emit failed', { riderId: req.user!.userId });
+    }
 
     res.json({
       success: true,

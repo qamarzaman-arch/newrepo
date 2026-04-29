@@ -11,14 +11,17 @@
   "dependencies": {
     "@poslytic/ui-components": "*",
     "@tanstack/react-query": "^5.17.9",
+    "@types/leaflet": "^1.9.21",
     "axios": "^1.6.5",
     "clsx": "^2.1.0",
     "electron": "41.2.1",
     "framer-motion": "^10.18.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.309.0",
     "next": "^16.2.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-leaflet": "^5.0.0",
     "tailwind-merge": "^2.2.0"
   },
   "devDependencies": {

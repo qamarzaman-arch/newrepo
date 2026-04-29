@@ -1,27 +1,50 @@
 /**
  * Secure Storage Service for POS Desktop
- * Uses Electron's safeStorage API for secure token storage
- * NO FALLBACK - if secure storage fails, app requires restart
+ *
+ * Production: requires Electron's safeStorage IPC bridge — no fallback.
+ * Development (Vite browser tab): falls back to localStorage so devs can
+ * exercise the renderer without a full Electron build. The fallback is
+ * gated on import.meta.env.DEV so it never ships in a production bundle.
  */
 
 const TOKEN_KEY = 'auth_token_secure';
 const USER_KEY = 'user_data_secure';
 
+const IS_DEV = typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV === true;
+
 class SecureStorageService {
   private isElectron: boolean;
+  private useDevFallback: boolean;
+  private warnedAboutFallback = false;
 
   constructor() {
-    // Check if running in Electron with safeStorage available
-    this.isElectron = typeof window !== 'undefined' && 
+    this.isElectron = typeof window !== 'undefined' &&
                      (window as any).electronAPI !== undefined;
+    // Dev-only fallback when running the renderer in a plain browser tab
+    this.useDevFallback = !this.isElectron && IS_DEV && typeof window !== 'undefined' && !!window.localStorage;
   }
 
-  /**
-   * Store authentication token securely
-   */
+  private warnFallbackOnce(): void {
+    if (!this.warnedAboutFallback) {
+      this.warnedAboutFallback = true;
+      console.warn(
+        '[secureStorageService] electronAPI not detected — using localStorage fallback. ' +
+        'This only happens in dev mode (browser tab). Tokens are NOT encrypted.'
+      );
+    }
+  }
+
+  private requireElectronOrThrow(): void {
+    if (this.isElectron) return;
+    if (this.useDevFallback) { this.warnFallbackOnce(); return; }
+    throw new Error('Secure storage unavailable: electronAPI not loaded');
+  }
+
   async setToken(token: string): Promise<void> {
-    if (!this.isElectron) {
-      throw new Error('Secure storage unavailable: electronAPI not loaded');
+    this.requireElectronOrThrow();
+    if (this.useDevFallback) {
+      window.localStorage.setItem(TOKEN_KEY, token);
+      return;
     }
     try {
       await (window as any).electronAPI.secureSetItem(TOKEN_KEY, token);
@@ -31,13 +54,10 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Retrieve authentication token
-   * Returns null if not found, throws on storage error
-   */
   async getToken(): Promise<string | null> {
-    if (!this.isElectron) {
-      throw new Error('Secure storage unavailable: electronAPI not loaded');
+    this.requireElectronOrThrow();
+    if (this.useDevFallback) {
+      return window.localStorage.getItem(TOKEN_KEY);
     }
     try {
       return await (window as any).electronAPI.secureGetItem(TOKEN_KEY);
@@ -47,29 +67,26 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Remove authentication token
-   */
   async removeToken(): Promise<void> {
-    if (!this.isElectron) {
-      throw new Error('Secure storage unavailable: electronAPI not loaded');
+    if (!this.isElectron && !this.useDevFallback) return; // nothing to remove
+    if (this.useDevFallback) {
+      window.localStorage.removeItem(TOKEN_KEY);
+      return;
     }
     try {
       await (window as any).electronAPI.secureRemoveItem(TOKEN_KEY);
     } catch (error) {
       console.error('Failed to remove token from secure storage:', error);
-      // Non-critical - don't throw
     }
   }
 
-  /**
-   * Store user data securely
-   */
   async setUser(user: any): Promise<void> {
-    if (!this.isElectron) {
-      throw new Error('Secure storage unavailable: electronAPI not loaded');
-    }
+    this.requireElectronOrThrow();
     const userJson = JSON.stringify(user);
+    if (this.useDevFallback) {
+      window.localStorage.setItem(USER_KEY, userJson);
+      return;
+    }
     try {
       await (window as any).electronAPI.secureSetItem(USER_KEY, userJson);
     } catch (error) {
@@ -78,58 +95,48 @@ class SecureStorageService {
     }
   }
 
-  /**
-   * Retrieve user data
-   * Returns null if not found, throws on storage error
-   */
   async getUser(): Promise<any | null> {
-    if (!this.isElectron) {
-      throw new Error('Secure storage unavailable: electronAPI not loaded');
-    }
-    try {
-      const userJson = await (window as any).electronAPI.secureGetItem(USER_KEY);
-      if (userJson) {
-        return JSON.parse(userJson);
+    this.requireElectronOrThrow();
+    let userJson: string | null;
+    if (this.useDevFallback) {
+      userJson = window.localStorage.getItem(USER_KEY);
+    } else {
+      try {
+        userJson = await (window as any).electronAPI.secureGetItem(USER_KEY);
+      } catch (error) {
+        console.error('Failed to retrieve user from secure storage:', error);
+        throw new Error('Secure user retrieval failed. Please restart the application.');
       }
-      return null;
-    } catch (error) {
-      console.error('Failed to retrieve user from secure storage:', error);
-      throw new Error('Secure user retrieval failed. Please restart the application.');
     }
+    if (userJson) {
+      try { return JSON.parse(userJson); } catch { return null; }
+    }
+    return null;
   }
 
-  /**
-   * Remove user data
-   */
   async removeUser(): Promise<void> {
-    if (!this.isElectron) {
-      throw new Error('Secure storage unavailable: electronAPI not loaded');
+    if (!this.isElectron && !this.useDevFallback) return;
+    if (this.useDevFallback) {
+      window.localStorage.removeItem(USER_KEY);
+      return;
     }
     try {
       await (window as any).electronAPI.secureRemoveItem(USER_KEY);
     } catch (error) {
       console.error('Failed to remove user from secure storage:', error);
-      // Non-critical - don't throw
     }
   }
 
-  /**
-   * Clear all auth data
-   */
   async clearAuth(): Promise<void> {
     await this.removeToken();
     await this.removeUser();
   }
 
-  /**
-   * Check if secure storage is available
-   */
   isSecureStorageAvailable(): boolean {
     return this.isElectron;
   }
 }
 
-// Singleton instance
 let secureStorageService: SecureStorageService | null = null;
 
 export const getSecureStorageService = (): SecureStorageService => {

@@ -1,19 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   Truck, MapPin, Clock, DollarSign, Phone, Mail,
   User, Navigation, Package, TrendingUp, Plus,
-  Search, Filter, CheckCircle, MoreVertical, X, Star, Edit, Trash2, Eye, Calendar
+  Search, Filter, CheckCircle, MoreVertical, X, Star, Edit, Trash2, Eye, Calendar, Map as MapIcon, Activity
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
 import { deliveryService, CreateDeliveryData } from '../services/deliveryService';
+import { deliveryZoneService } from '../services/deliveryZoneService';
 import { staffService } from '../services/staffService';
+import { useWebSocket } from '../hooks/useWebSocket';
+import DeliveryMap, { MapZone, MapMarker } from '../components/maps/DeliveryMap';
+import ZoneEditor from '../components/maps/ZoneEditor';
 import toast from 'react-hot-toast';
 
 const DeliveryManagementScreen: React.FC = () => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'deliveries' | 'riders' | 'zones' | 'analytics'>('deliveries');
+  const [activeTab, setActiveTab] = useState<'deliveries' | 'riders' | 'zones' | 'live-map' | 'analytics'>('deliveries');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
@@ -32,14 +36,25 @@ const DeliveryManagementScreen: React.FC = () => {
   const [selectedRider, setSelectedRider] = useState<any>(null);
   const [showZoneEditModal, setShowZoneEditModal] = useState(false);
   const [selectedZone, setSelectedZone] = useState<any>(null);
-  const [zoneFormData, setZoneFormData] = useState({
+  const emptyZoneForm = {
     name: '',
-    radius: '',
-    fee: '',
-    color: 'bg-blue-500',
+    description: '',
+    baseFee: '0',
+    minimumOrder: '0',
+    freeDeliveryThreshold: '',
+    estimatedTimeMin: '20',
+    estimatedTimeMax: '45',
+    color: '#dc2626',
     isActive: true,
-  });
+    coordinates: [] as { lat: number; lng: number }[],
+  };
+  const [zoneFormData, setZoneFormData] = useState(emptyZoneForm);
   const [showFilterModal, setShowFilterModal] = useState(false);
+
+  // Live rider tracking (WebSocket-driven)
+  const [liveRiderLocations, setLiveRiderLocations] = useState<Record<string, {
+    lat: number; lng: number; timestamp: string; fullName?: string; status?: string;
+  }>>({});
 
   // Load deliveries when tab changes to deliveries or on mount
   useEffect(() => {
@@ -53,15 +68,35 @@ const DeliveryManagementScreen: React.FC = () => {
     loadDeliveries();
   }, []);
 
+  // ── Live rider tracking via WebSocket ──
+  const { subscribe, joinRoom, isConnected: wsConnected } = useWebSocket();
+  useEffect(() => {
+    joinRoom('delivery-tracking');
+    const unsubscribe = subscribe('rider:location', (payload: any) => {
+      if (!payload?.riderId || !payload?.location) return;
+      setLiveRiderLocations((prev) => ({
+        ...prev,
+        [payload.riderId]: {
+          lat: Number(payload.location.lat),
+          lng: Number(payload.location.lng),
+          timestamp: payload.timestamp || new Date().toISOString(),
+          fullName: payload.fullName,
+          status: payload.status,
+        },
+      }));
+    });
+    return () => { unsubscribe?.(); };
+  }, [subscribe, joinRoom]);
+
   const loadDeliveries = async () => {
     setLoading(true);
     try {
       const response = await deliveryService.getDeliveries({ 
         status: statusFilter !== 'all' ? statusFilter : undefined 
       });
-      setDeliveryList(response.data.data?.displayDeliveries || []);
+      setDeliveryList(response.data.data?.deliveries || []);
     } catch (error) {
-      console.error('Failed to load displayDeliveries:', error);
+      console.error('Failed to load deliveries:', error);
     } finally {
       setLoading(false);
     }
@@ -194,44 +229,145 @@ const DeliveryManagementScreen: React.FC = () => {
   const handleEditZone = (zone: any) => {
     setSelectedZone(zone);
     setZoneFormData({
-      name: zone.name,
-      radius: zone.radius,
-      fee: zone.fee?.toString() || '0',
-      color: zone.color || 'bg-blue-500',
+      name: zone.name || '',
+      description: zone.description || '',
+      baseFee: String(zone.baseFee ?? 0),
+      minimumOrder: String(zone.minimumOrder ?? 0),
+      freeDeliveryThreshold: zone.freeDeliveryThreshold != null ? String(zone.freeDeliveryThreshold) : '',
+      estimatedTimeMin: String(zone.estimatedTimeMin ?? 20),
+      estimatedTimeMax: String(zone.estimatedTimeMax ?? 45),
+      color: zone.color || '#dc2626',
       isActive: zone.isActive !== false,
+      coordinates: Array.isArray(zone.coordinates)
+        ? zone.coordinates.map((c: any) => ({ lat: Number(c.lat), lng: Number(c.lng) }))
+        : [],
     });
     setShowZoneEditModal(true);
   };
 
-  const handleUpdateZone = async () => {
-    if (!selectedZone) return;
+  const handleSaveZone = async () => {
+    if (!zoneFormData.name.trim()) {
+      toast.error('Zone name is required');
+      return;
+    }
+    if (zoneFormData.coordinates.length < 3) {
+      toast.error('Draw at least 3 points on the map to form a zone polygon');
+      return;
+    }
+
+    const payload = {
+      name: zoneFormData.name.trim(),
+      description: zoneFormData.description.trim() || undefined,
+      baseFee: parseFloat(zoneFormData.baseFee) || 0,
+      minimumOrder: parseFloat(zoneFormData.minimumOrder) || 0,
+      freeDeliveryThreshold: zoneFormData.freeDeliveryThreshold
+        ? parseFloat(zoneFormData.freeDeliveryThreshold)
+        : undefined,
+      estimatedTimeMin: parseInt(zoneFormData.estimatedTimeMin, 10) || 20,
+      estimatedTimeMax: parseInt(zoneFormData.estimatedTimeMax, 10) || 45,
+      color: zoneFormData.color,
+      isActive: zoneFormData.isActive,
+      coordinates: zoneFormData.coordinates,
+    };
+
     try {
-      await deliveryService.updateZone(selectedZone.id, {
-        name: zoneFormData.name,
-        radius: zoneFormData.radius,
-        fee: parseFloat(zoneFormData.fee) || 0,
-        color: zoneFormData.color,
-        isActive: zoneFormData.isActive,
-      });
-      toast.success('Zone updated successfully');
+      if (selectedZone?.id) {
+        await deliveryZoneService.updateZone(selectedZone.id, payload);
+        toast.success('Zone updated');
+      } else {
+        await deliveryZoneService.createZone(payload);
+        toast.success('Zone created');
+      }
       setShowZoneEditModal(false);
       setSelectedZone(null);
+      setZoneFormData(emptyZoneForm);
       queryClient.invalidateQueries({ queryKey: ['delivery-zones'] });
-    } catch (error) {
-      toast.error('Failed to update zone');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to save zone');
     }
+  };
+
+  const handleNewZone = () => {
+    setSelectedZone(null);
+    setZoneFormData(emptyZoneForm);
+    setShowZoneEditModal(true);
   };
 
   const handleDeleteZone = async (zoneId: string) => {
     if (!window.confirm('Are you sure you want to delete this zone?')) return;
     try {
-      await deliveryService.deleteZone(zoneId);
+      await deliveryZoneService.deleteZone(zoneId);
       toast.success('Zone deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['delivery-zones'] });
     } catch (error) {
       toast.error('Failed to delete zone');
     }
   };
+
+  // Normalize zones for the map display
+  const zonesForMap: MapZone[] = useMemo(() => {
+    return (zones || [])
+      .filter((z: any) => Array.isArray(z?.coordinates) && z.coordinates.length >= 3)
+      .map((z: any) => ({
+        id: z.id,
+        name: z.name,
+        color: z.color,
+        baseFee: Number(z.baseFee || 0),
+        isActive: z.isActive !== false,
+        coordinates: z.coordinates.map((c: any) => ({ lat: Number(c.lat), lng: Number(c.lng) })),
+      }));
+  }, [zones]);
+
+  // Build live map markers from rider locations + active deliveries with coords
+  const liveMarkers: MapMarker[] = useMemo(() => {
+    const out: MapMarker[] = [];
+    const now = Date.now();
+    Object.entries(liveRiderLocations).forEach(([riderId, loc]) => {
+      const ageMs = now - new Date(loc.timestamp).getTime();
+      out.push({
+        id: `rider-${riderId}`,
+        lat: loc.lat,
+        lng: loc.lng,
+        label: loc.fullName || 'Rider',
+        type: 'rider',
+        status: loc.status || 'live',
+        isStale: ageMs > 5 * 60 * 1000,
+      });
+    });
+    // Also include riders who haven't pushed via WS yet but have a stored last-known location
+    riders.forEach((rider: any) => {
+      if (out.find(m => m.id === `rider-${rider.id}`)) return;
+      const lat = Number(rider.lastLocationLat);
+      const lng = Number(rider.lastLocationLng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const ageMs = rider.lastLocationAt ? now - new Date(rider.lastLocationAt).getTime() : Infinity;
+      out.push({
+        id: `rider-${rider.id}`,
+        lat,
+        lng,
+        label: rider.fullName || rider.name || 'Rider',
+        type: 'rider',
+        status: rider.status || 'offline',
+        isStale: ageMs > 10 * 60 * 1000,
+      });
+    });
+    // Active deliveries with coords as drop pins
+    displayDeliveries.forEach((d: any) => {
+      const lat = Number(d.latitude);
+      const lng = Number(d.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      if (d.status === 'DELIVERED' || d.status === 'CANCELLED') return;
+      out.push({
+        id: `delivery-${d.id}`,
+        lat,
+        lng,
+        label: `#${d.deliveryNumber || d.id?.slice(-6)}`,
+        type: 'delivery',
+        status: d.status,
+      });
+    });
+    return out;
+  }, [liveRiderLocations, riders, displayDeliveries]);
 
   return (
     <div className="space-y-6">
@@ -323,9 +459,10 @@ const DeliveryManagementScreen: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 inline-flex">
+      <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 inline-flex flex-wrap">
         {[
           { id: 'deliveries', label: 'Active Deliveries', icon: Truck },
+          { id: 'live-map', label: 'Live Map', icon: MapIcon },
           { id: 'riders', label: 'Riders', icon: User },
           { id: 'zones', label: 'Delivery Zones', icon: MapPin },
           { id: 'analytics', label: 'Analytics', icon: TrendingUp },
@@ -442,7 +579,7 @@ const DeliveryManagementScreen: React.FC = () => {
                         delivery.status === 'PREPARING' ? 'bg-blue-100 text-blue-700' :
                         'bg-yellow-100 text-yellow-700'
                       }`}>
-                        {delivery.status.replace('_', ' ')}
+                        {(delivery.status || 'UNKNOWN').replace('_', ' ')}
                       </span>
                     </div>
                     <p className="text-sm text-gray-600 mt-1">{delivery.customer}</p>
@@ -494,7 +631,7 @@ const DeliveryManagementScreen: React.FC = () => {
                       rider.status === 'ON_DELIVERY' ? 'bg-blue-100 text-blue-700' :
                       'bg-gray-100 text-gray-700'
                     }`}>
-                      {rider.status.replace('_', ' ')}
+                      {(rider.status || 'UNKNOWN').replace('_', ' ')}
                     </span>
                   </div>
                 </div>
@@ -538,54 +675,98 @@ const DeliveryManagementScreen: React.FC = () => {
         </div>
       )}
 
+      {/* LIVE MAP TAB */}
+      {activeTab === 'live-map' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 text-sm text-neutral-600">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-neutral-200 font-bold">
+              <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-neutral-300'}`} />
+              {wsConnected ? 'Live tracking connected' : 'Connecting…'}
+            </div>
+            <span className="text-neutral-500">
+              <Activity className="w-4 h-4 inline-block mr-1" />
+              {liveMarkers.filter(m => m.type === 'rider').length} rider(s) ·
+              {' '}{liveMarkers.filter(m => m.type === 'delivery').length} active deliveries ·
+              {' '}{zonesForMap.length} zones
+            </span>
+          </div>
+          <DeliveryMap zones={zonesForMap} markers={liveMarkers} height={560} />
+        </div>
+      )}
+
       {/* ZONES TAB */}
       {activeTab === 'zones' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {zones.map((zone: any, index: number) => (
-            <motion.div
-              key={zone.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Delivery Zones ({zones.length})</h2>
+              <p className="text-sm text-gray-500">Define geo-fenced polygons. New deliveries auto-assign to the matching zone.</p>
+            </div>
+            <button
+              onClick={handleNewZone}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold shadow-lg"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">{zone.name}</h3>
-                  <p className="text-sm text-gray-500">{zone.radius} radius</p>
-                </div>
-                <div className={`w-12 h-12 rounded-full ${zone.color} flex items-center justify-center`}>
-                  <MapPin className="w-6 h-6 text-white" />
-                </div>
-              </div>
-              
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Delivery Fee:</span>
-                  <span className="font-bold text-primary">{formatCurrency(zone.fee)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Active Orders:</span>
-                  <span className="font-semibold">{zone.activeOrders}</span>
-                </div>
-              </div>
+              <Plus className="w-4 h-4" /> New Zone
+            </button>
+          </div>
 
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => handleEditZone(zone)}
-                  className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors"
-                >
-                  Edit Zone
-                </button>
-                <button 
-                  onClick={() => handleDeleteZone(zone.id)}
-                  className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+          {/* Map preview of all zones */}
+          <DeliveryMap zones={zonesForMap} height={360} />
+
+          {/* Zone cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {zones.length === 0 && (
+              <div className="md:col-span-2 lg:col-span-3 bg-white rounded-2xl p-10 text-center border-2 border-dashed border-neutral-200">
+                <MapPin className="w-10 h-10 text-neutral-300 mx-auto mb-3" />
+                <p className="font-bold text-neutral-700">No delivery zones yet</p>
+                <p className="text-sm text-neutral-500 mt-1">Click "New Zone" to draw your first geo-fenced area on the map.</p>
               </div>
-            </motion.div>
-          ))}
+            )}
+            {zones.map((zone: any, index: number) => {
+              const polygonValid = Array.isArray(zone.coordinates) && zone.coordinates.length >= 3;
+              return (
+                <motion.div
+                  key={zone.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.04 }}
+                  className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: zone.color || '#dc2626' }} />
+                        <h3 className="text-base font-bold text-gray-900 truncate">{zone.name}</h3>
+                        {!zone.isActive && <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Inactive</span>}
+                      </div>
+                      {zone.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{zone.description}</p>}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 text-sm mb-3">
+                    <div className="flex justify-between"><span className="text-gray-500">Base fee</span><span className="font-bold text-primary">{formatCurrency(Number(zone.baseFee || 0))}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Min order</span><span className="font-semibold">{formatCurrency(Number(zone.minimumOrder || 0))}</span></div>
+                    {zone.freeDeliveryThreshold != null && (
+                      <div className="flex justify-between"><span className="text-gray-500">Free above</span><span className="font-semibold text-emerald-600">{formatCurrency(Number(zone.freeDeliveryThreshold))}</span></div>
+                    )}
+                    <div className="flex justify-between"><span className="text-gray-500">ETA</span><span className="font-semibold">{zone.estimatedTimeMin}–{zone.estimatedTimeMax} min</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Polygon</span>
+                      <span className={`font-semibold ${polygonValid ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {polygonValid ? `${zone.coordinates.length} points` : 'Not drawn'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEditZone(zone)} className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">Edit</button>
+                    <button onClick={() => handleDeleteZone(zone.id)} className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -771,80 +952,114 @@ const DeliveryManagementScreen: React.FC = () => {
         </div>
       )}
 
-      {/* Zone Edit Modal */}
-      {showZoneEditModal && selectedZone && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
+      {/* Zone Create / Edit Modal */}
+      {showZoneEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-lg mx-4"
+            exit={{ opacity: 0, scale: 0.97 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-5xl my-8 max-h-[92vh] overflow-y-auto"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Edit Zone</h2>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">{selectedZone ? 'Edit Delivery Zone' : 'Create Delivery Zone'}</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Click on the map to draw the polygon. Click a vertex to remove it.</p>
+              </div>
               <button onClick={() => setShowZoneEditModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Zone Name *</label>
-                <input 
-                  type="text" 
-                  value={zoneFormData.name} 
-                  onChange={(e) => setZoneFormData({ ...zoneFormData, name: e.target.value })} 
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl" 
-                />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {/* Form fields */}
+              <div className="lg:col-span-1 space-y-3 text-sm">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Zone Name *</label>
+                  <input type="text" value={zoneFormData.name}
+                    onChange={(e) => setZoneFormData({ ...zoneFormData, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none"
+                    placeholder="e.g., Downtown Core" />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Description</label>
+                  <textarea value={zoneFormData.description}
+                    onChange={(e) => setZoneFormData({ ...zoneFormData, description: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none"
+                    rows={2} placeholder="Notes for this zone (optional)" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Base Fee ($)</label>
+                    <input type="number" step="0.01" min="0" value={zoneFormData.baseFee}
+                      onChange={(e) => setZoneFormData({ ...zoneFormData, baseFee: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Min Order ($)</label>
+                    <input type="number" step="0.01" min="0" value={zoneFormData.minimumOrder}
+                      onChange={(e) => setZoneFormData({ ...zoneFormData, minimumOrder: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Free Delivery Above ($)</label>
+                  <input type="number" step="0.01" min="0" value={zoneFormData.freeDeliveryThreshold}
+                    onChange={(e) => setZoneFormData({ ...zoneFormData, freeDeliveryThreshold: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none"
+                    placeholder="Leave blank to disable" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">ETA Min (min)</label>
+                    <input type="number" min="0" value={zoneFormData.estimatedTimeMin}
+                      onChange={(e) => setZoneFormData({ ...zoneFormData, estimatedTimeMin: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">ETA Max (min)</label>
+                    <input type="number" min="0" value={zoneFormData.estimatedTimeMax}
+                      onChange={(e) => setZoneFormData({ ...zoneFormData, estimatedTimeMax: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Color</label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={zoneFormData.color}
+                      onChange={(e) => setZoneFormData({ ...zoneFormData, color: e.target.value })}
+                      className="h-10 w-14 border border-gray-200 rounded-lg cursor-pointer" />
+                    <input type="text" value={zoneFormData.color}
+                      onChange={(e) => setZoneFormData({ ...zoneFormData, color: e.target.value })}
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none font-mono text-xs" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="zoneActive" checked={zoneFormData.isActive}
+                    onChange={(e) => setZoneFormData({ ...zoneFormData, isActive: e.target.checked })}
+                    className="w-4 h-4" />
+                  <label htmlFor="zoneActive" className="text-gray-700 font-semibold">Zone is active</label>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Radius</label>
-                <input 
-                  type="text" 
-                  value={zoneFormData.radius} 
-                  onChange={(e) => setZoneFormData({ ...zoneFormData, radius: e.target.value })} 
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl" 
-                  placeholder="e.g., 5km"
+
+              {/* Polygon editor */}
+              <div className="lg:col-span-2">
+                <ZoneEditor
+                  value={zoneFormData.coordinates}
+                  onChange={(coords) => setZoneFormData({ ...zoneFormData, coordinates: coords })}
+                  otherZones={zonesForMap.filter((z) => z.id !== selectedZone?.id)}
+                  color={zoneFormData.color}
+                  height={460}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Delivery Fee ($)</label>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  value={zoneFormData.fee} 
-                  onChange={(e) => setZoneFormData({ ...zoneFormData, fee: e.target.value })} 
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl" 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Color Theme</label>
-                <select 
-                  value={zoneFormData.color} 
-                  onChange={(e) => setZoneFormData({ ...zoneFormData, color: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl"
-                >
-                  <option value="bg-blue-500">Blue</option>
-                  <option value="bg-green-500">Green</option>
-                  <option value="bg-purple-500">Purple</option>
-                  <option value="bg-orange-500">Orange</option>
-                  <option value="bg-red-500">Red</option>
-                  <option value="bg-pink-500">Pink</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <input 
-                  type="checkbox" 
-                  id="zoneActive" 
-                  checked={zoneFormData.isActive} 
-                  onChange={(e) => setZoneFormData({ ...zoneFormData, isActive: e.target.checked })} 
-                  className="w-4 h-4" 
-                />
-                <label htmlFor="zoneActive" className="text-sm text-gray-700">Active</label>
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+
+            <div className="flex gap-3 mt-6 pt-5 border-t border-gray-100">
               <button onClick={() => setShowZoneEditModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
-              <button onClick={handleUpdateZone} className="flex-1 py-3 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Update Zone</button>
+              <button onClick={handleSaveZone} className="flex-1 py-3 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold disabled:opacity-50"
+                disabled={zoneFormData.coordinates.length < 3 || !zoneFormData.name.trim()}>
+                {selectedZone ? 'Update Zone' : 'Create Zone'}
+              </button>
             </div>
           </motion.div>
         </div>

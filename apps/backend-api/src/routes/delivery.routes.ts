@@ -4,6 +4,7 @@ import { prisma } from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { findZoneForPoint } from '../utils/geo';
 
 const router = Router();
 
@@ -114,7 +115,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
   }
 });
 
-// Create delivery
+// Create delivery — auto-resolves zone via point-in-polygon when lat/lng given.
 router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const validatedData = createDeliverySchema.parse(req.body);
@@ -125,6 +126,25 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
     });
     const deliveryNumber = `DEL-${today}-${String(count + 1).padStart(3, '0')}`;
 
+    // Auto-assign zone + use zone's fee if caller didn't override
+    let zoneId: string | undefined;
+    let deliveryFee = Number(validatedData.deliveryFee || 0);
+    let estimatedTime = validatedData.estimatedTime;
+
+    if (validatedData.latitude !== undefined && validatedData.longitude !== undefined) {
+      const zones = await (prisma as any).deliveryZone.findMany({ where: { isActive: true } });
+      const match = findZoneForPoint(
+        { lat: Number(validatedData.latitude), lng: Number(validatedData.longitude) },
+        zones
+      );
+      if (match) {
+        const matched = zones.find((z: any) => z.id === match.id);
+        zoneId = matched.id;
+        if (!validatedData.deliveryFee) deliveryFee = Number(matched.baseFee || 0);
+        if (!estimatedTime) estimatedTime = matched.estimatedTimeMin || matched.estimatedTimeMax;
+      }
+    }
+
     const delivery = await prisma.delivery.create({
       data: {
         deliveryNumber,
@@ -134,14 +154,15 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
         deliveryNotes: validatedData.deliveryNotes,
         latitude: validatedData.latitude,
         longitude: validatedData.longitude,
-        estimatedTime: validatedData.estimatedTime,
-        deliveryFee: validatedData.deliveryFee,
+        estimatedTime,
+        deliveryFee,
         orderId: validatedData.orderId,
+        ...(zoneId ? { zoneId } : {}),
       },
-      include: { order: true, rider: true },
+      include: { order: true, rider: true, zone: true },
     });
 
-    logger.info(`Delivery created: ${sanitize(deliveryNumber)} by ${sanitize(req.user!.username)}`);
+    logger.info(`Delivery created: ${sanitize(deliveryNumber)} by ${sanitize(req.user!.username)}${zoneId ? ` in zone ${zoneId}` : ''}`);
     res.status(201).json({ success: true, data: { delivery } });
   } catch (error) {
     next(error);

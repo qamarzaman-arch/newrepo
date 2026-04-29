@@ -147,8 +147,17 @@ export class WebSocketManager {
     logger.info(`WebSocket: Rider pickup notification - ${riderId} for order ${order.id}`);
   }
 
-  emitRiderLocationUpdate(riderId: string, location: { lat: number; lng: number }) {
-    this.io.to('admin').emit(`rider:${riderId}:location`, { riderId, location, timestamp: new Date().toISOString() });
+  emitRiderLocationUpdate(
+    riderId: string,
+    location: { lat: number; lng: number; accuracy?: number; speed?: number; heading?: number },
+    extra?: { fullName?: string; status?: string; isAvailable?: boolean }
+  ) {
+    const payload = { riderId, location, timestamp: new Date().toISOString(), ...extra };
+    // Per-rider channel for targeted subscriptions
+    this.io.emit(`rider:${riderId}:location`, payload);
+    // Broadcast channel for live tracking dashboards (admin + cashier/dispatch)
+    this.io.to('delivery-tracking').emit('rider:location', payload);
+    this.io.to('admin').emit('rider:location', payload);
   }
 
   /**

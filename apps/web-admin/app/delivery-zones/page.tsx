@@ -1,513 +1,340 @@
 'use client';
 
-import React, { useState } from 'react';
-import { 
-  MapPin, Plus, Search, DollarSign, Truck, 
-  Edit2, Trash2, CheckCircle, XCircle, Navigation
-} from 'lucide-react';
-import { Button, Table, TableRow, TableCell, Badge, Modal } from '@poslytic/ui-components';
+import React, { useState, useCallback, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import { MapPin, Plus, RefreshCw, AlertTriangle, Edit2, Trash2, X, Check } from 'lucide-react';
 import apiClient from '../lib/api';
 import toast from 'react-hot-toast';
+
+// Leaflet uses window at module load — must be client-only
+const ZoneMap = dynamic(() => import('../components/ZoneMap'), { ssr: false });
+
+interface LatLng { lat: number; lng: number }
 
 interface DeliveryZone {
   id: string;
   name: string;
-  description?: string;
-  radius: number; // in kilometers
+  description?: string | null;
   baseFee: number;
-  perKmFee: number;
-  minOrderAmount: number;
-  estimatedTime: number; // in minutes
+  minimumOrder: number;
+  freeDeliveryThreshold?: number | null;
+  estimatedTimeMin: number;
+  estimatedTimeMax: number;
+  color?: string | null;
   isActive: boolean;
-  color?: string;
+  coordinates: LatLng[];
 }
+
+const EMPTY_FORM = {
+  name: '',
+  description: '',
+  baseFee: '0',
+  minimumOrder: '0',
+  freeDeliveryThreshold: '',
+  estimatedTimeMin: '20',
+  estimatedTimeMax: '45',
+  color: '#dc2626',
+  isActive: true,
+  coordinates: [] as LatLng[],
+};
 
 export default function DeliveryZonesPage() {
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingZone, setEditingZone] = useState<DeliveryZone | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    radius: 5,
-    baseFee: 3.99,
-    perKmFee: 0.50,
-    minOrderAmount: 15,
-    estimatedTime: 30,
-    isActive: true,
-    color: '#6366f1',
-  });
-
-  const fetchData = async () => {
+  const fetchZones = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get('/delivery-zones');
-      setZones(response.data?.data?.zones || []);
+      const res = await apiClient.get('/delivery-zones');
+      const list: DeliveryZone[] = (res.data?.data?.zones || []).map((z: any) => ({
+        ...z,
+        baseFee: Number(z.baseFee || 0),
+        minimumOrder: Number(z.minimumOrder || 0),
+        freeDeliveryThreshold: z.freeDeliveryThreshold != null ? Number(z.freeDeliveryThreshold) : null,
+        coordinates: Array.isArray(z.coordinates)
+          ? z.coordinates.map((c: any) => ({ lat: Number(c.lat), lng: Number(c.lng) }))
+          : [],
+      }));
+      setZones(list);
     } catch (err: any) {
-      setError(err.message || 'Failed to load delivery zones');
+      setError(err.response?.data?.message || 'Failed to load delivery zones');
     } finally {
       setLoading(false);
     }
-  };
-
-  React.useEffect(() => {
-    fetchData();
   }, []);
 
-  const defaultFormData = {
-    name: '',
-    description: '',
-    radius: 5,
-    baseFee: 3.99,
-    perKmFee: 0.50,
-    minOrderAmount: 15,
-    estimatedTime: 30,
-    isActive: true,
-    color: '#6366f1',
+  useEffect(() => { fetchZones(); }, [fetchZones]);
+
+  const openCreate = () => {
+    setEditingZone(null);
+    setForm(EMPTY_FORM);
+    setShowModal(true);
   };
 
-  const handleEditZone = (zone: DeliveryZone) => {
-    setEditingZoneId(zone.id);
-    setFormData({
+  const openEdit = (zone: DeliveryZone) => {
+    setEditingZone(zone);
+    setForm({
       name: zone.name,
       description: zone.description || '',
-      radius: zone.radius,
-      baseFee: zone.baseFee,
-      perKmFee: zone.perKmFee,
-      minOrderAmount: zone.minOrderAmount,
-      estimatedTime: zone.estimatedTime,
+      baseFee: String(zone.baseFee),
+      minimumOrder: String(zone.minimumOrder),
+      freeDeliveryThreshold: zone.freeDeliveryThreshold != null ? String(zone.freeDeliveryThreshold) : '',
+      estimatedTimeMin: String(zone.estimatedTimeMin),
+      estimatedTimeMax: String(zone.estimatedTimeMax),
+      color: zone.color || '#dc2626',
       isActive: zone.isActive,
-      color: zone.color || '#6366f1',
+      coordinates: zone.coordinates,
     });
-    setShowAddModal(true);
+    setShowModal(true);
   };
 
-  const closeModal = () => {
-    setShowAddModal(false);
-    setEditingZoneId(null);
-    setFormData(defaultFormData);
-  };
+  const saveZone = async () => {
+    if (!form.name.trim()) { toast.error('Zone name is required'); return; }
+    if (form.coordinates.length < 3) { toast.error('Click on the map to add at least 3 points'); return; }
 
-  const handleAddZone = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+    setSaving(true);
     try {
-      if (editingZoneId) {
-        await apiClient.put(`/delivery-zones/${editingZoneId}`, formData);
-        toast.success('Delivery zone updated successfully!');
+      const payload: any = {
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+        baseFee: parseFloat(form.baseFee) || 0,
+        minimumOrder: parseFloat(form.minimumOrder) || 0,
+        freeDeliveryThreshold: form.freeDeliveryThreshold ? parseFloat(form.freeDeliveryThreshold) : undefined,
+        estimatedTimeMin: parseInt(form.estimatedTimeMin, 10) || 20,
+        estimatedTimeMax: parseInt(form.estimatedTimeMax, 10) || 45,
+        color: form.color,
+        isActive: form.isActive,
+        coordinates: form.coordinates,
+      };
+
+      if (editingZone) {
+        await apiClient.put(`/delivery-zones/${editingZone.id}`, payload);
+        toast.success('Zone updated');
       } else {
-        await apiClient.post('/delivery-zones', formData);
-        toast.success('Delivery zone created successfully!');
+        await apiClient.post('/delivery-zones', payload);
+        toast.success('Zone created');
       }
-      closeModal();
-      fetchData();
+      setShowModal(false);
+      setForm(EMPTY_FORM);
+      setEditingZone(null);
+      await fetchZones();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || (editingZoneId ? 'Failed to update delivery zone' : 'Failed to create delivery zone'));
+      toast.error(err.response?.data?.message || 'Failed to save zone');
     } finally {
-      setIsSubmitting(false);
+      setSaving(false);
     }
   };
 
-  const handleDeleteZone = async (id: string) => {
+  const deleteZone = async (id: string) => {
     if (!confirm('Delete this delivery zone?')) return;
     try {
       await apiClient.delete(`/delivery-zones/${id}`);
-      toast.success('Delivery zone deleted');
-      fetchData();
-    } catch (err) {
-      toast.error('Failed to delete delivery zone');
+      toast.success('Zone deleted');
+      await fetchZones();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to delete');
     }
-  };
-
-  const handleToggleZone = async (id: string, currentStatus: boolean) => {
-    try {
-      await apiClient.patch(`/delivery-zones/${id}`, { isActive: !currentStatus });
-      toast.success(`Zone ${!currentStatus ? 'activated' : 'deactivated'}`);
-      fetchData();
-    } catch (err) {
-      toast.error('Failed to update zone status');
-    }
-  };
-
-  const filteredZones = zones.filter(zone =>
-    zone.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (zone.description || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const calculateDeliveryFee = (zone: DeliveryZone, distance: number) => {
-    if (distance > zone.radius) return null; // Out of range
-    return zone.baseFee + (distance * zone.perKmFee);
-  };
-
-  const stats = {
-    total: zones.length,
-    active: zones.filter(z => z.isActive).length,
-    avgBaseFee: zones.length > 0 
-      ? zones.reduce((sum, z) => sum + z.baseFee, 0) / zones.length 
-      : 0,
-    avgRadius: zones.length > 0
-      ? zones.reduce((sum, z) => sum + z.radius, 0) / zones.length
-      : 0,
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      {/* Header */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-8 space-y-6 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-gray-900">Delivery Zones</h1>
-          <p className="text-gray-500 mt-2 font-medium">
-            Configure delivery areas, fees, and coverage zones
-          </p>
+          <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
+            <MapPin className="text-red-600" /> Delivery Zones
+          </h1>
+          <p className="text-gray-500 mt-1">Draw geo-fenced polygons. New deliveries auto-assign to the matching zone.</p>
         </div>
-        <Button onClick={() => { setEditingZoneId(null); setFormData(defaultFormData); setShowAddModal(true); }}>
-          <Plus size={18} />
-          Add Delivery Zone
-        </Button>
-      </header>
+        <div className="flex gap-2">
+          <button onClick={fetchZones} className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors">
+            <RefreshCw size={16} /> Refresh
+          </button>
+          <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors">
+            <Plus size={16} /> New Zone
+          </button>
+        </div>
+      </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-2xl">
-          {error} — <button onClick={fetchData} className="underline">Retry</button>
+        <div className="bg-amber-50 border border-amber-200 text-amber-700 p-4 rounded-2xl flex items-center gap-3">
+          <AlertTriangle size={20} /> {error}
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-blue-50 text-blue-600">
-              <MapPin size={24} />
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Total Zones</p>
-              <h3 className="text-2xl font-black text-gray-900">{stats.total}</h3>
-            </div>
-          </div>
-        </div>
+      {/* Map preview */}
+      {!loading && (
+        <ZoneMap
+          zones={zones.filter(z => z.coordinates.length >= 3)}
+          height={420}
+        />
+      )}
 
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-green-50 text-green-600">
-              <CheckCircle size={24} />
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Active Zones</p>
-              <h3 className="text-2xl font-black text-gray-900">{stats.active}</h3>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-orange-50 text-orange-600">
-              <DollarSign size={24} />
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Avg Base Fee</p>
-              <h3 className="text-2xl font-black text-gray-900">${stats.avgBaseFee.toFixed(2)}</h3>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-purple-50 text-purple-600">
-              <Navigation size={24} />
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Avg Coverage</p>
-              <h3 className="text-2xl font-black text-gray-900">{stats.avgRadius.toFixed(1)} km</h3>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="bg-white p-4 rounded-3xl shadow-soft border border-gray-100">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <input 
-            type="text" 
-            placeholder="Search delivery zones..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-transparent rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all font-medium"
-          />
-        </div>
-      </div>
-
-      {/* Delivery Zones Table */}
       {loading ? (
-        <div className="bg-white rounded-3xl p-20 text-center shadow-soft border border-gray-100">
-          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500 font-medium">Loading delivery zones...</p>
+        <div className="flex items-center justify-center h-32">
+          <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : zones.length === 0 ? (
+        <div className="bg-white rounded-2xl p-12 border-2 border-dashed border-gray-200 text-center">
+          <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="font-bold text-gray-700">No delivery zones yet</p>
+          <p className="text-sm text-gray-500 mt-1">Click "New Zone" to draw your first geo-fenced area.</p>
         </div>
       ) : (
-        <Table headers={['Zone Name', 'Coverage', 'Base Fee', 'Per KM', 'Min Order', 'Est. Time', 'Status', 'Actions']}>
-          {filteredZones.map((zone) => (
-            <TableRow key={zone.id}>
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <div 
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ backgroundColor: `${zone.color}20` }}
-                  >
-                    <MapPin size={20} style={{ color: zone.color }} />
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-900">{zone.name}</p>
-                    <p className="text-xs text-gray-500">{zone.description || 'No description'}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {zones.map(zone => {
+            const polygonValid = zone.coordinates.length >= 3;
+            return (
+              <div key={zone.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: zone.color || '#dc2626' }} />
+                    <h3 className="text-base font-bold text-gray-900 truncate">{zone.name}</h3>
+                    {!zone.isActive && <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Inactive</span>}
                   </div>
                 </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1 text-sm">
-                  <Navigation size={14} className="text-gray-400" />
-                  <span className="font-semibold">{zone.radius} km radius</span>
+                {zone.description && <p className="text-xs text-gray-500 mb-3 line-clamp-2">{zone.description}</p>}
+                <div className="space-y-1.5 text-sm mb-3">
+                  <div className="flex justify-between"><span className="text-gray-500">Base fee</span><span className="font-bold text-red-600">${zone.baseFee.toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Min order</span><span className="font-semibold">${zone.minimumOrder.toFixed(2)}</span></div>
+                  {zone.freeDeliveryThreshold != null && (
+                    <div className="flex justify-between"><span className="text-gray-500">Free above</span><span className="font-semibold text-emerald-600">${zone.freeDeliveryThreshold.toFixed(2)}</span></div>
+                  )}
+                  <div className="flex justify-between"><span className="text-gray-500">ETA</span><span className="font-semibold">{zone.estimatedTimeMin}–{zone.estimatedTimeMax} min</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Polygon</span>
+                    <span className={`font-semibold ${polygonValid ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {polygonValid ? `${zone.coordinates.length} points` : 'Not drawn'}
+                    </span>
+                  </div>
                 </div>
-              </TableCell>
-              <TableCell className="font-black text-indigo-600">
-                ${zone.baseFee.toFixed(2)}
-              </TableCell>
-              <TableCell className="font-bold text-gray-700">
-                ${zone.perKmFee.toFixed(2)}/km
-              </TableCell>
-              <TableCell className="font-semibold text-gray-700">
-                ${zone.minOrderAmount.toFixed(2)}
-              </TableCell>
-              <TableCell>
-                <Badge variant="neutral">
-                  {zone.estimatedTime} min
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <button
-                  onClick={() => handleToggleZone(zone.id, zone.isActive)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    zone.isActive 
-                      ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {zone.isActive ? <CheckCircle size={14} /> : <XCircle size={14} />}
-                  {zone.isActive ? 'Active' : 'Inactive'}
-                </button>
-              </TableCell>
-              <TableCell>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEditZone(zone)}
-                    className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all"
-                    title="Edit"
-                  >
-                    <Edit2 size={18} />
+                  <button onClick={() => openEdit(zone)} className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">
+                    <Edit2 size={12} /> Edit
                   </button>
-                  <button
-                    onClick={() => handleDeleteZone(zone.id)}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                  >
-                    <Trash2 size={18} />
+                  <button onClick={() => deleteZone(zone.id)} className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors">
+                    <Trash2 size={14} />
                   </button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-          {filteredZones.length === 0 && (
-            <TableRow>
-              <TableCell className="text-center py-12 text-gray-400">
-                <MapPin className="mx-auto mb-2 text-gray-300" size={32} />
-                No delivery zones configured
-              </TableCell>
-            </TableRow>
-          )}
-        </Table>
-      )}
-
-      {/* Zone Details Cards - Shows actual zone configuration */}
-      {zones.length > 0 && (
-        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-6 border border-indigo-100">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <CalculatorIcon />
-            Active Delivery Zones
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {zones.slice(0, 3).map(zone => (
-              <div key={zone.id} className="bg-white rounded-2xl p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-sm text-gray-900">{zone.name}</span>
-                  <Badge variant="success" className="text-xs">Active</Badge>
-                </div>
-                <div className="space-y-1 text-xs text-gray-600">
-                  <p>Max Radius: {zone.radius.toFixed(1)} km</p>
-                  <p>Base Fee: ${zone.baseFee.toFixed(2)}</p>
-                  <p>Per km: ${zone.perKmFee.toFixed(2)}</p>
-                </div>
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <p className="text-xs text-gray-500">Zone Coverage:</p>
-                  <p className="text-sm font-medium text-gray-900">
-                    {zone.radius}km radius
-                  </p>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Add / Edit Delivery Zone Modal */}
-      <Modal
-        isOpen={showAddModal}
-        onClose={closeModal}
-        title={editingZoneId ? 'Edit Delivery Zone' : 'Add Delivery Zone'}
-      >
-        <form onSubmit={handleAddZone} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-gray-700">Zone Name</label>
-            <input
-              required
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl focus:outline-none transition-all"
-              placeholder="e.g. Downtown Area"
-            />
-          </div>
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-5xl my-8 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">{editingZone ? 'Edit Delivery Zone' : 'Create Delivery Zone'}</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Click on the map to draw the polygon. Click a vertex to remove it.</p>
+              </div>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X size={18} />
+              </button>
+            </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-gray-700">Description (Optional)</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl focus:outline-none transition-all"
-              placeholder="Central business district..."
-              rows={2}
-            />
-          </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <div className="lg:col-span-1 space-y-3 text-sm">
+                <Field label="Zone Name *">
+                  <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="e.g., Downtown Core"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none" />
+                </Field>
+                <Field label="Description">
+                  <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    rows={2} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none" />
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Base Fee ($)">
+                    <input type="number" step="0.01" min="0" value={form.baseFee} onChange={(e) => setForm({ ...form, baseFee: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none" />
+                  </Field>
+                  <Field label="Min Order ($)">
+                    <input type="number" step="0.01" min="0" value={form.minimumOrder} onChange={(e) => setForm({ ...form, minimumOrder: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none" />
+                  </Field>
+                </div>
+                <Field label="Free Delivery Above ($)">
+                  <input type="number" step="0.01" min="0" value={form.freeDeliveryThreshold}
+                    onChange={(e) => setForm({ ...form, freeDeliveryThreshold: e.target.value })}
+                    placeholder="Leave blank to disable"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none" />
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="ETA Min (min)">
+                    <input type="number" min="0" value={form.estimatedTimeMin}
+                      onChange={(e) => setForm({ ...form, estimatedTimeMin: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none" />
+                  </Field>
+                  <Field label="ETA Max (min)">
+                    <input type="number" min="0" value={form.estimatedTimeMax}
+                      onChange={(e) => setForm({ ...form, estimatedTimeMax: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none" />
+                  </Field>
+                </div>
+                <Field label="Color">
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })}
+                      className="h-10 w-14 border border-gray-200 rounded-lg cursor-pointer" />
+                    <input type="text" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })}
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:border-red-400 focus:outline-none font-mono text-xs" />
+                  </div>
+                </Field>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                    className="w-4 h-4" />
+                  <span className="font-semibold text-gray-700">Zone is active</span>
+                </label>
+                <div className="text-xs text-gray-500 bg-gray-50 rounded-lg p-2">
+                  {form.coordinates.length === 0
+                    ? 'Click on the map to start drawing.'
+                    : form.coordinates.length < 3
+                    ? `${form.coordinates.length} point${form.coordinates.length === 1 ? '' : 's'} — need at least 3.`
+                    : `${form.coordinates.length} points · polygon ready.`}
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Radius (km)</label>
-              <input
-                required
-                type="number"
-                min="1"
-                step="0.5"
-                value={formData.radius}
-                onChange={(e) => setFormData({ ...formData, radius: parseFloat(e.target.value) })}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl focus:outline-none transition-all"
-              />
+              <div className="lg:col-span-2">
+                <ZoneMap
+                  zones={zones.filter(z => z.id !== editingZone?.id && z.coordinates.length >= 3)}
+                  editing={{
+                    value: form.coordinates,
+                    onChange: (coords) => setForm({ ...form, coordinates: coords }),
+                    color: form.color,
+                  }}
+                  height={460}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Color</label>
-              <input
-                type="color"
-                value={formData.color}
-                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                className="w-full h-[46px] px-2 py-2 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl cursor-pointer"
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Base Fee ($)</label>
-              <input
-                required
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.baseFee}
-                onChange={(e) => setFormData({ ...formData, baseFee: parseFloat(e.target.value) })}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl focus:outline-none transition-all"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Per KM Fee ($)</label>
-              <input
-                required
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.perKmFee}
-                onChange={(e) => setFormData({ ...formData, perKmFee: parseFloat(e.target.value) })}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl focus:outline-none transition-all"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Min Order Amount ($)</label>
-              <input
-                required
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.minOrderAmount}
-                onChange={(e) => setFormData({ ...formData, minOrderAmount: parseFloat(e.target.value) })}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl focus:outline-none transition-all"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Est. Delivery Time (min)</label>
-              <input
-                required
-                type="number"
-                min="5"
-                step="5"
-                value={formData.estimatedTime}
-                onChange={(e) => setFormData({ ...formData, estimatedTime: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl focus:outline-none transition-all"
-              />
+            <div className="flex gap-3 mt-6 pt-5 border-t border-gray-100">
+              <button onClick={() => setShowModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">
+                Cancel
+              </button>
+              <button onClick={saveZone}
+                disabled={saving || form.coordinates.length < 3 || !form.name.trim()}
+                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Check size={16} />}
+                {editingZone ? 'Update Zone' : 'Create Zone'}
+              </button>
             </div>
           </div>
-
-          <div className="bg-indigo-50 rounded-xl p-4">
-            <p className="text-xs text-indigo-900 font-semibold mb-2">💡 Fee Calculation Formula:</p>
-            <code className="text-xs bg-white px-3 py-2 rounded-lg block">
-              Total Fee = Base Fee (${formData.baseFee}) + (Distance × Per KM Fee (${formData.perKmFee}))
-            </code>
-            <p className="text-xs text-indigo-700 mt-2">
-              Example: 5km delivery = ${formData.baseFee} + (5 × ${formData.perKmFee}) = ${(formData.baseFee + 5 * formData.perKmFee).toFixed(2)}
-            </p>
-          </div>
-
-          <div className="flex gap-4">
-            <Button
-              variant="outline"
-              type="button"
-              className="flex-1"
-              onClick={closeModal}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="flex-1"
-              disabled={isSubmitting}
-            >
-              {isSubmitting
-                ? (editingZoneId ? 'Saving...' : 'Creating...')
-                : (editingZoneId ? 'Update Zone' : 'Create Delivery Zone')}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        </div>
+      )}
     </div>
   );
 }
 
-function CalculatorIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-    </svg>
-  );
-}
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div>
+    <label className="block text-sm font-bold text-gray-700 mb-1">{label}</label>
+    {children}
+  </div>
+);

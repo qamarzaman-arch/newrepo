@@ -4,7 +4,14 @@
       "Bash(npx tsc *)",
       "Bash(npx electron *)",
       "Bash(echo \"EXIT_CODE:$?\")",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(npm run *)",
+      "PowerShell(Get-Process -Name \"electron\",\"node\",\"POSLytic\" -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force)",
+      "Bash(sed -n '45,60p' '/c/Users/techl/Documents/Latest Code/apps/backend-api/src/routes/delivery.routes.ts')",
+      "Bash(sed -n '78,90p' '/c/Users/techl/Documents/Latest Code/apps/backend-api/src/routes/delivery.routes.ts')",
+      "Bash(npx prisma *)",
+      "Bash(npm install *)"
     ]
   }
 }

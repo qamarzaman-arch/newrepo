@@ -13,7 +13,9 @@ import {
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { riderService } from '../services/riderService';
+import { deliveryZoneService } from '../services/deliveryZoneService';
 import { useAuthStore } from '../stores/authStore';
+import DeliveryMap, { MapMarker, MapZone } from '../components/maps/DeliveryMap';
 
 interface DeliveryItem {
   id: string;
@@ -81,7 +83,32 @@ const RiderDashboard: React.FC = () => {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [zones, setZones] = useState<MapZone[]>([]);
   const locationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Load delivery zones once for the map
+  useEffect(() => {
+    let cancelled = false;
+    deliveryZoneService
+      .getZones()
+      .then((res: any) => {
+        if (cancelled) return;
+        const zonesList = res?.data?.data?.zones || [];
+        const mapped: MapZone[] = (zonesList as any[])
+          .filter((z) => Array.isArray(z?.coordinates) && z.coordinates.length >= 3)
+          .map((z) => ({
+            id: z.id,
+            name: z.name,
+            color: z.color,
+            baseFee: Number(z.baseFee || 0),
+            isActive: z.isActive !== false,
+            coordinates: z.coordinates.map((c: any) => ({ lat: Number(c.lat), lng: Number(c.lng) })),
+          }));
+        setZones(mapped);
+      })
+      .catch(() => { /* not critical */ });
+    return () => { cancelled = true; };
+  }, []);
 
   const todayStart = useMemo(() => {
     const d = new Date();
@@ -256,6 +283,31 @@ const RiderDashboard: React.FC = () => {
   const addr = (d: DeliveryItem) => d.deliveryAddress || d.address || d.order?.deliveryAddress || '';
   const fee = (d: DeliveryItem) => Number(d.deliveryFee ?? d.fee ?? 0);
 
+  // Build markers for the rider's map: self + active delivery dropoff
+  const mapMarkers: MapMarker[] = useMemo(() => {
+    const out: MapMarker[] = [];
+    if (coords) {
+      out.push({ id: 'me', lat: coords.lat, lng: coords.lng, label: 'You', type: 'self' });
+    }
+    deliveries
+      .filter(d => d.riderId === user?.id && ['ASSIGNED', 'PICKED_UP', 'IN_TRANSIT'].includes(d.status))
+      .forEach(d => {
+        const lat = Number(d.dropoffLat ?? (d as any).latitude);
+        const lng = Number(d.dropoffLng ?? (d as any).longitude);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          out.push({
+            id: `delivery-${d.id}`,
+            lat,
+            lng,
+            label: `${custName(d)} · #${d.order?.orderNumber || d.id.slice(-6)}`,
+            type: 'delivery',
+            status: d.status,
+          });
+        }
+      });
+    return out;
+  }, [coords, deliveries, user]);
+
   return (
     <div className="p-3 sm:p-4 max-w-3xl mx-auto">
       {/* Top Bar */}
@@ -308,6 +360,21 @@ const RiderDashboard: React.FC = () => {
           value={formatPKR(stats.earnings)}
           icon={<DollarSign className="w-4 h-4" />}
           small
+        />
+      </div>
+
+      {/* Live Map: rider position + zones + active delivery dropoff */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Your live map</p>
+          {gpsError && <span className="text-[11px] text-amber-600 font-semibold">{gpsError}</span>}
+        </div>
+        <DeliveryMap
+          zones={zones}
+          markers={mapMarkers}
+          height={280}
+          center={coords ? [coords.lat, coords.lng] : undefined}
+          zoom={coords ? 14 : 12}
         />
       </div>
 

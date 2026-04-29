@@ -522,6 +522,7 @@ model Delivery {
   longitude Decimal?
 
   riderId String?
+  zoneId  String?
 
   estimatedTime Int?
   dispatchedAt  DateTime?
@@ -537,9 +538,11 @@ model Delivery {
 
   order Order @relation(fields: [orderId], references: [id])
   rider User? @relation("RiderDeliveries", fields: [riderId], references: [id])
+  zone  DeliveryZone? @relation("ZoneDeliveries", fields: [zoneId], references: [id])
 
   @@index([status])
   @@index([riderId])
+  @@index([zoneId])
   @@index([deliveryNumber])
   @@index([status, createdAt])
 }
@@ -560,7 +563,8 @@ model DeliveryZone {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  createdBy User @relation("DeliveryZoneCreator", fields: [createdById], references: [id])
+  createdBy  User       @relation("DeliveryZoneCreator", fields: [createdById], references: [id])
+  deliveries Delivery[] @relation("ZoneDeliveries")
 
   @@index([isActive])
   @@index([createdById])

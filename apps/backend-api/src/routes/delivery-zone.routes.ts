@@ -4,6 +4,7 @@ import { prisma } from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { findZoneForPoint } from '../utils/geo';
 
 const router = Router();
 
@@ -125,45 +126,28 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response, next
   }
 });
 
-// Calculate delivery fee for an address
+// Calculate delivery fee for an address using point-in-polygon containment.
 router.post('/calculate-fee', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { latitude, longitude, orderAmount } = req.body;
 
-    if (!latitude || !longitude) {
-      throw new AppError('Latitude and longitude are required', 400);
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      throw new AppError('Latitude and longitude are required as numbers', 400);
     }
 
-    // Get all zones
     const zones = await (prisma as any).deliveryZone.findMany({
       where: { isActive: true },
     });
 
-    // Find which zone the coordinates fall into (simplified - distance-based)
-    let matchedZone = null;
-    let minDistance = Infinity;
-
-    for (const zone of zones) {
-      // Simple distance calculation - in production, use proper polygon containment
-      if (zone.coordinates && zone.coordinates.length > 0) {
-        const center = zone.coordinates[0];
-        const distance = Math.sqrt(
-          Math.pow(center.lat - latitude, 2) + Math.pow(center.lng - longitude, 2)
-        );
-        if (distance < minDistance) {
-          minDistance = distance;
-          matchedZone = zone;
-        }
-      }
-    }
+    const match = findZoneForPoint({ lat: latitude, lng: longitude }, zones);
+    const matchedZone = match ? zones.find((z: any) => z.id === match.id) : null;
 
     if (!matchedZone) {
-      throw new AppError('Delivery not available for this location', 400);
+      throw new AppError('Delivery not available for this location — outside all configured zones', 400);
     }
 
-    // Calculate fee
-    let fee = matchedZone.baseFee;
-    if (matchedZone.freeDeliveryThreshold && orderAmount >= matchedZone.freeDeliveryThreshold) {
+    let fee = Number(matchedZone.baseFee || 0);
+    if (matchedZone.freeDeliveryThreshold && Number(orderAmount) >= Number(matchedZone.freeDeliveryThreshold)) {
       fee = 0;
     }
 
@@ -172,6 +156,7 @@ router.post('/calculate-fee', authenticate, async (req: AuthRequest, res: Respon
       data: {
         zone: matchedZone,
         fee,
+        minimumOrder: matchedZone.minimumOrder,
         estimatedTimeMin: matchedZone.estimatedTimeMin,
         estimatedTimeMax: matchedZone.estimatedTimeMax,
       },
