@@ -21,6 +21,12 @@ import {
   ShoppingCart,
   MapPin,
   CalendarDays,
+  ClipboardList,
+  TableProperties,
+  UserCheck,
+  Shield,
+  Settings,
+  Truck,
 } from 'lucide-react';
 import { clearAuth, getUser } from '../lib/auth';
 
@@ -45,10 +51,19 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    title: 'Live Operations',
+    items: [
+      { href: '/orders', icon: ClipboardList, label: 'Orders', roles: ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER'] },
+      { href: '/kitchen', icon: ChefHat, label: 'Kitchen Display', roles: ['ADMIN', 'MANAGER', 'KITCHEN'] },
+      { href: '/tables', icon: TableProperties, label: 'Tables', roles: ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER'] },
+      { href: '/delivery-zones', icon: Truck, label: 'Delivery', roles: ['ADMIN', 'MANAGER'] },
+    ],
+  },
+  {
     title: 'Catalog',
     items: [
       { href: '/menu', icon: Utensils, label: 'Menu', roles: ['ADMIN', 'MANAGER'] },
-      { href: '/recipes', icon: ChefHat, label: 'Recipes', roles: ['ADMIN', 'MANAGER'] },
+      { href: '/recipes', icon: BookOpen, label: 'Recipes', roles: ['ADMIN', 'MANAGER'] },
       { href: '/inventory', icon: Package, label: 'Inventory', roles: ['ADMIN', 'MANAGER'] },
       { href: '/purchase-orders', icon: ShoppingCart, label: 'Purchase Orders', roles: ['ADMIN', 'MANAGER'] },
     ],
@@ -56,17 +71,10 @@ const navSections: NavSection[] = [
   {
     title: 'People',
     items: [
+      { href: '/customers', icon: Users, label: 'Customers', roles: ['ADMIN', 'MANAGER', 'STAFF'] },
       { href: '/staff', icon: Users, label: 'Staff', roles: ['ADMIN', 'MANAGER'] },
       { href: '/staff-schedule', icon: CalendarDays, label: 'Schedules', roles: ['ADMIN', 'MANAGER'] },
-    ],
-  },
-  {
-    title: 'Operations',
-    items: [
-      { href: '/branches', icon: Building2, label: 'Branches', roles: ['ADMIN', 'MANAGER'] },
-      { href: '/delivery-zones', icon: MapPin, label: 'Delivery Zones', roles: ['ADMIN', 'MANAGER'] },
-      { href: '/qr-codes', icon: QrCode, label: 'QR Codes', roles: ['ADMIN', 'MANAGER'] },
-      { href: '/external-orders', icon: Globe, label: 'External Orders', roles: ['ADMIN', 'MANAGER'] },
+      { href: '/attendance', icon: UserCheck, label: 'Attendance', roles: ['ADMIN', 'MANAGER'] },
     ],
   },
   {
@@ -81,6 +89,16 @@ const navSections: NavSection[] = [
     items: [
       { href: '/marketing', icon: Megaphone, label: 'Marketing', roles: ['ADMIN', 'MANAGER'] },
       { href: '/reviews', icon: Star, label: 'Reviews', roles: ['ADMIN', 'MANAGER'] },
+    ],
+  },
+  {
+    title: 'Administration',
+    items: [
+      { href: '/branches', icon: Building2, label: 'Branches', roles: ['ADMIN', 'MANAGER'] },
+      { href: '/qr-codes', icon: QrCode, label: 'QR Codes', roles: ['ADMIN', 'MANAGER'] },
+      { href: '/external-orders', icon: Globe, label: 'External Orders', roles: ['ADMIN', 'MANAGER'] },
+      { href: '/feature-access', icon: Shield, label: 'Feature Access', roles: ['ADMIN'] },
+      { href: '/settings', icon: Settings, label: 'Settings', roles: ['ADMIN', 'MANAGER'] },
     ],
   },
 ];
@@ -125,7 +143,7 @@ export default function Sidebar() {
                     href={item.href}
                     className={`flex items-center gap-3 px-6 py-2.5 text-sm transition-colors ${
                       isActive
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-red-600 text-white'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                   >

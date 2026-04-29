@@ -301,13 +301,21 @@ app.whenReady().then(() => {
 
   createWindow();
 
-  if (mainWindow) {
+  // Only enforce CSP in production — dev needs 'unsafe-inline' for Vite HMR preamble
+  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+  if (mainWindow && !isDev) {
     mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
       callback({
         responseHeaders: {
           ...details.responseHeaders,
-          'Content-Security-Policy': ["default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://localhost:* ws://localhost:*"]
-        }
+          'Content-Security-Policy': [
+            "default-src 'self'; " +
+            "script-src 'self'; " +
+            "style-src 'self' 'unsafe-inline'; " +
+            "img-src 'self' data:; " +
+            "connect-src 'self'"
+          ],
+        },
       });
     });
   }
