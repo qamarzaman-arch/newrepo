@@ -64,7 +64,13 @@ export function useWebSocket() {
       socket.onAny((eventName, ...args) => {
         const handlers = messageHandlers.current.get(eventName) || [];
         const payload = args.length === 1 ? args[0] : args;
-        handlers.forEach(handler => handler(payload));
+        handlers.forEach(handler => {
+          try {
+            handler(payload);
+          } catch (err) {
+            console.error(`WebSocket handler error for event "${eventName}":`, err);
+          }
+        });
       });
 
       socketRef.current = socket;

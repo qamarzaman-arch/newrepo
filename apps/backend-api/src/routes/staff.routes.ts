@@ -5,6 +5,7 @@ import { prisma } from '../config/database';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { PIN_BCRYPT_ROUNDS } from '../config/constants';
 
 const router = Router();
 
@@ -57,13 +58,13 @@ router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRe
     // Hash password if provided (required for CASHIER, MANAGER, RIDER)
     let passwordHash: string | undefined;
     if (validatedData.password) {
-      passwordHash = await bcrypt.hash(validatedData.password, 10);
+      passwordHash = await bcrypt.hash(validatedData.password, 12);
     }
 
     // Hash PIN if provided (required for CASHIER, MANAGER, RIDER)
     let pinHash: string | undefined;
     if (validatedData.pin) {
-      pinHash = await bcrypt.hash(validatedData.pin, 10);
+      pinHash = await bcrypt.hash(validatedData.pin, PIN_BCRYPT_ROUNDS);
     }
 
     // Create user
@@ -112,13 +113,13 @@ router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: Auth
     // Hash password if provided
     let passwordHash: string | undefined;
     if (data.password) {
-      passwordHash = await bcrypt.hash(data.password, 10);
+      passwordHash = await bcrypt.hash(data.password, 12);
     }
 
     // Hash PIN if provided
     let pinHash: string | undefined;
     if (data.pin) {
-      pinHash = await bcrypt.hash(data.pin, 10);
+      pinHash = await bcrypt.hash(data.pin, PIN_BCRYPT_ROUNDS);
     }
 
     // Update user

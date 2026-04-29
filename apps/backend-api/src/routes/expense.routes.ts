@@ -4,6 +4,7 @@ import { prisma } from '../config/database';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
+import { postExpenseJournalEntry } from '../services/accounting.service';
 
 const router = Router();
 
@@ -109,6 +110,18 @@ router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRe
     });
 
     logger.info(`Expense created: ${sanitize(expenseNumber)} by ${sanitize(req.user!.username)}`);
+
+    try {
+      await postExpenseJournalEntry(prisma, {
+        id: expense.id,
+        amount: expense.amount,
+        category: expense.category,
+        description: expense.description,
+      });
+    } catch (jErr) {
+      logger.error('Failed to post expense journal entry:', jErr);
+    }
+
     res.status(201).json({ success: true, data: { expense } });
   } catch (error) {
     next(error);

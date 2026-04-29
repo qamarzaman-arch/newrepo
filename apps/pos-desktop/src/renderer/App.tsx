@@ -24,6 +24,8 @@ import AttendanceScreen from './screens/AttendanceScreen';
 import AdminLayout from './layouts/AdminLayout';
 import CashierLayout from './layouts/CashierLayout';
 import KitchenLayout from './layouts/KitchenLayout';
+import RiderLayout from './layouts/RiderLayout';
+import RiderDashboard from './screens/RiderDashboard';
 import { useAuthStore } from './stores/authStore';
 import toast from 'react-hot-toast';
 
@@ -41,6 +43,7 @@ const ALLOWED_ROUTES: Record<string, string[]> = {
   '/attendance': ['ADMIN', 'MANAGER', 'CASHIER'],
   '/vendors': ['ADMIN', 'MANAGER'],
   '/delivery': ['ADMIN', 'MANAGER', 'STAFF', 'CASHIER', 'RIDER'],
+  '/rider': ['RIDER'],
   '/rider-deliveries': ['RIDER', 'ADMIN', 'MANAGER'],
   '/rider-history': ['RIDER', 'ADMIN', 'MANAGER'],
   '/financial': ['ADMIN', 'MANAGER'],
@@ -81,6 +84,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRoles?: stri
     if (user.role === 'ADMIN' || user.role === 'MANAGER') {
       return <Navigate to="/dashboard" replace />;
     }
+    if (user.role === 'RIDER') {
+      return <Navigate to="/rider" replace />;
+    }
     return <Navigate to="/cashier-pos" replace />;
   }
 
@@ -91,6 +97,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRoles?: stri
     // Redirect to appropriate dashboard based on role
     if (user.role === 'KITCHEN') return <Navigate to="/kitchen" replace />;
     if (user.role === 'CASHIER') return <Navigate to="/cashier-pos" replace />;
+    if (user.role === 'RIDER') return <Navigate to="/rider" replace />;
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -101,8 +108,13 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRoles?: stri
       return <KitchenLayout>{children}</KitchenLayout>;
     }
 
-    // Cashiers and Riders get minimal, speed-optimized layout
-    if (user.role === 'CASHIER' || user.role === 'RIDER') {
+    // Riders get a dedicated rider layout
+    if (user.role === 'RIDER') {
+      return <RiderLayout>{children}</RiderLayout>;
+    }
+
+    // Cashiers get minimal, speed-optimized layout
+    if (user.role === 'CASHIER') {
       return <CashierLayout>{children}</CashierLayout>;
     }
 
@@ -135,9 +147,9 @@ const DefaultRedirect: React.FC = () => {
     return <Navigate to="/kitchen" replace />;
   }
 
-  // Riders go to rider deliveries
+  // Riders go to rider dashboard
   if (user.role === 'RIDER') {
-    return <Navigate to="/rider-deliveries" replace />;
+    return <Navigate to="/rider" replace />;
   }
 
   // Cashiers go to POS
@@ -332,6 +344,14 @@ function AnimatedRoutes() {
           element={
             <ProtectedRoute>
               <TablesScreen />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/rider"
+          element={
+            <ProtectedRoute>
+              <RiderDashboard />
             </ProtectedRoute>
           }
         />

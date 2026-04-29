@@ -18,13 +18,10 @@ class SecureStorageService {
 
   /**
    * Store authentication token securely
-   * Falls back to localStorage for browser dev mode
    */
   async setToken(token: string): Promise<void> {
     if (!this.isElectron) {
-      // Fallback to localStorage for browser dev mode
-      localStorage.setItem(TOKEN_KEY, token);
-      return;
+      throw new Error('Secure storage unavailable: electronAPI not loaded');
     }
     try {
       await (window as any).electronAPI.secureSetItem(TOKEN_KEY, token);
@@ -40,8 +37,7 @@ class SecureStorageService {
    */
   async getToken(): Promise<string | null> {
     if (!this.isElectron) {
-      // Fallback to localStorage for browser dev mode
-      return localStorage.getItem(TOKEN_KEY);
+      throw new Error('Secure storage unavailable: electronAPI not loaded');
     }
     try {
       return await (window as any).electronAPI.secureGetItem(TOKEN_KEY);
@@ -56,9 +52,7 @@ class SecureStorageService {
    */
   async removeToken(): Promise<void> {
     if (!this.isElectron) {
-      // Fallback to localStorage for browser dev mode
-      localStorage.removeItem(TOKEN_KEY);
-      return;
+      throw new Error('Secure storage unavailable: electronAPI not loaded');
     }
     try {
       await (window as any).electronAPI.secureRemoveItem(TOKEN_KEY);
@@ -70,13 +64,10 @@ class SecureStorageService {
 
   /**
    * Store user data securely
-   * Falls back to localStorage for browser dev mode
    */
   async setUser(user: any): Promise<void> {
     if (!this.isElectron) {
-      // Fallback to localStorage for browser dev mode
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
-      return;
+      throw new Error('Secure storage unavailable: electronAPI not loaded');
     }
     const userJson = JSON.stringify(user);
     try {
@@ -93,12 +84,7 @@ class SecureStorageService {
    */
   async getUser(): Promise<any | null> {
     if (!this.isElectron) {
-      // Fallback to localStorage for browser dev mode
-      const userJson = localStorage.getItem(USER_KEY);
-      if (userJson) {
-        return JSON.parse(userJson);
-      }
-      return null;
+      throw new Error('Secure storage unavailable: electronAPI not loaded');
     }
     try {
       const userJson = await (window as any).electronAPI.secureGetItem(USER_KEY);
@@ -117,9 +103,7 @@ class SecureStorageService {
    */
   async removeUser(): Promise<void> {
     if (!this.isElectron) {
-      // Fallback to localStorage for browser dev mode
-      localStorage.removeItem(USER_KEY);
-      return;
+      throw new Error('Secure storage unavailable: electronAPI not loaded');
     }
     try {
       await (window as any).electronAPI.secureRemoveItem(USER_KEY);

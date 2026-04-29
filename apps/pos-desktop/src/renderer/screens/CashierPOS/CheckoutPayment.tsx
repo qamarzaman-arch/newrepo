@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   CreditCard,
@@ -73,13 +73,13 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
   console.log('[CheckoutPayment] Rendering with', currentOrder.items?.length || 0, 'items');
   if (!currentOrder.items || currentOrder.items.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center bg-gray-50">
+      <div className="flex h-full items-center justify-center bg-neutral-50">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading order...</p>
+          <div className="w-16 h-16 border-4 border-primary-500/30 border-t-primary-500 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-neutral-600">Loading order...</p>
           <button
             onClick={onBack}
-            className="mt-4 px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+            className="mt-4 px-4 py-2 bg-neutral-200 rounded-lg hover:bg-neutral-300 transition-colors"
           >
             Go Back
           </button>
@@ -91,11 +91,11 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
   // Warn if rates not loaded - don't allow checkout without proper rates
   if (!backendRates) {
     return (
-      <div className="flex h-full items-center justify-center bg-gray-50">
+      <div className="flex h-full items-center justify-center bg-neutral-50">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading tax rates...</p>
-          <p className="text-sm text-gray-400 mt-2">Please wait while we load the latest rates</p>
+          <div className="w-16 h-16 border-4 border-primary-500/30 border-t-primary-500 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-neutral-600">Loading tax rates...</p>
+          <p className="text-sm text-neutral-400 mt-2">Please wait while we load the latest rates</p>
         </div>
       </div>
     );
@@ -132,9 +132,9 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
   const handleKeyboardInput = useCallback((e: KeyboardEvent) => {
     // Only handle when in CASH or SPLIT mode
     if (paymentMethod !== 'CASH' && paymentMethod !== 'SPLIT') return;
-    
+
     const key = e.key;
-    
+
     // Handle numbers
     if (/^[0-9]$/.test(key)) {
       setCashReceived((prev) => prev + key);
@@ -264,10 +264,10 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
         // Queue order for later sync with payment info
         const offlineQueue = getOfflineQueueManager();
         const queueId = offlineQueue.addToQueue(orderData, paymentData);
-        
+
         // Store order ID for receipt
         setCompletedOrderId(queueId);
-        
+
         toast.success('Order queued offline. Will sync when connection is restored.');
         onComplete(queueId, Math.max(0, change));
         return;
@@ -275,7 +275,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
 
       // 1. Create the order
       const orderResponse = await orderService.createOrder(orderData);
-      
+
       // Handle offline queue response
       if (orderResponse.queued || orderResponse.isOfflineQueued) {
         const queueId = orderResponse.queueId;
@@ -289,7 +289,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
         setProcessing(false);
         return;
       }
-      
+
       // Handle error response
       if (!orderResponse.success || !orderResponse.data?.order) {
         toast.error(orderResponse.error?.message || 'Failed to create order');
@@ -297,7 +297,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
         setProcessing(false);
         return;
       }
-      
+
       const orderId = orderResponse.data.order.id;
 
       // Invalidate orders cache to refresh order history
@@ -322,11 +322,11 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
 
       if (!paymentResult.success) {
         toast.error(paymentResult.error || 'Payment processing failed');
-        
+
         if (paymentResult.requiresRollback) {
           toast.error('Order created but payment failed. Please contact manager.');
         }
-        
+
         setIsSubmitting(false);
         setProcessing(false);
         return;
@@ -384,680 +384,494 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
     }
   };
 
+  const isPlaceOrderDisabled =
+    isSubmitting ||
+    (paymentMethod === 'CASH' && cashReceivedNum < total) ||
+    (paymentMethod === 'CARD' && !cardPaymentConfirmed) ||
+    (paymentMethod === 'SPLIT' && (
+      Math.abs(splitPayment.cash + splitPayment.card - total) > 0.01 ||
+      (splitPayment.cash > 0 && cashReceivedNum < splitPayment.cash)
+    ));
+
   return (
-    <div className="flex h-full overflow-hidden bg-neutral-50">
-      {/* Left Side: Payment Details */}
-      <div className="flex-1 flex flex-col p-10 overflow-y-auto">
-        {/* Progress Indicator */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-10"
-        >
-          <div className="flex items-center gap-6 mb-6">
-            <div className="flex items-center gap-3">
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-base border-2 border-primary-200"
-              >
-                ✓
-              </motion.div>
-              <span className="text-neutral-600 text-sm font-semibold">Type</span>
-            </div>
-            <div className="w-16 h-0.5 bg-primary-600 rounded-full" />
-            <div className="flex items-center gap-3">
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-base border-2 border-primary-200"
-              >
-                ✓
-              </motion.div>
-              <span className="text-neutral-600 text-sm font-semibold">Menu</span>
-            </div>
-            <div className="w-16 h-0.5 bg-primary-600 rounded-full" />
-            <div className="flex items-center gap-3">
-              <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center text-white font-bold text-base shadow-lg shadow-primary-500/30"
-              >
-                3
-              </motion.div>
-              <span className="text-neutral-900 font-bold text-sm">Payment</span>
-            </div>
-          </div>
-        </motion.div>
-
+    <div className="flex h-full overflow-hidden bg-neutral-100">
+      {/* ─────────────────── LEFT PANEL: Order Summary ─────────────────── */}
+      <div className="w-[45%] flex flex-col bg-neutral-0 border-r border-neutral-200 overflow-hidden">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.4 }}
-          className="mb-10"
-        >
-          <h1 className="font-display text-5xl font-black tracking-tight text-neutral-900 mb-3">
-            Checkout & Payment
-          </h1>
-          <p className="text-neutral-600 text-lg font-medium">Select payment method and complete transaction</p>
-        </motion.div>
-
-        {/* Order Summary Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.4 }}
-          className="bg-neutral-0 rounded-3xl p-8 mb-8 shadow-lg border-2 border-neutral-200"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-2xl font-bold text-neutral-900">Order Summary</h2>
-            <span className="bg-neutral-100 text-neutral-700 text-xs px-4 py-2 rounded-full font-bold uppercase tracking-wider border-2 border-neutral-200">
-              {currentOrder.items.length} Items
+        <div className="px-6 pt-5 pb-4 border-b border-neutral-100">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-black text-neutral-900 tracking-tight">Order Summary</h1>
+            <span className="text-xs font-bold uppercase tracking-wider bg-neutral-100 text-neutral-500 px-3 py-1 rounded-full border border-neutral-200">
+              {currentOrder.items.length} {currentOrder.items.length === 1 ? 'item' : 'items'}
             </span>
           </div>
+          {currentOrder.customerName && (
+            <p className="text-sm text-neutral-500 mt-1 font-medium">{currentOrder.customerName}</p>
+          )}
+        </div>
 
-          {/* Items List */}
-          <div className="space-y-4 mb-8 max-h-72 overflow-y-auto pr-2">
-            {currentOrder.items.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + index * 0.05 }}
-                className="flex justify-between items-start p-4 bg-neutral-50 rounded-2xl border-2 border-neutral-200"
-              >
-                <div className="flex-1">
-                  <p className="text-base font-bold text-neutral-900">
-                    {item.quantity}x {item.name}
-                  </p>
-                  {item.notes && (
-                    <p className="text-sm text-neutral-600 mt-2 italic">"{item.notes}"</p>
-                  )}
-                </div>
-                <span className="text-base font-bold text-neutral-900 ml-4">
-                  {formatCurrency(item.price * item.quantity, currencyCode)}
-                </span>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Totals */}
-          <div className="border-t-2 border-neutral-200 pt-8 space-y-4">
-            <div className="flex justify-between text-base">
-              <span className="text-neutral-600 font-semibold">Subtotal</span>
-              <span className="text-neutral-900 font-bold">{formatCurrency(subtotal, currencyCode)}</span>
-            </div>
-            {discount > 0 && (
-              <div className="flex justify-between text-base">
-                <span className="text-success-600 font-bold">Discount ({currentOrder.discountPercent}%)</span>
-                <span className="text-success-600 font-black">-{formatCurrency(discount, currencyCode)}</span>
+        {/* Items List */}
+        <div className="flex-1 overflow-y-auto px-6 py-3 min-h-0">
+          {currentOrder.items.map((item, index) => (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.03 }}
+              className="flex items-baseline justify-between py-2 border-b border-neutral-100 last:border-0"
+            >
+              <div className="flex items-baseline gap-2 min-w-0 flex-1">
+                <span className="text-sm font-bold text-primary-600 w-7 shrink-0">{item.quantity}x</span>
+                <span className="text-sm font-semibold text-neutral-800 truncate">{item.name}</span>
+                {item.notes && (
+                  <span className="text-xs text-neutral-400 italic truncate hidden sm:inline">"{item.notes}"</span>
+                )}
               </div>
-            )}
-            {tip > 0 && (
-              <div className="flex justify-between text-base">
-                <span className="text-primary-600 font-bold">Tip</span>
-                <span className="text-primary-600 font-black">+{formatCurrency(tip, currencyCode)}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-base">
-              <span className="text-neutral-600 font-semibold">Tax ({taxRate}%)</span>
-              <span className="text-neutral-900 font-bold">{formatCurrency(tax, currencyCode)}</span>
-            </div>
-            {serviceChargeRate > 0 && (
-              <div className="flex justify-between text-base">
-                <span className="text-neutral-600 font-semibold">Service Charge ({serviceChargeRate}%)</span>
-                <span className="text-neutral-900 font-bold">{formatCurrency(serviceCharge, currencyCode)}</span>
-              </div>
-            )}
-            <div className="flex justify-between items-center pt-6 border-t-2 border-neutral-200">
-              <span className="font-display text-lg font-black uppercase tracking-wider text-primary-600">
-                Total Due
+              <span className="text-sm font-bold text-neutral-900 ml-3 tabular-nums shrink-0">
+                {formatCurrency(item.price * item.quantity, currencyCode)}
               </span>
-              <span className="font-display text-5xl font-black text-primary-600">
-                {formatCurrency(total, currencyCode)}
-              </span>
-            </div>
-          </div>
-        </motion.div>
+            </motion.div>
+          ))}
+        </div>
 
-        {/* Discount & Tip Buttons */}
-        <div className="grid grid-cols-2 gap-6 mb-8">
+        {/* Totals */}
+        <div className="px-6 pt-3 pb-4 border-t-2 border-neutral-100 bg-neutral-50 space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-neutral-500 font-medium">Subtotal</span>
+            <span className="text-neutral-700 font-semibold tabular-nums">{formatCurrency(subtotal, currencyCode)}</span>
+          </div>
+          {discount > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-green-600 font-semibold">Discount ({currentOrder.discountPercent}%)</span>
+              <span className="text-green-600 font-bold tabular-nums">-{formatCurrency(discount, currencyCode)}</span>
+            </div>
+          )}
+          {tip > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-blue-500 font-semibold">Tip</span>
+              <span className="text-blue-500 font-bold tabular-nums">+{formatCurrency(tip, currencyCode)}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-sm">
+            <span className="text-neutral-500 font-medium">Tax ({taxRate}%)</span>
+            <span className="text-neutral-700 font-semibold tabular-nums">{formatCurrency(tax, currencyCode)}</span>
+          </div>
+          {serviceChargeRate > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-neutral-500 font-medium">Service Charge ({serviceChargeRate}%)</span>
+              <span className="text-neutral-700 font-semibold tabular-nums">{formatCurrency(serviceCharge, currencyCode)}</span>
+            </div>
+          )}
+          <div className="flex justify-between items-center pt-3 border-t-2 border-neutral-200">
+            <span className="text-base font-black uppercase tracking-wider text-neutral-800">Total Due</span>
+            <span className="text-3xl font-black text-primary-600 tabular-nums">
+              {formatCurrency(total, currencyCode)}
+            </span>
+          </div>
+        </div>
+
+        {/* Discount & Tip compact buttons */}
+        <div className="px-6 pb-5 flex gap-3 bg-neutral-50 border-t border-neutral-100">
           <motion.button
-            whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)' }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => setShowDiscountModal(true)}
-            className="py-5 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-3xl font-bold flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all"
+            className="flex-1 py-2.5 flex items-center justify-center gap-2 text-sm font-bold text-primary-600 bg-primary-50 border border-primary-200 rounded-xl hover:bg-primary-100 transition-colors"
           >
-            <Gift className="w-6 h-6" />
-            Discount
+            <Gift className="w-4 h-4" />
+            {discount > 0 ? `Discount (${currentOrder.discountPercent}%)` : 'Discount'}
           </motion.button>
           <motion.button
-            whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)' }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => setShowTipModal(true)}
-            className="py-5 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-3xl font-bold flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all"
+            className="flex-1 py-2.5 flex items-center justify-center gap-2 text-sm font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors"
           >
-            <Heart className="w-6 h-6" />
-            Tip {tip > 0 ? `(${formatCurrency(tip, currencyCode)})` : ''}
+            <Heart className="w-4 h-4" />
+            {tip > 0 ? `Tip (${formatCurrency(tip, currencyCode)})` : 'Tip'}
           </motion.button>
         </div>
-
-        {/* Payment Method Selection */}
-        <div className="grid grid-cols-3 gap-6 mb-10">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setPaymentMethod('CASH')}
-            className={`p-8 rounded-3xl flex flex-col items-center gap-4 transition-all ${
-              paymentMethod === 'CASH'
-                ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-xl shadow-primary-500/30 border-2 border-primary-500'
-                : 'bg-neutral-0 text-neutral-700 hover:bg-neutral-50 border-2 border-neutral-200'
-            }`}
-          >
-            <Banknote className="w-10 h-10" />
-            <span className="font-bold text-base uppercase tracking-wider">Cash</span>
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setPaymentMethod('CARD')}
-            className={`p-8 rounded-3xl flex flex-col items-center gap-4 transition-all ${
-              paymentMethod === 'CARD'
-                ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-xl shadow-primary-500/30 border-2 border-primary-500'
-                : 'bg-neutral-0 text-neutral-700 hover:bg-neutral-50 border-2 border-neutral-200'
-            }`}
-          >
-            <CreditCard className="w-10 h-10" />
-            <span className="font-bold text-base uppercase tracking-wider">Card</span>
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setPaymentMethod('SPLIT')}
-            className={`p-8 rounded-3xl flex flex-col items-center gap-4 transition-all ${
-              paymentMethod === 'SPLIT'
-                ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-xl shadow-primary-500/30 border-2 border-primary-500'
-                : 'bg-neutral-0 text-neutral-700 hover:bg-neutral-50 border-2 border-neutral-200'
-            }`}
-          >
-            <Split className="w-10 h-10" />
-            <span className="font-bold text-base uppercase tracking-wider">Split</span>
-          </motion.button>
-        </div>
-
-        {/* Cash Input Section (only for CASH payment) */}
-        {paymentMethod === 'CASH' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-            className="bg-neutral-0 rounded-3xl p-10 shadow-lg border-2 border-neutral-200"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-display text-2xl font-bold text-neutral-900">
-                Cash Received
-              </h3>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowCashCounter(!showCashCounter)}
-                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors ${
-                  showCashCounter
-                    ? 'bg-primary-600 text-white border-2 border-primary-500'
-                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-2 border-neutral-200'
-                }`}
-              >
-                <Calculator className="w-5 h-5" />
-                {showCashCounter ? 'Hide' : 'Show'} Counter
-              </motion.button>
-            </div>
-
-            {/* Cash Counting Helper */}
-            {showCashCounter && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mb-8"
-              >
-                <CashCountingHelper
-                  onTotalCalculated={(total) => setCashReceived(total.toFixed(2))}
-                  currencyCode={currencyCode}
-                  expectedAmount={total}
-                />
-              </motion.div>
-            )}
-
-            {/* Cash Display - Editable with Keyboard */}
-            <div className="bg-neutral-50 rounded-3xl p-8 mb-6 border-2 border-neutral-200">
-              <label className="text-xs font-bold uppercase tracking-wider text-primary-600 mb-3 block">
-                Cash Received (Type or use keypad)
-              </label>
-              <div className="flex items-center justify-end gap-3">
-                <span className="text-3xl text-neutral-400 font-bold">{currencyCode === 'USD' ? '$' : currencyCode}</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={cashReceived}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === '' || /^∝*\.?∝*$/.test(val)) {
-                      setCashReceived(val);
-                    }
-                  }}
-                  placeholder="0.00"
-                  className="font-display text-6xl font-black text-primary-600 bg-transparent border-none outline-none text-right w-full max-w-[350px] placeholder:text-neutral-300"
-                  autoFocus
-                />
-              </div>
-              <p className="text-sm text-neutral-500 text-right mt-2 font-medium">
-                Press numbers on keyboard or use keypad below
-              </p>
-            </div>
-
-            {/* Quick Amount Buttons */}
-            <div className="grid grid-cols-3 gap-4 mb-8">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleQuickAmount('exact')}
-                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors text-base border-2 border-neutral-200"
-              >
-                Exact Change
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleQuickAmount('next10')}
-                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors text-base border-2 border-neutral-200"
-              >
-                Next {formatCurrency(10, currencyCode).replace(/[0-9.,]/g, '')}10
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleQuickAmount('next20')}
-                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors text-base border-2 border-neutral-200"
-              >
-                Next {formatCurrency(20, currencyCode).replace(/[0-9.,]/g, '')}20
-              </motion.button>
-            </div>
-
-            {/* Numeric Keypad */}
-            <div className="grid grid-cols-3 gap-4">
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'BACKSPACE'].map(
-                (key) => (
-                  <motion.button
-                    key={key}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleKeypadPress(key)}
-                    className="py-5 bg-neutral-100 text-neutral-900 rounded-2xl font-display text-2xl font-bold hover:bg-neutral-200 transition-all border-2 border-neutral-200"
-                  >
-                    {key === 'BACKSPACE' ? '⌫' : key}
-                  </motion.button>
-                )
-              )}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => handleKeypadPress('CLEAR')}
-                className="py-5 bg-error-100 text-error-600 rounded-2xl font-display text-xl font-bold hover:bg-error-200 transition-all border-2 border-error-200"
-              >
-                CLEAR
-              </motion.button>
-            </div>
-
-            {/* Change Due Display */}
-            {cashReceived && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="mt-8 p-6 bg-primary-50 rounded-3xl border-2 border-primary-200"
-              >
-                <div className="flex justify-between items-center">
-                  <span className="text-neutral-700 font-bold text-lg">Change Due:</span>
-                  <span
-                    className={`font-display text-4xl font-black ${
-                      change >= 0 ? 'text-primary-600' : 'text-error-600'
-                    }`}
-                  >
-                    {change >= 0 ? formatCurrency(change, currencyCode) : `-${formatCurrency(Math.abs(change), currencyCode)}`}
-                  </span>
-                </div>
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-
-        {/* Card Payment Info */}
-        {paymentMethod === 'CARD' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-            className="bg-neutral-0 rounded-3xl p-10 text-center shadow-lg border-2 border-neutral-200"
-          >
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="w-24 h-24 mx-auto mb-6 bg-primary-100 rounded-full flex items-center justify-center border-2 border-primary-200"
-            >
-              <CreditCard className="w-12 h-12 text-primary-600" />
-            </motion.div>
-            <h3 className="font-display text-3xl font-bold text-neutral-900 mb-3">
-              Card Payment
-            </h3>
-            <p className="text-neutral-600 text-lg mb-8">
-              Total to charge: <span className="font-black text-primary-600">{formatCurrency(total, currencyCode)}</span>
-            </p>
-
-            {/* Manual confirmation for non-integrated terminals */}
-            <div className="bg-neutral-50 rounded-3xl p-8 border-2 border-neutral-200">
-              <p className="text-base text-neutral-600 mb-6 font-medium">
-                For non-integrated terminals: Process payment on your terminal, then confirm below.
-              </p>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => cardPaymentConfirmed ? setCardPaymentConfirmed(false) : setShowCardConfirmationModal(true)}
-                className={`w-full py-5 rounded-2xl font-bold text-xl transition-all flex items-center justify-center gap-3 ${
-                  cardPaymentConfirmed
-                    ? 'bg-success-100 text-success-700 border-2 border-success-500'
-                    : 'bg-neutral-0 border-2 border-neutral-300 text-neutral-700 hover:border-primary-600 hover:bg-primary-50'
-                }`}
-              >
-                {cardPaymentConfirmed ? (
-                  <>
-                    <Check className="w-7 h-7" />
-                    Card Payment Confirmed
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="w-7 h-7" />
-                    Process Card Payment
-                  </>
-                )}
-              </motion.button>
-
-              {!cardPaymentConfirmed && (
-                <p className="text-sm text-neutral-500 mt-4 text-center font-medium">
-                  Click to open card payment confirmation
-                </p>
-              )}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Split Payment */}
-        {paymentMethod === 'SPLIT' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-            className="bg-neutral-0 rounded-3xl p-10 shadow-lg border-2 border-neutral-200"
-          >
-            <motion.div
-              animate={{ rotate: 180 }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="w-20 h-20 mx-auto mb-6 bg-primary-100 rounded-full flex items-center justify-center border-2 border-primary-200"
-            >
-              <Split className="w-10 h-10 text-primary-600" />
-            </motion.div>
-            <h3 className="font-display text-3xl font-bold text-neutral-900 mb-3 text-center">
-              Split Payment
-            </h3>
-            <p className="text-neutral-600 text-lg mb-8 text-center">
-              Divide the payment between cash and card
-            </p>
-
-            {/* Split Amount Inputs */}
-            <div className="space-y-6 mb-8">
-              <div className="bg-neutral-50 rounded-3xl p-6 border-2 border-neutral-200">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-neutral-700 font-bold text-base flex items-center gap-3">
-                    <Banknote className="w-6 h-6 text-success-600" />
-                    Cash Amount
-                  </span>
-                  <span className="text-2xl font-black text-neutral-900">
-                    {formatCurrency(splitPayment.cash, currencyCode)}
-                  </span>
-                </div>
-                <input
-                  type="number"
-                  min="0"
-                  max={total}
-                  step="0.01"
-                  value={splitPayment.cash || ''}
-                  onChange={(e) => {
-                    const cash = parseFloat(e.target.value) || 0;
-                    setSplitPayment({
-                      cash: Math.min(cash, total),
-                      card: Math.max(0, total - cash),
-                    });
-                  }}
-                  className="w-full px-5 py-4 bg-white border-2 border-neutral-300 rounded-2xl text-neutral-900 font-bold text-lg focus:border-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
-                  placeholder="Enter cash amount"
-                />
-              </div>
-
-              <div className="bg-neutral-50 rounded-3xl p-6 border-2 border-neutral-200">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-neutral-700 font-bold text-base flex items-center gap-3">
-                    <CreditCard className="w-6 h-6 text-primary-600" />
-                    Card Amount
-                  </span>
-                  <span className="text-2xl font-black text-neutral-900">
-                    {formatCurrency(splitPayment.card, currencyCode)}
-                  </span>
-                </div>
-                <input
-                  type="number"
-                  min="0"
-                  max={total}
-                  step="0.01"
-                  value={splitPayment.card || ''}
-                  onChange={(e) => {
-                    const card = parseFloat(e.target.value) || 0;
-                    setSplitPayment({
-                      cash: Math.max(0, total - card),
-                      card: Math.min(card, total),
-                    });
-                  }}
-                  className="w-full px-5 py-4 bg-white border-2 border-neutral-300 rounded-2xl text-neutral-900 font-bold text-lg focus:border-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
-                  placeholder="Enter card amount"
-                />
-              </div>
-            </div>
-
-            {/* Validation */}
-            <div className={`p-6 rounded-3xl border-2 ${
-              Math.abs(splitPayment.cash + splitPayment.card - total) < 0.01
-                ? 'bg-success-50 border-success-300'
-                : 'bg-error-50 border-error-300'
-            }`}>
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-lg">
-                  {Math.abs(splitPayment.cash + splitPayment.card - total) < 0.01
-                    ? '✓ Payment split correctly'
-                    : '⚠ Split must equal total'}
-                </span>
-                <span className="font-black text-xl">
-                  {formatCurrency(splitPayment.cash + splitPayment.card, currencyCode)}
-                  {' / '}
-                  {formatCurrency(total, currencyCode)}
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Split Buttons */}
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setSplitPayment({ cash: total, card: 0 })}
-                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors border-2 border-neutral-200"
-              >
-                All Cash
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setSplitPayment({ cash: 0, card: total })}
-                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors border-2 border-neutral-200"
-              >
-                All Card
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setSplitPayment({ cash: Math.ceil(total / 2), card: Math.floor(total / 2) })}
-                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors border-2 border-neutral-200"
-              >
-                50/50 Split
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setSplitPayment({ cash: Math.ceil(total / 20) * 10, card: total - Math.ceil(total / 20) * 10 })}
-                className="py-4 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-colors border-2 border-neutral-200"
-              >
-                Round Cash
-              </motion.button>
-            </div>
-
-            {/* Cash Received Input for Split Payment */}
-            {splitPayment.cash > 0 && (
-              <div className="mt-8 bg-success-50 rounded-3xl p-6 border-2 border-success-300">
-                <label className="block text-base font-bold text-neutral-800 mb-3">
-                  Cash Received
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={cashReceived}
-                  onChange={(e) => setCashReceived(e.target.value)}
-                  className="w-full px-5 py-4 bg-white border-2 border-success-400 rounded-2xl text-neutral-900 font-black text-2xl focus:border-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
-                  placeholder={`Enter cash amount (min: ${formatCurrency(splitPayment.cash, currencyCode)})`}
-                />
-                {cashReceivedNum >= splitPayment.cash && (
-                  <div className="mt-3 text-base font-bold text-success-700">
-                    Change: {formatCurrency(cashReceivedNum - splitPayment.cash, currencyCode)}
-                  </div>
-                )}
-              </div>
-            )}
-          </motion.div>
-        )}
       </div>
 
-      {/* Right Side: Action Panel */}
+      {/* ─────────────────── RIGHT PANEL: Payment ─────────────────── */}
       <motion.div
         initial={{ x: 20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        transition={{ delay: 0.4, duration: 0.4 }}
-        className="w-[450px] bg-gradient-to-b from-primary-600 to-primary-700 flex flex-col shadow-2xl"
+        transition={{ duration: 0.3 }}
+        className="w-[55%] flex flex-col bg-gradient-to-b from-primary-700 to-primary-800 overflow-hidden"
       >
-        <div className="flex-1 p-10">
-          <h3 className="font-display text-3xl font-black text-white mb-8">
-            Complete Transaction
-          </h3>
+        {/* Payment Method Tabs */}
+        <div className="px-6 pt-5 pb-4 flex gap-3">
+          {(['CASH', 'CARD', 'SPLIT'] as const).map((method) => {
+            const icons = { CASH: <Banknote className="w-4 h-4" />, CARD: <CreditCard className="w-4 h-4" />, SPLIT: <Split className="w-4 h-4" /> };
+            return (
+              <motion.button
+                key={method}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setPaymentMethod(method)}
+                className={`flex-1 py-3 flex items-center justify-center gap-2 rounded-xl font-bold text-sm uppercase tracking-wider transition-all ${
+                  paymentMethod === method
+                    ? 'bg-neutral-0 text-primary-600 shadow-lg'
+                    : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+                }`}
+              >
+                {icons[method]}
+                {method}
+              </motion.button>
+            );
+          })}
+        </div>
 
-          {/* Transaction Details */}
-          <div className="space-y-5 mb-10">
-            <div className="flex justify-between items-center p-5 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-              <span className="text-white/90 text-sm font-semibold">Payment Method</span>
-              <span className="text-white font-black text-lg capitalize">{paymentMethod.toLowerCase()}</span>
-            </div>
+        {/* Payment Content — scrollable */}
+        <div className="flex-1 overflow-y-auto px-6 pb-4 min-h-0">
+          <AnimatePresence mode="wait">
 
-            {paymentMethod === 'CASH' && cashReceivedNum > 0 && (
-              <>
-                <div className="flex justify-between items-center p-5 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-                  <span className="text-white/90 text-sm font-semibold">Cash Received</span>
-                  <span className="text-white font-display font-black text-2xl">
-                    {formatCurrency(cashReceivedNum, currencyCode)}
-                  </span>
+            {/* ── CASH ── */}
+            {paymentMethod === 'CASH' && (
+              <motion.div
+                key="cash"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-4"
+              >
+                {/* Amount Display */}
+                <div className="bg-white/10 rounded-2xl px-5 py-4 border border-white/20">
+                  <div className="flex items-baseline justify-between mb-1">
+                    <span className="text-white/60 text-xs font-bold uppercase tracking-wider">Cash Received</span>
+                    <span className="text-white/50 text-xs font-medium">or type on keyboard</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-4xl font-black text-white tabular-nums">
+                      {cashReceived ? `${currencyCode === 'USD' ? '$' : currencyCode}${cashReceived}` : <span className="text-white/30">$0.00</span>}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center p-5 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-                  <span className="text-white/90 text-sm font-semibold">Change</span>
-                  <span
-                    className={`font-display font-black text-2xl ${
-                      change >= 0 ? 'text-success-300' : 'text-error-300'
+
+                {/* Cash Counter toggle */}
+                <div className="flex items-center justify-between">
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setShowCashCounter(!showCashCounter)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                      showCashCounter
+                        ? 'bg-white text-primary-600'
+                        : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
                     }`}
                   >
-                    {change >= 0 ? formatCurrency(change, currencyCode) : 'N/A'}
-                  </span>
+                    <Calculator className="w-3.5 h-3.5" />
+                    {showCashCounter ? 'Hide Counter' : 'Cash Counter'}
+                  </motion.button>
                 </div>
-              </>
+
+                {/* Cash Counting Helper */}
+                <AnimatePresence>
+                  {showCashCounter && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="bg-white/10 rounded-2xl p-4 border border-white/20">
+                        <CashCountingHelper
+                          onTotalCalculated={(total) => setCashReceived(total.toFixed(2))}
+                          currencyCode={currencyCode}
+                          expectedAmount={total}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Quick Amount Buttons */}
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: 'Exact', action: 'exact' as const },
+                    { label: `Next $10`, action: 'next10' as const },
+                    { label: `Next $20`, action: 'next20' as const },
+                  ].map(({ label, action }) => (
+                    <motion.button
+                      key={action}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => handleQuickAmount(action)}
+                      className="py-2 bg-white/10 text-white/80 rounded-xl text-xs font-bold hover:bg-white/20 hover:text-white transition-colors border border-white/10"
+                    >
+                      {label}
+                    </motion.button>
+                  ))}
+                </div>
+
+                {/* Numeric Keypad */}
+                <div className="grid grid-cols-3 gap-2">
+                  {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'BACKSPACE'].map((key) => (
+                    <motion.button
+                      key={key}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.93 }}
+                      onClick={() => handleKeypadPress(key)}
+                      className="py-4 bg-white/15 text-white rounded-xl text-xl font-bold hover:bg-white/25 transition-colors border border-white/10 active:bg-white/30"
+                    >
+                      {key === 'BACKSPACE' ? '⌫' : key}
+                    </motion.button>
+                  ))}
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.93 }}
+                    onClick={() => handleKeypadPress('CLEAR')}
+                    className="col-span-3 py-3 bg-white/10 text-white/70 rounded-xl text-sm font-bold hover:bg-white/20 hover:text-white transition-colors border border-white/10"
+                  >
+                    CLEAR
+                  </motion.button>
+                </div>
+
+                {/* Change Due */}
+                <AnimatePresence>
+                  {cashReceived && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className={`p-4 rounded-2xl border ${
+                        change >= 0
+                          ? 'bg-green-500/20 border-green-400/40'
+                          : 'bg-red-900/40 border-red-400/40'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="text-white/80 font-bold text-sm">Change Due</span>
+                        <span className={`text-2xl font-black tabular-nums ${change >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                          {change >= 0
+                            ? formatCurrency(change, currencyCode)
+                            : `-${formatCurrency(Math.abs(change), currencyCode)}`}
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             )}
 
+            {/* ── CARD ── */}
+            {paymentMethod === 'CARD' && (
+              <motion.div
+                key="card"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col items-center text-center pt-6 space-y-6"
+              >
+                <motion.div
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  className="w-20 h-20 bg-white/15 rounded-full flex items-center justify-center border-2 border-white/30"
+                >
+                  <CreditCard className="w-10 h-10 text-white" />
+                </motion.div>
+
+                <div>
+                  <p className="text-white/60 text-sm font-semibold uppercase tracking-wider mb-1">Total to Charge</p>
+                  <p className="text-4xl font-black text-white tabular-nums">{formatCurrency(total, currencyCode)}</p>
+                </div>
+
+                <div className="w-full bg-white/10 rounded-2xl p-5 border border-white/20 text-left">
+                  <p className="text-white/70 text-sm font-medium mb-4">
+                    Process payment on your terminal, then confirm below.
+                  </p>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => cardPaymentConfirmed ? setCardPaymentConfirmed(false) : setShowCardConfirmationModal(true)}
+                    className={`w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-3 ${
+                      cardPaymentConfirmed
+                        ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
+                        : 'bg-white text-primary-600 hover:bg-neutral-50'
+                    }`}
+                  >
+                    {cardPaymentConfirmed ? (
+                      <>
+                        <Check className="w-5 h-5" />
+                        Card Payment Confirmed
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-5 h-5" />
+                        Confirm Card Payment
+                      </>
+                    )}
+                  </motion.button>
+                  {!cardPaymentConfirmed && (
+                    <p className="text-white/50 text-xs text-center mt-2">Click to open confirmation dialog</p>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── SPLIT ── */}
             {paymentMethod === 'SPLIT' && (
-              <>
-                <div className="flex justify-between items-center p-5 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-                  <span className="text-white/90 text-sm font-semibold">Cash Portion</span>
-                  <span className="text-white font-display font-black text-2xl">
-                    {formatCurrency(splitPayment.cash, currencyCode)}
-                  </span>
+              <motion.div
+                key="split"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-4"
+              >
+                {/* Quick Split Presets */}
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: '50 / 50', action: () => setSplitPayment({ cash: parseFloat((total / 2).toFixed(2)), card: parseFloat((total / 2).toFixed(2)) }) },
+                    { label: 'All Cash', action: () => setSplitPayment({ cash: total, card: 0 }) },
+                    { label: 'All Card', action: () => setSplitPayment({ cash: 0, card: total }) },
+                  ].map(({ label, action }) => (
+                    <motion.button
+                      key={label}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={action}
+                      className="py-2.5 bg-white/10 text-white/80 rounded-xl text-xs font-bold hover:bg-white/20 hover:text-white transition-colors border border-white/10"
+                    >
+                      {label}
+                    </motion.button>
+                  ))}
                 </div>
-                <div className="flex justify-between items-center p-5 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-                  <span className="text-white/90 text-sm font-semibold">Card Portion</span>
-                  <span className="text-white font-display font-black text-2xl">
-                    {formatCurrency(splitPayment.card, currencyCode)}
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
 
-          {/* Place Order Button */}
+                {/* Cash Amount Input */}
+                <div className="bg-white/10 rounded-2xl p-4 border border-white/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Banknote className="w-4 h-4 text-green-300" />
+                    <span className="text-white/70 text-sm font-bold">Cash Amount</span>
+                    <span className="ml-auto text-white font-black tabular-nums">{formatCurrency(splitPayment.cash, currencyCode)}</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    max={total}
+                    step="0.01"
+                    value={splitPayment.cash || ''}
+                    onChange={(e) => {
+                      const cash = parseFloat(e.target.value) || 0;
+                      setSplitPayment({
+                        cash: Math.min(cash, total),
+                        card: Math.max(0, parseFloat((total - cash).toFixed(2))),
+                      });
+                    }}
+                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white font-bold text-base focus:border-white/50 focus:outline-none placeholder:text-white/30"
+                    placeholder="Enter cash amount"
+                  />
+                </div>
+
+                {/* Card Amount Input */}
+                <div className="bg-white/10 rounded-2xl p-4 border border-white/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CreditCard className="w-4 h-4 text-blue-300" />
+                    <span className="text-white/70 text-sm font-bold">Card Amount</span>
+                    <span className="ml-auto text-white font-black tabular-nums">{formatCurrency(splitPayment.card, currencyCode)}</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    max={total}
+                    step="0.01"
+                    value={splitPayment.card || ''}
+                    onChange={(e) => {
+                      const card = parseFloat(e.target.value) || 0;
+                      setSplitPayment({
+                        cash: Math.max(0, parseFloat((total - card).toFixed(2))),
+                        card: Math.min(card, total),
+                      });
+                    }}
+                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white font-bold text-base focus:border-white/50 focus:outline-none placeholder:text-white/30"
+                    placeholder="Enter card amount"
+                  />
+                </div>
+
+                {/* Validation Bar */}
+                <div className={`p-3 rounded-xl border text-sm font-bold flex justify-between items-center ${
+                  Math.abs(splitPayment.cash + splitPayment.card - total) < 0.01
+                    ? 'bg-green-500/20 border-green-400/40 text-green-200'
+                    : 'bg-red-900/30 border-red-400/40 text-red-200'
+                }`}>
+                  <span>
+                    {Math.abs(splitPayment.cash + splitPayment.card - total) < 0.01
+                      ? '✓ Split matches total'
+                      : '⚠ Must equal total'}
+                  </span>
+                  <span className="tabular-nums">
+                    {formatCurrency(splitPayment.cash + splitPayment.card, currencyCode)} / {formatCurrency(total, currencyCode)}
+                  </span>
+                </div>
+
+                {/* Cash Received for Split */}
+                {splitPayment.cash > 0 && (
+                  <div className="bg-green-500/10 rounded-2xl p-4 border border-green-400/30">
+                    <label className="block text-green-200 text-xs font-bold uppercase tracking-wider mb-2">
+                      Cash Received (min {formatCurrency(splitPayment.cash, currencyCode)})
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white/10 border border-green-400/40 rounded-xl text-white font-black text-lg focus:border-green-300 focus:outline-none placeholder:text-white/30"
+                      placeholder={splitPayment.cash.toFixed(2)}
+                    />
+                    {cashReceivedNum >= splitPayment.cash && (
+                      <p className="text-green-200 text-sm font-bold mt-2">
+                        Change: {formatCurrency(cashReceivedNum - splitPayment.cash, currencyCode)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+          </AnimatePresence>
+        </div>
+
+        {/* ── Action Buttons ── */}
+        <div className="px-6 pb-6 pt-3 space-y-3 border-t border-white/10 bg-primary-800/60">
           <motion.button
-            whileHover={{ scale: 1.02, boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)' }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: isPlaceOrderDisabled ? 1 : 1.01, boxShadow: isPlaceOrderDisabled ? 'none' : '0 20px 40px rgba(0,0,0,0.35)' }}
+            whileTap={{ scale: isPlaceOrderDisabled ? 1 : 0.99 }}
             onClick={handlePlaceOrder}
-            disabled={
-              isSubmitting ||
-              (paymentMethod === 'CASH' && cashReceivedNum < total) ||
-              (paymentMethod === 'CARD' && !cardPaymentConfirmed) ||
-              (paymentMethod === 'SPLIT' && (
-                Math.abs(splitPayment.cash + splitPayment.card - total) > 0.01 ||
-                (splitPayment.cash > 0 && cashReceivedNum < splitPayment.cash)
-              ))
-            }
-            className="w-full py-7 bg-gradient-to-r from-success-500 to-success-600 text-white rounded-3xl font-display font-black text-2xl tracking-wide hover:from-success-600 hover:to-success-700 transition-all flex items-center justify-center gap-4 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isPlaceOrderDisabled}
+            className="w-full py-5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl font-black text-xl tracking-wide hover:from-green-600 hover:to-green-700 transition-all flex items-center justify-center gap-3 shadow-xl disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
-              <div className="w-7 h-7 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              <Check className="w-8 h-8" />
+              <Check className="w-6 h-6" />
             )}
             {isSubmitting ? 'Processing...' : 'Place Order & Print'}
           </motion.button>
 
-          {/* Back Button */}
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
             onClick={onBack}
-            className="w-full mt-6 py-5 bg-white/10 backdrop-blur-sm text-white rounded-3xl font-display font-bold text-xl hover:bg-white/20 transition-all flex items-center justify-center gap-3 border-2 border-white/20"
+            className="w-full py-3.5 bg-white/10 text-white/80 rounded-2xl font-bold text-base hover:bg-white/20 hover:text-white transition-all flex items-center justify-center gap-2 border border-white/10"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="w-5 h-5" />
             Back to Menu
           </motion.button>
-        </div>
 
-        {/* Footer Info */}
-        <div className="p-8 bg-primary-800 border-t border-white/10">
-          <div className="flex items-center gap-4 text-white/80">
-            <Printer className="w-5 h-5" />
-            <span className="font-medium">Receipt will be printed automatically</span>
-          </div>
+          {settings.autoPrintReceipt && (
+            <div className="flex items-center justify-center gap-2 text-white/40 text-xs font-medium">
+              <Printer className="w-3.5 h-3.5" />
+              Receipt will print automatically
+            </div>
+          )}
         </div>
       </motion.div>
+
+      {/* ─────────────────── MODALS (unchanged logic) ─────────────────── */}
 
       {/* Discount Modal */}
       {showDiscountModal && (
@@ -1214,7 +1028,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                     } catch {
                       isValid = false;
                     }
-                    
+
                     if (isValid) {
                       applyDiscount(pendingDiscountPercent, managerName);
                       setShowDiscountPinModal(false);

@@ -94,16 +94,17 @@ router.get('/categories', async (req: Request, res: Response, next: NextFunction
 // NEW: Root /menu - returns available items (public for POS)
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { categoryId, search, available, page = '1', limit = '50' } = req.query;
+    const { categoryId, available, page = '1', limit = '50' } = req.query;
+    const rawSearch = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : undefined;
 
     const where: any = { isActive: true };
 
     if (categoryId) where.categoryId = categoryId;
     if (available === 'true') where.isAvailable = true;
-    if (search) {
+    if (rawSearch) {
       where.OR = [
-        { name: { contains: search as string, mode: 'insensitive' } },
-        { description: { contains: search as string, mode: 'insensitive' } },
+        { name: { contains: rawSearch, mode: 'insensitive' } },
+        { description: { contains: rawSearch, mode: 'insensitive' } },
       ];
     }
 
@@ -210,16 +211,17 @@ router.delete('/categories/:id', authenticate, async (req: AuthRequest, res: Res
 // Get menu items with filters (public endpoint for cashier)
 router.get('/items', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { categoryId, search, available, page = '1', limit = '50' } = req.query;
+    const { categoryId, available, page = '1', limit = '50' } = req.query;
+    const rawSearch = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : undefined;
 
     const where: any = { isActive: true };
 
     if (categoryId) where.categoryId = categoryId;
     if (available === 'true') where.isAvailable = true;
-    if (search) {
+    if (rawSearch) {
       where.OR = [
-        { name: { contains: search as string, mode: 'insensitive' } },
-        { description: { contains: search as string, mode: 'insensitive' } },
+        { name: { contains: rawSearch, mode: 'insensitive' } },
+        { description: { contains: rawSearch, mode: 'insensitive' } },
       ];
     }
 

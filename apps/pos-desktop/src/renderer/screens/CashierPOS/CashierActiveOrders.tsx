@@ -273,9 +273,16 @@ const CashierActiveOrders: React.FC = () => {
   };
 
   const getStatusClasses = (status: string) => {
-    if (status === 'PENDING') return 'bg-warning-100 text-warning-700 border-2 border-warning-300';
-    if (status === 'PREPARING') return 'bg-primary-100 text-primary-700 border-2 border-primary-300';
-    return 'bg-success-100 text-success-700 border-2 border-success-300';
+    if (status === 'PENDING') return 'bg-amber-50 text-amber-700 border border-amber-200';
+    if (status === 'PREPARING') return 'bg-blue-50 text-blue-700 border border-blue-200';
+    return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+  };
+
+  // Left-border accent per status
+  const getCardBorderAccent = (status: string) => {
+    if (status === 'PENDING') return 'border-l-4 border-l-amber-400';
+    if (status === 'PREPARING') return 'border-l-4 border-l-blue-500';
+    return 'border-l-4 border-l-emerald-500';
   };
 
   const renderOrderCard = (order: ActiveOrder) => {
@@ -286,74 +293,81 @@ const CashierActiveOrders: React.FC = () => {
       <motion.div
         key={order.id}
         layout
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        whileHover={{ y: -4, boxShadow: '0 20px 40px rgba(229, 57, 53, 0.12)' }}
-        className="rounded-3xl border-2 border-neutral-200 bg-neutral-0 p-6 shadow-lg"
+        transition={{ duration: 0.25 }}
+        whileHover={{ y: -3, boxShadow: '0 12px 32px rgba(211,47,47,0.10)' }}
+        className={`rounded-2xl border border-neutral-200 bg-white shadow-sm overflow-hidden ${getCardBorderAccent(order.status)}`}
       >
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <div className="mb-3 flex items-center gap-3">
-              <span className="text-xl font-black text-neutral-900">#{order.orderNumber || order.id.slice(-6)}</span>
-              <motion.span
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className={`rounded-2xl px-4 py-2 text-xs font-bold uppercase tracking-wide ${getStatusClasses(order.status)}`}
-              >
+        {/* Card header */}
+        <div className="px-5 pt-4 pb-3 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-base font-black text-neutral-900">
+                #{order.orderNumber || order.id.slice(-6)}
+              </span>
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${getStatusClasses(order.status)}`}>
                 {order.status}
-              </motion.span>
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-100 text-neutral-600 border border-neutral-200">
+                {getOrderTypeLabel(order.orderType)}
+                {tableNumber ? ` · T${tableNumber}` : ''}
+              </span>
             </div>
-            <p className="text-sm text-neutral-600 font-medium">
-              {getOrderTypeLabel(order.orderType)}
-              {tableNumber ? ` • Table ${tableNumber}` : ''}
-            </p>
-            {order.customerName && <p className="mt-2 text-sm font-bold text-neutral-900">{order.customerName}</p>}
+            {order.customerName && (
+              <p className="mt-1 text-sm font-semibold text-neutral-700 truncate">{order.customerName}</p>
+            )}
           </div>
-          <div className="text-right">
-            <p className="text-xs font-bold uppercase tracking-wider text-primary-600">Elapsed</p>
-            <p className="text-base font-black text-neutral-900">{getElapsedTime(order)}</p>
+          <div className="text-right flex-shrink-0">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Elapsed</p>
+            <p className="text-sm font-black text-neutral-800">{getElapsedTime(order)}</p>
           </div>
         </div>
 
-        <div className="space-y-3 rounded-2xl bg-neutral-50 p-4 border-2 border-neutral-200">
+        {/* Items list */}
+        <div className="mx-5 mb-3 rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-3 space-y-1.5">
           {(order.items || []).slice(0, 4).map((item, index) => (
-            <div key={`${order.id}-${index}`} className="flex items-center justify-between text-sm text-neutral-700">
-              <span className="font-semibold">
-                {item.quantity}x {item.menuItem?.name || item.name || 'Item'}
+            <div key={`${order.id}-${index}`} className="flex items-center justify-between text-sm">
+              <span className="text-neutral-700 font-medium">
+                <span className="font-bold text-neutral-900">{item.quantity}×</span>{' '}
+                {item.menuItem?.name || item.name || 'Item'}
               </span>
-              <span className="font-bold text-neutral-900">{formatCurrency((item.price || item.menuItem?.price || 0) * item.quantity)}</span>
+              <span className="font-bold text-neutral-800 ml-2 flex-shrink-0">
+                {formatCurrency((item.price || item.menuItem?.price || 0) * item.quantity)}
+              </span>
             </div>
           ))}
           {(order.items || []).length > 4 && (
-            <p className="text-xs font-bold text-primary-600">+{order.items.length - 4} more items</p>
+            <p className="text-xs font-bold text-primary-600 pt-0.5">+{order.items.length - 4} more items</p>
           )}
         </div>
 
+        {/* Kitchen note */}
         {order.notes && (
-          <div className="mt-5 rounded-2xl border-2 border-warning-200 bg-warning-50 p-4 text-sm text-neutral-700">
-            <span className="font-bold text-warning-800">Kitchen note:</span> {order.notes}
+          <div className="mx-5 mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <span className="font-bold">Note:</span> {order.notes}
           </div>
         )}
 
-        <div className="mt-6 flex items-center justify-between">
+        {/* Footer: total + actions */}
+        <div className="px-5 pb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-primary-600">Total</p>
-            <p className="text-3xl font-black text-primary-600">{formatCurrency(total)}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-primary-600">Total</p>
+            <p className="text-2xl font-black text-primary-600 leading-tight">{formatCurrency(total)}</p>
           </div>
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-1.5">
             <ActionButton
-              icon={<Eye className="h-4 w-4" />}
+              icon={<Eye className="h-3.5 w-3.5" />}
               label="View"
               onClick={() => {
                 setSelectedOrder(order);
                 setShowViewModal(true);
               }}
             />
-            <ActionButton icon={<Pencil className="h-4 w-4" />} label="Edit" onClick={() => openEditModal(order)} />
+            <ActionButton icon={<Pencil className="h-3.5 w-3.5" />} label="Edit" onClick={() => openEditModal(order)} />
             {(order.status === 'PENDING' || order.status === 'PREPARING') && (
               <ActionButton
-                icon={<CheckCircle2 className="h-4 w-4" />}
+                icon={<CheckCircle2 className="h-3.5 w-3.5" />}
                 label="Ready"
                 variant="primary"
                 onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: 'READY' })}
@@ -361,9 +375,9 @@ const CashierActiveOrders: React.FC = () => {
             )}
             {order.status === 'READY' && (
               <ActionButton
-                icon={<Receipt className="h-4 w-4" />}
-                label="Collect"
-                variant="primary"
+                icon={<Receipt className="h-3.5 w-3.5" />}
+                label="Collect Payment"
+                variant="collect"
                 onClick={() => {
                   setSelectedOrder(order);
                   setCashReceived(String(order.totalAmount || 0));
@@ -373,7 +387,7 @@ const CashierActiveOrders: React.FC = () => {
             )}
             {(order.status === 'PENDING' || order.status === 'PREPARING') && (
               <ActionButton
-                icon={<Trash2 className="h-4 w-4" />}
+                icon={<Trash2 className="h-3.5 w-3.5" />}
                 label="Cancel"
                 variant="danger"
                 onClick={() => {
@@ -391,77 +405,142 @@ const CashierActiveOrders: React.FC = () => {
 
   return (
     <div className="flex h-full flex-col bg-neutral-50">
+      {/* ── Header ── */}
       <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4 }}
-        className="border-b-2 border-primary-100 bg-neutral-0 px-8 py-6 shadow-sm"
+        transition={{ duration: 0.35 }}
+        className="border-b border-neutral-200 bg-white px-6 py-4 shadow-sm flex-shrink-0"
       >
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.25em] text-primary-600">Cashier Desk</p>
-            <h1 className="mt-2 text-4xl font-black text-neutral-900">Active Orders</h1>
-            <p className="mt-2 text-sm text-neutral-600 font-medium">Live order management with direct kitchen, payment, and cancellation actions.</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary-600">Cashier Desk</p>
+            <h1 className="mt-0.5 text-2xl font-black text-neutral-900">Active Orders</h1>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <SummaryCard label="Pending" value={groupedOrders.PENDING.length} />
-            <SummaryCard label="Preparing" value={groupedOrders.PREPARING.length} />
-            <SummaryCard label="Ready" value={groupedOrders.READY.length} />
+
+          {/* Stats pills */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <StatPill
+              label="Pending"
+              count={groupedOrders.PENDING.length}
+              dotClass="bg-amber-400"
+              pillClass="bg-amber-50 border-amber-200 text-amber-800"
+            />
+            <StatPill
+              label="Preparing"
+              count={groupedOrders.PREPARING.length}
+              dotClass="bg-blue-500"
+              pillClass="bg-blue-50 border-blue-200 text-blue-800"
+            />
+            <StatPill
+              label="Ready"
+              count={groupedOrders.READY.length}
+              dotClass="bg-emerald-500"
+              pillClass="bg-emerald-50 border-emerald-200 text-emerald-800"
+            />
           </div>
         </div>
       </motion.header>
 
-      <div className="flex-1 overflow-y-auto px-8 py-8">
+      {/* ── Content ── */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
         {isLoading ? (
-          <div className="flex h-64 items-center justify-center">
-            <div className="h-14 w-14 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
+          /* Skeleton loading */
+          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border border-neutral-200 bg-white p-5 animate-pulse">
+                <div className="flex justify-between mb-4">
+                  <div className="space-y-2">
+                    <div className="h-4 w-24 bg-neutral-200 rounded" />
+                    <div className="h-3 w-16 bg-neutral-100 rounded" />
+                  </div>
+                  <div className="h-4 w-12 bg-neutral-200 rounded" />
+                </div>
+                <div className="space-y-2 mb-4">
+                  <div className="h-3 w-full bg-neutral-100 rounded" />
+                  <div className="h-3 w-3/4 bg-neutral-100 rounded" />
+                </div>
+                <div className="flex justify-between items-center">
+                  <div className="h-6 w-16 bg-neutral-200 rounded" />
+                  <div className="flex gap-2">
+                    <div className="h-7 w-14 bg-neutral-100 rounded-lg" />
+                    <div className="h-7 w-14 bg-neutral-100 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : orders.length === 0 ? (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="mx-auto flex max-w-xl flex-col items-center rounded-3xl border-2 border-dashed border-neutral-300 bg-neutral-0 p-16 text-center"
+            className="mx-auto flex max-w-sm flex-col items-center rounded-2xl border border-dashed border-neutral-300 bg-white p-12 text-center mt-8"
           >
-            <CheckCircle2 className="mb-6 h-20 w-20 text-primary-300" />
-            <h2 className="text-3xl font-black text-neutral-900">No active orders</h2>
-            <p className="mt-3 text-base text-neutral-600">New kitchen and ready-to-pay orders will appear here automatically.</p>
+            <div className="w-16 h-16 rounded-full bg-primary-50 border-2 border-primary-100 flex items-center justify-center mb-5">
+              <CheckCircle2 className="h-8 w-8 text-primary-400" />
+            </div>
+            <h2 className="text-xl font-black text-neutral-900">All clear</h2>
+            <p className="mt-2 text-sm text-neutral-500 font-medium">
+              New kitchen and ready-to-pay orders will appear here automatically.
+            </p>
           </motion.div>
         ) : (
-          <div className="space-y-10">
-            <OrderSection title="Pending" accent="bg-warning-500" orders={groupedOrders.PENDING} renderOrderCard={renderOrderCard} />
-            <OrderSection title="Preparing" accent="bg-primary-500" orders={groupedOrders.PREPARING} renderOrderCard={renderOrderCard} />
-            <OrderSection title="Ready For Payment" accent="bg-success-500" orders={groupedOrders.READY} renderOrderCard={renderOrderCard} />
+          <div className="space-y-8">
+            <OrderSection
+              title="Pending"
+              dotClass="bg-amber-400"
+              orders={groupedOrders.PENDING}
+              renderOrderCard={renderOrderCard}
+            />
+            <OrderSection
+              title="Preparing"
+              dotClass="bg-blue-500"
+              orders={groupedOrders.PREPARING}
+              renderOrderCard={renderOrderCard}
+            />
+            <OrderSection
+              title="Ready for Payment"
+              dotClass="bg-emerald-500"
+              orders={groupedOrders.READY}
+              renderOrderCard={renderOrderCard}
+            />
           </div>
         )}
       </div>
 
+      {/* ── View Modal ── */}
       <AnimatePresence>
         {showViewModal && selectedOrder && (
-          <ModalShell title={`Order #${selectedOrder.orderNumber || selectedOrder.id.slice(-6)}`} onClose={() => setShowViewModal(false)}>
-            <div className="space-y-4">
+          <ModalShell
+            title={`Order #${selectedOrder.orderNumber || selectedOrder.id.slice(-6)}`}
+            onClose={() => setShowViewModal(false)}
+          >
+            <div className="space-y-3">
               {(selectedOrder.items || []).map((item, index) => (
                 <motion.div
                   key={`${selectedOrder.id}-view-${index}`}
-                  initial={{ opacity: 0, x: -10 }}
+                  initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="flex items-center justify-between rounded-2xl bg-neutral-50 p-5 border-2 border-neutral-200"
+                  transition={{ delay: index * 0.04 }}
+                  className="flex items-center justify-between rounded-xl bg-neutral-50 px-4 py-3 border border-neutral-200"
                 >
                   <div>
-                    <p className="font-bold text-neutral-900 text-lg">
-                      {item.quantity}x {item.menuItem?.name || item.name}
+                    <p className="font-bold text-neutral-900">
+                      {item.quantity}× {item.menuItem?.name || item.name}
                     </p>
-                    {item.notes && <p className="mt-1 text-sm text-neutral-600 italic">"{item.notes}"</p>}
+                    {item.notes && (
+                      <p className="mt-0.5 text-xs text-neutral-500 italic">"{item.notes}"</p>
+                    )}
                   </div>
-                  <p className="font-bold text-primary-600 text-lg">
+                  <p className="font-bold text-primary-600">
                     {formatCurrency((item.price || item.menuItem?.price || 0) * item.quantity)}
                   </p>
                 </motion.div>
               ))}
 
               {selectedOrder.notes && (
-                <div className="rounded-2xl border-2 border-warning-200 bg-warning-50 p-5 text-sm text-neutral-700">
-                  <span className="font-bold text-warning-800">Order notes:</span> {selectedOrder.notes}
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  <span className="font-bold">Note:</span> {selectedOrder.notes}
                 </div>
               )}
             </div>
@@ -469,25 +548,30 @@ const CashierActiveOrders: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* ── Edit Modal ── */}
       <AnimatePresence>
         {showEditModal && selectedOrder && (
-          <ModalShell title={`Edit Order #${selectedOrder.orderNumber || selectedOrder.id.slice(-6)}`} onClose={() => setShowEditModal(false)} widthClass="max-w-5xl">
-            <div className="grid gap-8 lg:grid-cols-[1.3fr_0.9fr]">
-              <div className="space-y-6">
-                <div className="rounded-3xl border-2 border-primary-200 bg-primary-50 p-6">
-                  <p className="mb-4 text-xs font-bold uppercase tracking-wider text-primary-600">Current Items</p>
-                  <div className="space-y-4">
+          <ModalShell
+            title={`Edit Order #${selectedOrder.orderNumber || selectedOrder.id.slice(-6)}`}
+            onClose={() => setShowEditModal(false)}
+            widthClass="max-w-5xl"
+          >
+            <div className="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
+              <div className="space-y-5">
+                <div className="rounded-2xl border border-primary-200 bg-primary-50 p-5">
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-primary-600">Current Items</p>
+                  <div className="space-y-3">
                     {editableItems.map((item) => (
                       <motion.div
                         key={item.id}
-                        initial={{ opacity: 0, x: -10 }}
+                        initial={{ opacity: 0, x: -8 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="rounded-2xl bg-neutral-0 p-5 shadow-sm border-2 border-neutral-200"
+                        className="rounded-xl bg-white p-4 shadow-sm border border-neutral-200"
                       >
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
-                            <p className="font-bold text-neutral-900 text-lg">{item.name}</p>
-                            <p className="text-sm text-neutral-600">{formatCurrency(item.price)} each</p>
+                            <p className="font-bold text-neutral-900">{item.name}</p>
+                            <p className="text-xs text-neutral-500">{formatCurrency(item.price)} each</p>
                             <input
                               value={item.notes || ''}
                               onChange={(event) =>
@@ -498,20 +582,22 @@ const CashierActiveOrders: React.FC = () => {
                                 )
                               }
                               placeholder="Item note"
-                              className="mt-3 w-full rounded-xl border-2 border-neutral-200 px-4 py-3 text-sm focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
+                              className="mt-2 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                             />
                           </div>
                           <motion.button
-                            whileHover={{ scale: 1.1, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+                            whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            onClick={() => setEditableItems((current) => current.filter((entry) => entry.id !== item.id))}
-                            className="rounded-xl bg-error-50 p-3 text-error-600 transition-colors hover:bg-error-100 border-2 border-error-200"
+                            onClick={() =>
+                              setEditableItems((current) => current.filter((entry) => entry.id !== item.id))
+                            }
+                            className="rounded-lg bg-red-50 p-2 text-red-600 hover:bg-red-100 border border-red-200 flex-shrink-0"
                           >
-                            <Trash2 className="h-5 w-5" />
+                            <Trash2 className="h-4 w-4" />
                           </motion.button>
                         </div>
-                        <div className="mt-5 flex items-center justify-between">
-                          <div className="flex items-center gap-2 rounded-xl bg-neutral-100 p-1.5 border-2 border-neutral-200">
+                        <div className="mt-3 flex items-center justify-between">
+                          <div className="flex items-center gap-1 rounded-lg bg-neutral-100 p-1 border border-neutral-200">
                             <motion.button
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
@@ -524,11 +610,13 @@ const CashierActiveOrders: React.FC = () => {
                                   )
                                 )
                               }
-                              className="rounded-lg bg-white px-4 py-3 text-sm font-bold text-neutral-700 hover:bg-neutral-50"
+                              className="rounded-md bg-white px-3 py-1.5 text-sm font-bold text-neutral-700 hover:bg-neutral-50 shadow-sm"
                             >
-                              -
+                              −
                             </motion.button>
-                            <span className="min-w-[3rem] text-center font-bold text-neutral-900 text-lg">{item.quantity}</span>
+                            <span className="min-w-[2.5rem] text-center font-bold text-neutral-900 text-sm">
+                              {item.quantity}
+                            </span>
                             <motion.button
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
@@ -539,12 +627,12 @@ const CashierActiveOrders: React.FC = () => {
                                   )
                                 )
                               }
-                              className="rounded-lg bg-white px-4 py-3 text-sm font-bold text-neutral-700 hover:bg-neutral-50"
+                              className="rounded-md bg-white px-3 py-1.5 text-sm font-bold text-neutral-700 hover:bg-neutral-50 shadow-sm"
                             >
                               +
                             </motion.button>
                           </div>
-                          <p className="font-bold text-primary-600 text-xl">
+                          <p className="font-bold text-primary-600">
                             {formatCurrency(item.price * item.quantity)}
                           </p>
                         </div>
@@ -556,12 +644,12 @@ const CashierActiveOrders: React.FC = () => {
                 <textarea
                   value={editNotes}
                   onChange={(event) => setEditNotes(event.target.value)}
-                  rows={4}
+                  rows={3}
                   placeholder="Kitchen note or order note"
-                  className="w-full rounded-3xl border-2 border-neutral-200 px-5 py-4 text-sm focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
+                  className="w-full rounded-xl border border-neutral-200 px-4 py-3 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                 />
 
-                <div className="flex gap-4">
+                <div className="flex gap-3">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -573,47 +661,48 @@ const CashierActiveOrders: React.FC = () => {
                       })
                     }
                     disabled={updateOrderMutation.isPending || editableItems.length === 0}
-                    className="flex-1 rounded-2xl bg-gradient-to-r from-primary-600 to-primary-700 py-4 font-bold text-white transition-all hover:shadow-lg shadow-primary-500/30 disabled:opacity-50"
+                    className="flex-1 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 py-3 font-bold text-white transition-all hover:shadow-md disabled:opacity-50"
                   >
-                    {updateOrderMutation.isPending ? 'Saving...' : 'Save Changes'}
+                    {updateOrderMutation.isPending ? 'Saving…' : 'Save Changes'}
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowEditModal(false)}
-                    className="rounded-2xl bg-neutral-100 px-6 py-4 font-bold text-neutral-700 transition-colors hover:bg-neutral-200 border-2 border-neutral-200"
+                    className="rounded-xl bg-neutral-100 px-5 py-3 font-bold text-neutral-700 hover:bg-neutral-200 border border-neutral-200"
                   >
                     Close
                   </motion.button>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="rounded-3xl border-2 border-primary-200 bg-neutral-0 p-6">
-                  <div className="mb-4 flex items-center gap-3">
-                    <Search className="h-5 w-5 text-primary-600" />
+              {/* Menu search */}
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-primary-200 bg-white p-4">
+                  <div className="mb-3 flex items-center gap-2 border-b border-neutral-200 pb-3">
+                    <Search className="h-4 w-4 text-neutral-400 flex-shrink-0" />
                     <input
                       value={menuSearch}
                       onChange={(event) => setMenuSearch(event.target.value)}
-                      placeholder="Find menu item"
-                      className="w-full border-none bg-transparent text-sm font-semibold outline-none text-neutral-900"
+                      placeholder="Find menu item…"
+                      className="w-full border-none bg-transparent text-sm outline-none text-neutral-900 font-medium"
                     />
                   </div>
-                  <div className="max-h-[420px] space-y-3 overflow-y-auto">
+                  <div className="max-h-[380px] space-y-2 overflow-y-auto">
                     {menuItems.slice(0, 20).map((item: any) => (
                       <motion.button
                         key={item.id}
-                        whileHover={{ scale: 1.02, backgroundColor: 'rgba(229, 57, 53, 0.05)' }}
-                        whileTap={{ scale: 0.98 }}
+                        whileHover={{ scale: 1.01, backgroundColor: 'rgba(211,47,47,0.04)' }}
+                        whileTap={{ scale: 0.99 }}
                         onClick={() => addMenuItemToEdit(item)}
-                        className="flex w-full items-center justify-between rounded-2xl border-2 border-neutral-200 px-5 py-4 text-left transition-colors hover:border-primary-300 bg-neutral-50"
+                        className="flex w-full items-center justify-between rounded-xl border border-neutral-200 px-4 py-3 text-left hover:border-primary-300 bg-neutral-50 transition-colors"
                       >
                         <div>
-                          <p className="font-bold text-neutral-900">{item.name}</p>
-                          <p className="text-sm text-neutral-600">{formatCurrency(item.price)}</p>
+                          <p className="font-bold text-neutral-900 text-sm">{item.name}</p>
+                          <p className="text-xs text-neutral-500">{formatCurrency(item.price)}</p>
                         </div>
-                        <span className="rounded-full bg-gradient-to-r from-primary-600 to-primary-700 p-3 text-white shadow-md">
-                          <Plus className="h-4 w-4" />
+                        <span className="rounded-full bg-gradient-to-r from-primary-600 to-primary-500 p-2 text-white shadow-sm flex-shrink-0">
+                          <Plus className="h-3.5 w-3.5" />
                         </span>
                       </motion.button>
                     ))}
@@ -625,38 +714,61 @@ const CashierActiveOrders: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* ── Payment Modal ── */}
       <AnimatePresence>
         {showPaymentModal && selectedOrder && (
-          <ModalShell title={`Collect Payment • #${selectedOrder.orderNumber || selectedOrder.id.slice(-6)}`} onClose={() => setShowPaymentModal(false)} widthClass="max-w-lg">
-            <div className="space-y-6">
-              <div className="rounded-3xl border-2 border-primary-200 bg-primary-50 p-6">
+          <ModalShell
+            title={`Collect Payment · #${selectedOrder.orderNumber || selectedOrder.id.slice(-6)}`}
+            onClose={() => setShowPaymentModal(false)}
+            widthClass="max-w-md"
+          >
+            <div className="space-y-5">
+              {/* Amount summary */}
+              <div className="rounded-2xl border border-primary-200 bg-primary-50 p-5">
                 <div className="flex items-center justify-between text-sm text-neutral-600">
                   <span className="font-semibold">Order total</span>
-                  <span className="font-bold text-neutral-900 text-lg">{formatCurrency(selectedOrder.totalAmount || 0)}</span>
+                  <span className="font-bold text-neutral-900">{formatCurrency(selectedOrder.totalAmount || 0)}</span>
                 </div>
                 {discountAmount > 0 && (
-                  <div className="mt-3 flex items-center justify-between text-sm text-success-700">
+                  <div className="mt-2 flex items-center justify-between text-sm text-emerald-700">
                     <span className="font-semibold">Discount</span>
-                    <span className="font-bold">-{formatCurrency(discountAmount)}</span>
+                    <span className="font-bold">−{formatCurrency(discountAmount)}</span>
                   </div>
                 )}
-                <div className="mt-4 border-t-2 border-primary-200 pt-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-primary-600">Amount To Collect</p>
-                  <p className="mt-2 text-4xl font-black text-primary-600">
+                <div className="mt-3 border-t border-primary-200 pt-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-primary-600">Amount to Collect</p>
+                  <p className="mt-1 text-4xl font-black text-primary-600">
                     {formatCurrency(Math.max((selectedOrder.totalAmount || 0) - discountAmount, 0))}
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <PaymentMethodButton icon={<Banknote className="h-5 w-5" />} active={paymentMethod === 'CASH'} label="Cash" onClick={() => setPaymentMethod('CASH')} />
-                <PaymentMethodButton icon={<CreditCard className="h-5 w-5" />} active={paymentMethod === 'CARD'} label="Card" onClick={() => setPaymentMethod('CARD')} />
-                <PaymentMethodButton icon={<Smartphone className="h-5 w-5" />} active={paymentMethod === 'ONLINE_TRANSFER'} label="Transfer" onClick={() => setPaymentMethod('ONLINE_TRANSFER')} />
+              {/* Payment method */}
+              <div className="grid grid-cols-3 gap-3">
+                <PaymentMethodButton
+                  icon={<Banknote className="h-5 w-5" />}
+                  active={paymentMethod === 'CASH'}
+                  label="Cash"
+                  onClick={() => setPaymentMethod('CASH')}
+                />
+                <PaymentMethodButton
+                  icon={<CreditCard className="h-5 w-5" />}
+                  active={paymentMethod === 'CARD'}
+                  label="Card"
+                  onClick={() => setPaymentMethod('CARD')}
+                />
+                <PaymentMethodButton
+                  icon={<Smartphone className="h-5 w-5" />}
+                  active={paymentMethod === 'ONLINE_TRANSFER'}
+                  label="Transfer"
+                  onClick={() => setPaymentMethod('ONLINE_TRANSFER')}
+                />
               </div>
 
-              <div className="rounded-3xl border-2 border-neutral-200 p-6">
-                <p className="mb-4 text-xs font-bold uppercase tracking-wider text-primary-600">Optional Discount</p>
-                <div className="grid gap-4 sm:grid-cols-2">
+              {/* Optional discount */}
+              <div className="rounded-xl border border-neutral-200 p-4">
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-primary-600">Optional Discount</p>
+                <div className="grid gap-3 sm:grid-cols-2">
                   <input
                     type="number"
                     value={discountPercent}
@@ -667,14 +779,14 @@ const CashierActiveOrders: React.FC = () => {
                       setDiscountAmount(((selectedOrder.totalAmount || 0) * numericPercent) / 100);
                     }}
                     placeholder="Discount %"
-                    className="rounded-xl border-2 border-neutral-200 px-4 py-3 text-sm focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
+                    className="rounded-lg border border-neutral-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                   />
                   <input
                     type="password"
                     value={managerPin}
                     onChange={(event) => setManagerPin(event.target.value)}
                     placeholder="Manager PIN"
-                    className="rounded-xl border-2 border-neutral-200 px-4 py-3 text-sm focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
+                    className="rounded-lg border border-neutral-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                   />
                 </div>
               </div>
@@ -685,7 +797,7 @@ const CashierActiveOrders: React.FC = () => {
                   value={cashReceived}
                   onChange={(event) => setCashReceived(event.target.value)}
                   placeholder="Cash received"
-                  className="w-full rounded-3xl border-2 border-neutral-200 px-6 py-4 text-lg font-bold focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
+                  className="w-full rounded-xl border border-neutral-200 px-5 py-3.5 text-lg font-bold focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                 />
               )}
 
@@ -694,9 +806,11 @@ const CashierActiveOrders: React.FC = () => {
                   type="text"
                   maxLength={4}
                   value={cardLastFour}
-                  onChange={(event) => setCardLastFour(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                  onChange={(event) =>
+                    setCardLastFour(event.target.value.replace(/\D/g, '').slice(0, 4))
+                  }
                   placeholder="Card last 4 digits"
-                  className="w-full rounded-3xl border-2 border-neutral-200 px-6 py-4 text-lg font-bold tracking-[0.3em] focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
+                  className="w-full rounded-xl border border-neutral-200 px-5 py-3.5 text-lg font-bold tracking-[0.3em] focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                 />
               )}
 
@@ -706,24 +820,25 @@ const CashierActiveOrders: React.FC = () => {
                   value={transferReference}
                   onChange={(event) => setTransferReference(event.target.value.toUpperCase())}
                   placeholder="Transfer reference"
-                  className="w-full rounded-3xl border-2 border-neutral-200 px-6 py-4 text-lg font-bold focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
+                  className="w-full rounded-xl border border-neutral-200 px-5 py-3.5 text-lg font-bold focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                 />
               )}
 
               <motion.button
-                whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)' }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.015 }}
+                whileTap={{ scale: 0.985 }}
                 onClick={() => processPaymentMutation.mutate()}
                 disabled={
                   processPaymentMutation.isPending ||
                   (paymentMethod === 'CASH' &&
-                    Number(cashReceived || 0) < Math.max((selectedOrder.totalAmount || 0) - discountAmount, 0)) ||
+                    Number(cashReceived || 0) <
+                      Math.max((selectedOrder.totalAmount || 0) - discountAmount, 0)) ||
                   (paymentMethod === 'ONLINE_TRANSFER' && !transferReference.trim()) ||
                   (discountAmount > 0 && !managerPin.trim())
                 }
-                className="w-full rounded-3xl bg-gradient-to-r from-primary-600 to-primary-700 py-5 text-lg font-black text-white transition-all hover:shadow-lg shadow-primary-500/30 disabled:opacity-50"
+                className="w-full rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 py-4 text-base font-black text-white shadow-lg shadow-primary-500/25 transition-all hover:shadow-primary-500/40 disabled:opacity-50"
               >
-                {processPaymentMutation.isPending ? 'Processing Payment...' : 'Confirm Payment'}
+                {processPaymentMutation.isPending ? 'Processing…' : 'Confirm Payment'}
               </motion.button>
             </div>
           </ModalShell>
@@ -733,41 +848,43 @@ const CashierActiveOrders: React.FC = () => {
   );
 };
 
-const SummaryCard: React.FC<{ label: string; value: number }> = ({ label, value }) => (
-  <motion.div
-    whileHover={{ scale: 1.05, y: -2 }}
-    className="rounded-2xl border-2 border-primary-200 bg-neutral-0 px-6 py-4 shadow-sm"
-  >
-    <p className="text-xs font-bold uppercase tracking-wider text-primary-600">{label}</p>
-    <p className="mt-2 text-3xl font-black text-neutral-900">{value}</p>
-  </motion.div>
+/* ── Sub-components ── */
+
+const StatPill: React.FC<{
+  label: string;
+  count: number;
+  dotClass: string;
+  pillClass: string;
+}> = ({ label, count, dotClass, pillClass }) => (
+  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold ${pillClass}`}>
+    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotClass}`} />
+    {label}
+    <span className="ml-0.5 font-black">{count}</span>
+  </div>
 );
 
 const OrderSection: React.FC<{
   title: string;
-  accent: string;
+  dotClass: string;
   orders: ActiveOrder[];
   renderOrderCard: (order: ActiveOrder) => React.ReactNode;
-}> = ({ title, accent, orders, renderOrderCard }) => {
-  if (orders.length === 0) {
-    return null;
-  }
+}> = ({ title, dotClass, orders, renderOrderCard }) => {
+  if (orders.length === 0) return null;
 
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="mb-6 flex items-center gap-4">
+    <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+      <div className="mb-4 flex items-center gap-2.5">
         <motion.span
-          animate={{ scale: [1, 1.2, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className={`h-4 w-4 rounded-full ${accent} shadow-lg`}
+          animate={{ scale: [1, 1.3, 1] }}
+          transition={{ duration: 2.5, repeat: Infinity }}
+          className={`h-2.5 w-2.5 rounded-full ${dotClass}`}
         />
-        <h2 className="text-2xl font-black text-neutral-900">{title}</h2>
+        <h2 className="text-base font-black text-neutral-800 uppercase tracking-wide">{title}</h2>
+        <span className="text-xs font-bold text-neutral-400">{orders.length} order{orders.length !== 1 ? 's' : ''}</span>
       </div>
-      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">{orders.map((order) => renderOrderCard(order))}</div>
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        {orders.map((order) => renderOrderCard(order))}
+      </div>
     </motion.section>
   );
 };
@@ -776,21 +893,23 @@ const ActionButton: React.FC<{
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
-  variant?: 'default' | 'primary' | 'danger';
+  variant?: 'default' | 'primary' | 'collect' | 'danger';
 }> = ({ icon, label, onClick, variant = 'default' }) => {
   const variantClass =
-    variant === 'primary'
-      ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:shadow-lg shadow-primary-500/30'
+    variant === 'collect'
+      ? 'bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-sm shadow-primary-500/30 hover:shadow-md'
+      : variant === 'primary'
+      ? 'bg-neutral-800 text-white hover:bg-neutral-700'
       : variant === 'danger'
-      ? 'bg-gradient-to-r from-error-600 to-error-700 text-white hover:shadow-lg shadow-error-500/30'
-      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-2 border-neutral-200';
+      ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100'
+      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border border-neutral-200';
 
   return (
     <motion.button
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      onClick={onClick} 
-      className={`inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition-all ${variantClass}`}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.96 }}
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${variantClass}`}
     >
       {icon}
       {label}
@@ -805,16 +924,16 @@ const PaymentMethodButton: React.FC<{
   onClick: () => void;
 }> = ({ icon, label, active, onClick }) => (
   <motion.button
-    whileHover={{ scale: 1.05 }}
-    whileTap={{ scale: 0.95 }}
+    whileHover={{ scale: 1.03 }}
+    whileTap={{ scale: 0.97 }}
     onClick={onClick}
-    className={`rounded-2xl border-2 px-4 py-4 text-sm font-bold transition-all ${
-      active 
-        ? 'border-primary-600 bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30' 
-        : 'border-neutral-200 bg-neutral-0 text-neutral-700 hover:border-primary-300 hover:bg-primary-50'
+    className={`rounded-xl border px-3 py-3.5 text-sm font-bold transition-all ${
+      active
+        ? 'border-primary-600 bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25'
+        : 'border-neutral-200 bg-white text-neutral-700 hover:border-primary-300 hover:bg-primary-50'
     }`}
   >
-    <span className="mb-2 flex justify-center">{icon}</span>
+    <span className="mb-1.5 flex justify-center">{icon}</span>
     {label}
   </motion.button>
 );
@@ -829,28 +948,28 @@ const ModalShell: React.FC<{
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
     onClick={onClose}
   >
     <motion.div
-      initial={{ scale: 0.96, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.96, opacity: 0 }}
-      className={`w-full ${widthClass} rounded-3xl bg-neutral-0 p-8 shadow-2xl border-2 border-primary-200`}
+      initial={{ scale: 0.97, opacity: 0, y: 8 }}
+      animate={{ scale: 1, opacity: 1, y: 0 }}
+      exit={{ scale: 0.97, opacity: 0, y: 8 }}
+      className={`w-full ${widthClass} rounded-2xl bg-white p-6 shadow-2xl border border-neutral-200 max-h-[90vh] overflow-y-auto`}
       onClick={(event) => event.stopPropagation()}
     >
-      <div className="mb-8 flex items-center justify-between gap-4">
+      <div className="mb-5 flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-primary-600">Live Action</p>
-          <h3 className="mt-2 text-3xl font-black text-neutral-900">{title}</h3>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-primary-600">Live Action</p>
+          <h3 className="mt-0.5 text-xl font-black text-neutral-900">{title}</h3>
         </div>
         <motion.button
-          whileHover={{ scale: 1.1, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+          whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          onClick={onClose} 
-          className="rounded-2xl bg-error-50 p-3 text-error-600 transition-colors hover:bg-error-100 border-2 border-error-200"
+          onClick={onClose}
+          className="rounded-xl bg-neutral-100 p-2 text-neutral-500 hover:bg-red-50 hover:text-red-600 border border-neutral-200 transition-colors flex-shrink-0"
         >
-          <X className="h-6 w-6" />
+          <X className="h-5 w-5" />
         </motion.button>
       </div>
       {children}

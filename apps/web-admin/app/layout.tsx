@@ -6,13 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Toaster } from 'react-hot-toast';
 import Sidebar from './components/Sidebar';
 import { apiClient } from './lib/api';
-import { clearAuth } from './lib/auth';
-
-function hasAuthCookie(): boolean {
-  if (typeof document === 'undefined') return false;
-  // Check for consistent token key
-  return document.cookie.split(';').some((cookie) => cookie.trim().startsWith('token='));
-}
+import { clearAuth, getToken, getUser } from './lib/auth';
 
 // Auth wrapper component
 function AuthWrapper({ children }: { children: React.ReactNode }) {
@@ -20,19 +14,23 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
+  const isPublicQr = pathname?.startsWith('/qr/');
+
   useEffect(() => {
+    if (isPublicQr) {
+      setIsAuthenticated(true);
+      return;
+    }
     const verifySession = async () => {
-      // Use same keys as POS Desktop for consistency
-      const token = localStorage.getItem('token');
-      const user = localStorage.getItem('user');
-      const cookieExists = hasAuthCookie();
+      const token = getToken();
+      const user = getUser();
 
       if (token && user) {
         setIsAuthenticated(true);
         return;
       }
 
-      if (!cookieExists && !token) {
+      if (!token) {
         setIsAuthenticated(false);
         if (pathname !== '/login') {
           router.push('/login');
@@ -43,7 +41,6 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       try {
         const response = await apiClient.get('/auth/verify');
         const verifiedUser = response.data.data.user;
-        // Store with consistent keys
         localStorage.setItem('user', JSON.stringify(verifiedUser));
         setIsAuthenticated(true);
       } catch (error) {
@@ -56,7 +53,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     };
 
     verifySession();
-  }, [pathname, router]);
+  }, [pathname, router, isPublicQr]);
 
   if (isAuthenticated === null) {
     return (
@@ -66,7 +63,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (pathname === '/login') {
+  if (pathname === '/login' || isPublicQr) {
     return <>{children}</>;
   }
 

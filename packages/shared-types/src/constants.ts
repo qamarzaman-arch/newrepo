@@ -80,7 +80,7 @@ export const CURRENCY = {
 export const STORAGE_KEYS = {
   OFFLINE_QUEUE: 'pos_offline_queue',
   SYNC_CONFLICTS: 'pos_sync_conflicts',
-  AUTH_TOKEN: 'auth_token_secure',
+  AUTH_TOKEN: 'auth_token',
   USER_DATA: 'user_data_secure',
   SETTINGS: 'pos_settings',
   LAST_SYNC: 'pos_last_sync',

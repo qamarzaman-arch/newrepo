@@ -8,6 +8,9 @@ import { logger, sanitize } from '../utils/logger';
 import { verifyAndUpgradeSecret } from '../utils/pinSecurity';
 import { getWebSocketManager } from '../utils/websocket';
 import { orderLimiter } from '../middleware/rateLimiter';
+import { KITCHEN_PRIORITY_MAP, KITCHEN_STATION_MAP, DEFAULT_KITCHEN_STATION, DEFAULT_KITCHEN_PRIORITY } from '../config/kitchenConfig';
+import { parsePagination } from '../utils/parsePagination';
+import { postOrderJournalEntry } from '../services/accounting.service';
 
 const router = Router();
 
@@ -36,7 +39,8 @@ const createOrderSchema = z.object({
 // Get all orders with filters
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { status, orderType, paymentMethod, startDate, endDate, page = 1, limit = 50 } = req.query;
+    const { status, orderType, paymentMethod, startDate, endDate } = req.query;
+    const { page, limit } = parsePagination(req.query);
 
     const where: any = {};
 
@@ -88,8 +92,8 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
           cashier: { select: { fullName: true } }
         },
         orderBy: { orderedAt: 'desc' },
-        skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit),
+        skip: (page - 1) * limit,
+        take: limit,
       }),
       prisma.order.count({
         where: {
@@ -105,9 +109,9 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
         orders,
         pagination: {
           total,
-          page: Number(page),
-          limit: Number(limit),
-          totalPages: Math.ceil(total / Number(limit)),
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
         },
       },
     });
@@ -441,41 +445,22 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
       }
 
       // Create KOT tickets for kitchen with unique timestamp-based IDs and auto-priority
-      // Priority rules: Walk-in (highest) > Takeaway > Dine-in > Delivery (lowest)
-      const priorityMap: Record<string, string> = {
-        WALK_IN: 'high',
-        TAKEAWAY: 'medium-high',
-        DINE_IN: 'medium',
-        DELIVERY: 'low',
-        PICKUP: 'medium-high',
-      };
-      const priority = priorityMap[data.orderType] || 'medium';
-      
-      // Kitchen station mapping based on menu item category
-      const stationMap: Record<string, string> = {
-        'Pizza': 'pizza',
-        'Pasta': 'pizza',
-        'Drinks': 'bar',
-        'Beverages': 'bar',
-        'Appetizers': 'cold',
-        'Salads': 'cold',
-        'Desserts': 'cold',
-        'Grill': 'grill',
-        'BBQ': 'grill',
-        'Main Course': 'grill',
-      };
-      
+      const priority = KITCHEN_PRIORITY_MAP[data.orderType] || DEFAULT_KITCHEN_PRIORITY;
+
+      // Fetch all menu items with categories in a single query (fix N+1)
+      const menuItemIds = newOrder.items.map((item) => item.menuItemId);
+      const menuItemsWithCategory = await tx.menuItem.findMany({
+        where: { id: { in: menuItemIds } },
+        include: { category: true },
+      });
+      const menuItemCategoryMap = new Map(menuItemsWithCategory.map((mi) => [mi.id, mi]));
+
       let kotCounter = 1;
       for (const item of newOrder.items) {
-        const menuItem = await tx.menuItem.findUnique({
-          where: { id: item.menuItemId },
-          include: { category: true },
-        });
-        
-        // Determine station based on category
+        const menuItem = menuItemCategoryMap.get(item.menuItemId);
         const categoryName = menuItem?.category?.name || 'Main Course';
-        const station = stationMap[categoryName] || 'grill';
-        
+        const station = KITCHEN_STATION_MAP[categoryName] || DEFAULT_KITCHEN_STATION;
+
         const timestamp = Date.now();
         const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
         await tx.kotTicket.create({
@@ -543,6 +528,12 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
                   logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available before deduction: ${previousStock}`);
                 }
 
+                // Read actual current stock after update for accurate audit trail
+                const updatedInventoryItem = await (tx as any).inventoryItem.findUnique({
+                  where: { id: inventoryItem.id },
+                  select: { currentStock: true },
+                });
+
                 // Record stock movement
                 try {
                   await (tx as any).stockMovement.create({
@@ -550,8 +541,8 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
                       inventoryItemId: inventoryItem.id,
                       type: 'SALE',
                       quantity: requiredQty,
-                      previousStock: inventoryItem.currentStock,
-                      newStock,
+                      previousStock,
+                      newStock: updatedInventoryItem?.currentStock ?? newStock,
                       reference: `Order ${orderNumber}`,
                       notes: `Auto-deducted via recipe for order item`,
                       performedById: req.user!.userId,
@@ -601,6 +592,12 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
               logger.warn(`Low stock alert: ${inventoryItem.name} - Required: ${requiredQty}, Available before deduction: ${previousStock}`);
             }
 
+            // Read actual current stock after update for accurate audit trail
+            const updatedDirectItem = await (tx as any).inventoryItem.findUnique({
+              where: { id: inventoryItem.id },
+              select: { currentStock: true },
+            });
+
             // Record stock movement
             try {
               await (tx as any).stockMovement.create({
@@ -608,8 +605,8 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
                   inventoryItemId: inventoryItem.id,
                   type: 'SALE',
                   quantity: requiredQty,
-                  previousStock: inventoryItem.currentStock,
-                  newStock,
+                  previousStock,
+                  newStock: updatedDirectItem?.currentStock ?? newStock,
                   reference: `Order ${orderNumber}`,
                   notes: `Auto-deducted via direct link: ${inventoryItem.name}`,
                   performedById: req.user!.userId,
@@ -871,6 +868,23 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
     });
 
     const { order: finalOrder, payment } = result;
+
+    // Post journal entry when fully paid
+    if (result.paidAmount >= result.finalTotalAmount) {
+      try {
+        await postOrderJournalEntry(prisma, {
+          id: finalOrder.id,
+          paidAmount: Number(finalOrder.paidAmount),
+          subtotal: Number(finalOrder.subtotal),
+          discountAmount: Number(finalOrder.discountAmount),
+          taxAmount: Number(finalOrder.taxAmount),
+          tipAmount: Number(finalOrder.tipAmount),
+          branchId: (finalOrder as any).branchId,
+        });
+      } catch (jErr) {
+        logger.error('Failed to post order journal entry:', jErr);
+      }
+    }
 
     // Emit WebSocket events outside transaction
     const ws = getWebSocketManager();

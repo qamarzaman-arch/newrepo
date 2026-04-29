@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Lock, LogIn, Sparkles, Hash, Delete } from 'lucide-react';
+import { User, Lock, LogIn, Hash, Delete, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { authService } from '../services/authService';
 import toast from 'react-hot-toast';
@@ -26,7 +26,7 @@ const LoginScreen: React.FC = () => {
   // Handle keyboard input for PIN mode
   useEffect(() => {
     if (loginMode !== 'pin') return;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (/^[0-9]$/.test(e.key)) {
         handlePinInput(e.key);
@@ -55,8 +55,12 @@ const LoginScreen: React.FC = () => {
         return;
       }
     } else {
-      if (!pinUsername || !pin || pin.length < 4) {
-        toast.error('Please enter username and PIN (min 4 digits)');
+      if (!pinUsername || !pin) {
+        toast.error('Please enter username and PIN');
+        return;
+      }
+      if (!/^\d{4}$/.test(pin)) {
+        toast.error('PIN must be exactly 4 digits');
         return;
       }
     }
@@ -64,16 +68,15 @@ const LoginScreen: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const credentials = loginMode === 'password' 
-        ? { username, password }
-        : { username: pinUsername, pin };
-      
+      const credentials =
+        loginMode === 'password' ? { username, password } : { username: pinUsername, pin };
+
       const response = await authService.login(credentials);
       const { user, token } = response.data.data;
 
       login(user, token);
       toast.success(`Welcome ${user.fullName || user.username}!`);
-      
+
       // Redirect based on user role
       if (user.role === 'KITCHEN') {
         navigate('/kitchen');
@@ -96,7 +99,7 @@ const LoginScreen: React.FC = () => {
 
   const handlePinInput = (digit: string) => {
     if (pin.length < 4) {
-      setPin(prev => prev + digit);
+      setPin((prev) => prev + digit);
     }
   };
 
@@ -105,334 +108,331 @@ const LoginScreen: React.FC = () => {
   };
 
   const backspacePin = () => {
-    setPin(prev => prev.slice(0, -1));
+    setPin((prev) => prev.slice(0, -1));
   };
 
-  // Background particles
-  const particles = Array.from({ length: 20 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 4 + 2,
-    duration: Math.random() * 20 + 10,
-  }));
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 relative overflow-hidden flex items-center justify-center p-4">
-      {/* Animated Background Particles */}
-      <AnimatePresence>
-        {mounted && particles.map((particle) => (
-          <motion.div
-            key={particle.id}
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{
-              opacity: [0.2, 0.5, 0.2],
-              scale: [1, 1.2, 1],
-              y: [0, -30, 0],
-              x: [0, Math.random() * 20 - 10, 0],
-            }}
-            transition={{
-              duration: particle.duration,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="absolute rounded-full bg-white/10 backdrop-blur-sm"
-            style={{
-              left: `${particle.x}%`,
-              top: `${particle.y}%`,
-              width: particle.size,
-              height: particle.size,
-            }}
-          />
-        ))}
-      </AnimatePresence>
-
-      {/* Gradient Orbs - Red Theme */}
+    <div className="min-h-screen flex overflow-hidden">
+      {/* ── LEFT BRANDING PANEL (40%) ── */}
       <motion.div
-        animate={{
-          scale: [1, 1.3, 1],
-          opacity: [0.15, 0.35, 0.15],
-        }}
-        transition={{ duration: 8, repeat: Infinity }}
-        className="absolute top-20 left-20 w-96 h-96 bg-primary-400/40 rounded-full blur-3xl"
-      />
-      <motion.div
-        animate={{
-          scale: [1.3, 1, 1.3],
-          opacity: [0.15, 0.35, 0.15],
-        }}
-        transition={{ duration: 10, repeat: Infinity, delay: 1 }}
-        className="absolute bottom-20 right-20 w-[500px] h-[500px] bg-primary-500/30 rounded-full blur-3xl"
-      />
-      <motion.div
-        animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.1, 0.25, 0.1],
-        }}
-        transition={{ duration: 12, repeat: Infinity, delay: 2 }}
-        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/10 rounded-full blur-3xl"
-      />
-
-      {/* Login Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 30, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="bg-neutral-0/95 backdrop-blur-xl rounded-3xl shadow-2xl max-w-md w-full p-8 relative z-10 border-2 border-white/30"
+        initial={{ x: -60, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className="hidden lg:flex lg:w-2/5 flex-col relative overflow-hidden"
+        style={{ background: 'linear-gradient(160deg, #7f0000 0%, #b71c1c 45%, #D32F2F 100%)' }}
       >
-        {/* Logo Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-center mb-8"
-        >
+        {/* Decorative circles */}
+        <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-white/5" />
+        <div className="absolute top-1/3 -right-20 w-64 h-64 rounded-full bg-white/5" />
+        <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-white/5" />
+        <div className="absolute bottom-1/4 right-8 w-32 h-32 rounded-full bg-white/5" />
+
+        {/* Diagonal stripe accent */}
+        <div
+          className="absolute inset-0 opacity-5"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(-45deg, #fff 0px, #fff 1px, transparent 1px, transparent 20px)',
+          }}
+        />
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col flex-1 p-12 justify-between">
+          {/* Top logo area */}
           <motion.div
-            whileHover={{ scale: 1.05, rotate: 5 }}
-            transition={{ type: "spring", stiffness: 300 }}
-            className="inline-block mb-4"
-          >
-            <img src="/assets/logo.svg" alt="POSLytic" className="h-20 mx-auto drop-shadow-lg" />
-          </motion.div>
-          <motion.h1 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-5xl font-bold font-display bg-gradient-to-r from-white to-primary-100 bg-clip-text text-transparent"
-          >
-            POSLytic
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="text-white/80 mt-2 flex items-center justify-center gap-2 font-medium"
-          >
-            <Sparkles className="w-4 h-4 text-primary-200" />
-            Smart Restaurant Management
-            <Sparkles className="w-4 h-4 text-primary-200" />
-          </motion.p>
-        </motion.div>
-
-        {/* Login Mode Toggle */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-          className="flex gap-2 mb-6 bg-white/10 backdrop-blur-sm p-1.5 rounded-2xl border border-white/20"
-        >
-          <button
-            type="button"
-            onClick={() => setLoginMode('password')}
-            className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all ${
-              loginMode === 'password'
-                ? 'bg-white text-primary-700 shadow-lg'
-                : 'text-white/70 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            <div className="flex items-center justify-center gap-2">
-              <Lock className="w-4 h-4" />
-              Password
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => setLoginMode('pin')}
-            className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all ${
-              loginMode === 'pin'
-                ? 'bg-white text-primary-700 shadow-lg'
-                : 'text-white/70 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            <div className="flex items-center justify-center gap-2">
-              <Hash className="w-4 h-4" />
-              PIN
-            </div>
-          </button>
-        </motion.div>
-
-        {/* Login Form */}
-        <form onSubmit={handleLogin} className="space-y-6">
-          <AnimatePresence mode="wait">
-            {loginMode === 'password' ? (
-              <motion.div
-                key="password-mode"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-4"
-              >
-                <div>
-                  <label className="block text-sm font-semibold text-white/90 mb-2">
-                    Username
-                  </label>
-                  <div className="relative group">
-                    <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50 w-5 h-5 group-focus-within:text-primary-200 transition-colors" />
-                    <input
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-xl focus:border-primary-200 focus:bg-white/20 focus:outline-none transition-all duration-300 hover:border-white/30 text-white placeholder:text-white/40"
-                      placeholder="Enter username"
-                      autoFocus
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-white/90 mb-2">
-                    Password
-                  </label>
-                  <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50 w-5 h-5 group-focus-within:text-primary-200 transition-colors" />
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-xl focus:border-primary-200 focus:bg-white/20 focus:outline-none transition-all duration-300 hover:border-white/30 text-white placeholder:text-white/40"
-                      placeholder="Enter password"
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="pin-mode"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-4"
-              >
-                {/* Username for PIN login */}
-                <div>
-                  <label className="block text-sm font-semibold text-white/90 mb-2">
-                    Username
-                  </label>
-                  <div className="relative group">
-                    <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50 w-5 h-5 group-focus-within:text-primary-200 transition-colors" />
-                    <input
-                      type="text"
-                      value={pinUsername}
-                      onChange={(e) => setPinUsername(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-xl focus:border-primary-200 focus:bg-white/20 focus:outline-none transition-all text-white placeholder:text-white/40"
-                      placeholder="Enter username"
-                      autoFocus
-                    />
-                  </div>
-                </div>
-
-                {/* PIN Display */}
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-4 border border-white/20">
-                  <div className="flex justify-center gap-4">
-                    {[0, 1, 2, 3].map((i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ scale: 0 }}
-                        animate={{ scale: i < pin.length ? 1 : 0.8 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                        className={`w-4 h-4 rounded-full transition-all ${
-                          i < pin.length ? 'bg-primary-200 shadow-lg shadow-primary-500/50' : 'bg-white/20'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-center text-sm text-white/60 mt-3 font-medium">
-                    Enter your PIN (4 digits)
-                  </p>
-                </div>
-
-                {/* PIN Keypad */}
-                <div className="grid grid-cols-3 gap-3">
-                  {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
-                    <motion.button
-                      key={digit}
-                      type="button"
-                      onClick={() => handlePinInput(digit)}
-                      whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.2)' }}
-                      whileTap={{ scale: 0.95 }}
-                      className="py-4 bg-white/10 backdrop-blur-sm border border-white/20 hover:border-white/40 rounded-2xl text-2xl font-bold text-white transition-all active:scale-95 shadow-lg"
-                    >
-                      {digit}
-                    </motion.button>
-                  ))}
-                  <motion.button
-                    type="button"
-                    onClick={clearPin}
-                    whileHover={{ scale: 1.05, backgroundColor: 'rgba(239, 68, 68, 0.3)' }}
-                    whileTap={{ scale: 0.95 }}
-                    className="py-4 bg-error-500/20 backdrop-blur-sm border border-error-400/30 hover:border-error-400/50 rounded-2xl text-sm font-semibold text-error-200 transition-all active:scale-95 shadow-lg"
-                  >
-                    CLR
-                  </motion.button>
-                  <motion.button
-                    key="0"
-                    type="button"
-                    onClick={() => handlePinInput('0')}
-                    whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.2)' }}
-                    whileTap={{ scale: 0.95 }}
-                    className="py-4 bg-white/10 backdrop-blur-sm border border-white/20 hover:border-white/40 rounded-2xl text-2xl font-bold text-white transition-all active:scale-95 shadow-lg"
-                  >
-                    0
-                  </motion.button>
-                  <motion.button
-                    type="button"
-                    onClick={backspacePin}
-                    whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.2)' }}
-                    whileTap={{ scale: 0.95 }}
-                    className="py-4 bg-white/20 backdrop-blur-sm border border-white/30 hover:border-white/50 rounded-2xl flex items-center justify-center transition-all active:scale-95 shadow-lg"
-                  >
-                    <Delete className="w-6 h-6 text-white" />
-                  </motion.button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <motion.button
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            whileHover={{ scale: 1.02, boxShadow: '0 0 30px rgba(229, 57, 53, 0.4)' }}
-            whileTap={{ scale: 0.98 }}
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-white text-primary-700 font-bold py-4 rounded-2xl shadow-2xl flex items-center justify-center gap-2 relative overflow-hidden group border-2 border-white/50"
+            transition={{ delay: 0.3, duration: 0.5 }}
           >
-            <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent"
-              initial={{ x: '-100%' }}
-              whileHover={{ x: '100%' }}
-              transition={{ duration: 0.5 }}
-            />
-            {isLoading ? (
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-5 h-5 border-2 border-primary-700 border-t-transparent rounded-full"
-              />
-            ) : (
-              <>
-                <LogIn className="w-5 h-5" />
-                <span>Login to POSLytic</span>
-              </>
-            )}
-          </motion.button>
-        </form>
+            <div className="flex items-center gap-4 mb-3">
+              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-2xl">
+                <span className="text-white font-black text-3xl leading-none">P</span>
+              </div>
+              <span className="text-white font-black text-4xl tracking-tight">POSLytic</span>
+            </div>
+            <p className="text-white/70 text-sm font-semibold uppercase tracking-[0.2em] pl-1">
+              Enterprise Restaurant Management
+            </p>
+          </motion.div>
 
-        {/* Footer */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="mt-8 text-center text-sm text-white/70 space-y-2"
-        >
-          <p className="font-semibold text-white/90">Secure Access</p>
-          <p className="text-xs text-white/50 mt-2">
-            Sign in with the credentials assigned to your account.
-          </p>
-        </motion.div>
+          {/* Centre hero text */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+            className="space-y-6"
+          >
+            <div className="w-12 h-1 bg-white/40 rounded-full" />
+            <h2 className="text-white text-5xl font-black leading-tight">
+              Smarter<br />Restaurant<br />Operations
+            </h2>
+            <p className="text-white/65 text-base font-medium leading-relaxed max-w-xs">
+              Real-time order management, kitchen display, inventory tracking and advanced analytics — all in one platform.
+            </p>
+            <div className="flex flex-col gap-3 pt-2">
+              {['Live kitchen dispatch', 'Multi-terminal sync', 'Offline-first architecture'].map((feat) => (
+                <div key={feat} className="flex items-center gap-3 text-white/80 text-sm font-medium">
+                  <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                    <ChevronRight className="w-3 h-3 text-white" />
+                  </div>
+                  {feat}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Bottom version */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+            className="text-white/40 text-xs font-semibold uppercase tracking-widest"
+          >
+            Version 2.0.0 &nbsp;·&nbsp; © 2025 POSLytic
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* ── RIGHT LOGIN PANEL (60%) ── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="flex-1 bg-white flex items-center justify-center p-8"
+      >
+        <div className="w-full max-w-md">
+          {/* Mobile logo (shown when branding panel is hidden) */}
+          <div className="lg:hidden mb-10 text-center">
+            <div className="inline-flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center">
+                <span className="text-white font-black text-xl">P</span>
+              </div>
+              <span className="text-neutral-900 font-black text-3xl">POSLytic</span>
+            </div>
+          </div>
+
+          {/* Heading */}
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, duration: 0.4 }}
+            className="mb-8"
+          >
+            <h1 className="text-3xl font-black text-neutral-900">Welcome back</h1>
+            <p className="text-neutral-500 mt-1 text-sm font-medium">
+              Sign in with your credentials to continue
+            </p>
+          </motion.div>
+
+          {/* Mode toggle */}
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="flex gap-1 mb-7 bg-neutral-100 p-1 rounded-xl border border-neutral-200"
+          >
+            <button
+              type="button"
+              onClick={() => setLoginMode('password')}
+              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+                loginMode === 'password'
+                  ? 'bg-white text-primary-700 shadow-sm border border-neutral-200'
+                  : 'text-neutral-500 hover:text-neutral-700'
+              }`}
+            >
+              <Lock className="w-4 h-4" />
+              Password
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginMode('pin')}
+              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+                loginMode === 'pin'
+                  ? 'bg-white text-primary-700 shadow-sm border border-neutral-200'
+                  : 'text-neutral-500 hover:text-neutral-700'
+              }`}
+            >
+              <Hash className="w-4 h-4" />
+              PIN
+            </button>
+          </motion.div>
+
+          {/* Form */}
+          <form onSubmit={handleLogin}>
+            <AnimatePresence mode="wait">
+              {loginMode === 'password' ? (
+                <motion.div
+                  key="password-mode"
+                  initial={{ opacity: 0, x: -16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 16 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-4 mb-6"
+                >
+                  <div>
+                    <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+                      Username
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 w-4 h-4" />
+                      <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-300 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:bg-white focus:outline-none transition-all text-neutral-900 placeholder:text-neutral-400 text-sm"
+                        placeholder="Enter your username"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 w-4 h-4" />
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-300 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:bg-white focus:outline-none transition-all text-neutral-900 placeholder:text-neutral-400 text-sm"
+                        placeholder="Enter your password"
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-neutral-400 font-medium pt-1">
+                    Press <kbd className="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200 rounded text-neutral-600 font-mono text-xs">Enter</kbd> to submit
+                  </p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="pin-mode"
+                  initial={{ opacity: 0, x: 16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -16 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-4 mb-6"
+                >
+                  {/* Username field */}
+                  <div>
+                    <label className="block text-sm font-semibold text-neutral-700 mb-1.5">
+                      Username
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 w-4 h-4" />
+                      <input
+                        type="text"
+                        value={pinUsername}
+                        onChange={(e) => setPinUsername(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-300 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:bg-white focus:outline-none transition-all text-neutral-900 placeholder:text-neutral-400 text-sm"
+                        placeholder="Enter your username"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {/* PIN dots display */}
+                  <div className="bg-neutral-50 border border-neutral-200 rounded-xl px-6 py-4 text-center">
+                    <div className="flex justify-center gap-4 mb-2">
+                      {[0, 1, 2, 3].map((i) => (
+                        <motion.div
+                          key={i}
+                          animate={{ scale: i < pin.length ? 1 : 0.85 }}
+                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                          className={`w-3.5 h-3.5 rounded-full transition-colors ${
+                            i < pin.length ? 'bg-primary-600' : 'bg-neutral-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-neutral-400 font-medium">Enter 4-digit PIN</p>
+                  </div>
+
+                  {/* PIN Keypad */}
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                      <motion.button
+                        key={digit}
+                        type="button"
+                        onClick={() => handlePinInput(digit)}
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.94 }}
+                        className="py-4 bg-neutral-50 hover:bg-primary-50 border border-neutral-200 hover:border-primary-300 rounded-xl text-xl font-bold text-neutral-800 transition-all"
+                      >
+                        {digit}
+                      </motion.button>
+                    ))}
+                    <motion.button
+                      type="button"
+                      onClick={clearPin}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.94 }}
+                      className="py-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-xs font-bold text-red-600 transition-all uppercase tracking-wider"
+                    >
+                      CLR
+                    </motion.button>
+                    <motion.button
+                      key="0"
+                      type="button"
+                      onClick={() => handlePinInput('0')}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.94 }}
+                      className="py-4 bg-neutral-50 hover:bg-primary-50 border border-neutral-200 hover:border-primary-300 rounded-xl text-xl font-bold text-neutral-800 transition-all"
+                    >
+                      0
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      onClick={backspacePin}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.94 }}
+                      className="py-4 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 rounded-xl flex items-center justify-center transition-all"
+                    >
+                      <Delete className="w-5 h-5 text-neutral-600" />
+                    </motion.button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Submit button */}
+            <motion.button
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.985 }}
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary-500/30 flex items-center justify-center gap-2.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                />
+              ) : (
+                <>
+                  <LogIn className="w-4 h-4" />
+                  <span>Sign In</span>
+                </>
+              )}
+            </motion.button>
+          </form>
+
+          {/* Footer note */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="text-center text-xs text-neutral-400 font-medium mt-6"
+          >
+            Access is restricted to authorised personnel only.
+          </motion.p>
+        </div>
       </motion.div>
     </div>
   );

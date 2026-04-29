@@ -9,11 +9,10 @@ export function initSessionCleanupJob(): void {
     try {
       const now = new Date();
 
-      // Delete expired sessions (created more than 24 hours ago)
       const result = await prisma.session.deleteMany({
         where: {
-          createdAt: {
-            lt: new Date(now.getTime() - 24 * 60 * 60 * 1000), // 24 hours ago
+          expiresAt: {
+            lt: now,
           },
         },
       });
@@ -25,6 +24,30 @@ export function initSessionCleanupJob(): void {
   });
 
   logger.info('Session cleanup cron job initialized (runs every hour)');
+}
+
+export function initTableLockCleanupJob(): void {
+  cron.schedule('*/15 * * * *', async () => {
+    try {
+      const now = new Date();
+
+      const result = await (prisma as any).tableLock.deleteMany({
+        where: {
+          expiresAt: {
+            lt: now,
+          },
+        },
+      });
+
+      if (result.count > 0) {
+        logger.info(`Table lock cleanup job: Deleted ${result.count} expired table locks`);
+      }
+    } catch (error) {
+      logger.error('Table lock cleanup job failed:', error);
+    }
+  });
+
+  logger.info('Table lock cleanup cron job initialized (runs every 15 minutes)');
 }
 
 // Also clean up old audit logs (keep only 90 days)

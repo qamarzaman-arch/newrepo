@@ -8,7 +8,7 @@ export type PaymentStatus = 'PENDING' | 'PARTIAL' | 'PAID' | 'REFUNDED';
 export type PaymentMethod = 'CASH' | 'CARD' | 'ONLINE_TRANSFER' | 'WALLET';
 
 // User Types
-export type UserRole = 'ADMIN' | 'MANAGER' | 'CASHIER' | 'SERVER' | 'KITCHEN' | 'RIDER';
+export type UserRole = 'ADMIN' | 'MANAGER' | 'CASHIER' | 'SERVER' | 'STAFF' | 'KITCHEN' | 'RIDER';
 
 // Order Item
 export interface OrderItem {

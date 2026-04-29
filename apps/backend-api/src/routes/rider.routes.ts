@@ -162,6 +162,28 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
   }
 });
 
+// Toggle rider availability (rider only)
+router.put('/availability', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const isAvailable = !!req.body?.isAvailable;
+    const user = await (prisma as any).user.findUnique({
+      where: { id: req.user!.userId },
+      select: { role: true },
+    });
+    if (user?.role !== 'RIDER') {
+      throw new AppError('Only riders can update availability', 403);
+    }
+    const updated = await (prisma as any).user.update({
+      where: { id: req.user!.userId },
+      data: { isAvailable },
+      select: { id: true, isAvailable: true },
+    });
+    res.json({ success: true, data: { rider: updated } });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Update rider location (called by rider app)
 router.post('/location', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {

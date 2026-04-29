@@ -8,6 +8,7 @@ import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 import { verifyAndUpgradeSecret } from '../utils/pinSecurity';
 import { authLimiter } from '../middleware/rateLimiter';
+import { PIN_BCRYPT_ROUNDS } from '../config/constants';
 
 const router = Router();
 
@@ -146,7 +147,7 @@ router.post('/register', authenticate, authorize('ADMIN', 'MANAGER'), async (req
     const passwordHash = await bcrypt.hash(password, 12);
 
     // Hash PIN if provided (store hashed value in `User.pin`)
-    const pinHash = pin ? await bcrypt.hash(pin, 12) : undefined;
+    const pinHash = pin ? await bcrypt.hash(pin, PIN_BCRYPT_ROUNDS) : undefined;
 
     // Create user
     const user = await prisma.user.create({
@@ -240,7 +241,24 @@ router.get('/verify', async (req: Request, res: Response, next: NextFunction) =>
   }
 });
 
-// Validate manager PIN for sensitive operations
+// Per-userId rate limiting for validate-pin (max 10 attempts per 15 minutes)
+const pinValidationAttempts = new Map<string, { count: number; resetAt: number }>();
+const PIN_RATE_WINDOW_MS = 15 * 60 * 1000;
+const PIN_RATE_MAX = 10;
+
+function checkPinRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = pinValidationAttempts.get(userId);
+  if (!entry || now > entry.resetAt) {
+    pinValidationAttempts.set(userId, { count: 1, resetAt: now + PIN_RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= PIN_RATE_MAX) return false;
+  entry.count++;
+  return true;
+}
+
+// Validate PIN for the authenticated user only
 router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { pin, operation } = req.body;
@@ -249,9 +267,18 @@ router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Respons
       throw new AppError('PIN is required', 400);
     }
 
-    // Get the authenticated user from database
+    const userId = req.user!.userId;
+
+    if (!checkPinRateLimit(userId)) {
+      logger.warn(`PIN rate limit exceeded for userId ${userId}`);
+      return res.status(429).json({
+        success: false,
+        error: { message: 'Too many PIN attempts. Please try again later.', code: 'RATE_LIMIT_EXCEEDED' },
+      });
+    }
+
     const currentUser = await prisma.user.findUnique({
-      where: { id: req.user!.userId },
+      where: { id: userId },
       select: { id: true, pin: true, role: true, fullName: true, username: true },
     });
 
@@ -259,87 +286,42 @@ router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Respons
       throw new AppError('User not found', 404);
     }
 
-    let isValid = false;
-    let authorizedUser = null;
-
-    // For sensitive operations (shift management, refunds), check if any MANAGER/ADMIN has this PIN
-    const sensitiveOperations = ['shift_management', 'refund', 'void', 'cash_opening', 'cash_closing'];
-    const isSensitiveOperation = sensitiveOperations.includes(operation);
-
-    if (isSensitiveOperation) {
-      // Find a manager/admin user with matching PIN
-      const managers = await prisma.user.findMany({
-        where: {
-          role: { in: ['MANAGER', 'ADMIN'] },
-          isActive: true,
-          pin: { not: null },
-        },
-        select: { id: true, pin: true, role: true, fullName: true, username: true },
+    if (!currentUser.pin) {
+      logger.warn(`PIN validation attempted by ${currentUser.username} but no PIN configured`);
+      return res.json({
+        success: false,
+        valid: false,
+        message: 'No PIN configured for your account. Please contact administrator.',
       });
-
-      // Check each manager's PIN
-      for (const manager of managers) {
-        const pinMatched = await verifyAndUpgradeSecret(pin, manager.pin, async (hashedPin) => {
-          await prisma.user.update({
-            where: { id: manager.id },
-            data: { pin: hashedPin },
-          });
-        });
-
-        if (pinMatched) {
-          isValid = true;
-          authorizedUser = manager;
-          break;
-        }
-      }
-
-      if (!isValid) {
-        logger.warn(`Failed ${operation} PIN validation attempt by ${currentUser.fullName} (${currentUser.username})`);
-        return res.json({
-          success: true,
-          data: { valid: false },
-        });
-      }
-    } else {
-      // For non-sensitive operations, validate current user's PIN
-      if (!currentUser.pin) {
-        logger.warn(`PIN validation attempted by ${currentUser.username} but no PIN configured`);
-        return res.json({
-          success: false,
-          valid: false,
-          message: 'No PIN configured for your account. Please contact administrator.',
-        });
-      }
-
-      isValid = await verifyAndUpgradeSecret(pin, currentUser.pin, async (hashedPin) => {
-        await prisma.user.update({
-          where: { id: currentUser.id },
-          data: { pin: hashedPin },
-        });
-      });
-      authorizedUser = currentUser;
-
-      if (!isValid) {
-        logger.warn(`Failed PIN validation attempt by ${currentUser.fullName} (${currentUser.username}) for operation: ${operation}`);
-        return res.json({
-          success: true,
-          data: { valid: false },
-        });
-      }
     }
 
-    logger.info(`PIN validated successfully for ${authorizedUser.fullName} (${authorizedUser.username}, Role: ${authorizedUser.role}) - Operation: ${operation} (requested by ${currentUser.username})`);
+    const isValid = await verifyAndUpgradeSecret(pin, currentUser.pin, async (hashedPin) => {
+      await prisma.user.update({
+        where: { id: currentUser.id },
+        data: { pin: hashedPin },
+      });
+    });
+
+    if (!isValid) {
+      logger.warn(`Failed PIN validation attempt by ${currentUser.fullName} (${currentUser.username}) for operation: ${operation}`);
+      return res.json({
+        success: true,
+        data: { valid: false },
+      });
+    }
+
+    logger.info(`PIN validated successfully for ${currentUser.fullName} (${currentUser.username}, Role: ${currentUser.role}) - Operation: ${operation}`);
 
     res.json({
       success: true,
-      data: { 
+      data: {
         valid: true,
         user: {
-          id: authorizedUser.id,
-          name: authorizedUser.fullName,
-          username: authorizedUser.username,
-          role: authorizedUser.role,
-        }
+          id: currentUser.id,
+          name: currentUser.fullName,
+          username: currentUser.username,
+          role: currentUser.role,
+        },
       },
     });
   } catch (error) {

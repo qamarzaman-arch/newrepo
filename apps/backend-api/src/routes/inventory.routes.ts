@@ -58,7 +58,8 @@ const stockAdjustmentSchema = z.object({
 // Get all inventory items with filters
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { category, status, warehouseId, lowStock, page, limit, search } = req.query;
+    const { category, status, warehouseId, lowStock, page, limit } = req.query;
+    const rawSearch = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : undefined;
 
     // Validate pagination
     const pagination = validatePagination(page || 1, limit || 50);
@@ -67,11 +68,11 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
 
     if (category) where.category = category;
     if (warehouseId) where.warehouseId = warehouseId;
-    if (search) {
+    if (rawSearch) {
       where.OR = [
-        { name: { contains: search as string, mode: 'insensitive' } },
-        { sku: { contains: search as string, mode: 'insensitive' } },
-        { barcode: { contains: search as string, mode: 'insensitive' } },
+        { name: { contains: rawSearch, mode: 'insensitive' } },
+        { sku: { contains: rawSearch, mode: 'insensitive' } },
+        { barcode: { contains: rawSearch, mode: 'insensitive' } },
       ];
     }
 

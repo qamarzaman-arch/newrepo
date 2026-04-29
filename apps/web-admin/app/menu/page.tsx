@@ -45,6 +45,7 @@ export default function MenuPage() {
     description: '',
     isAvailable: true,
   });
+  const [priceError, setPriceError] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState({
     name: '',
     description: '',
@@ -100,10 +101,17 @@ export default function MenuPage() {
     setShowItemModal(false);
     setEditingItemId(null);
     setItemForm({ name: '', price: 0, categoryId: '', description: '', isAvailable: true });
+    setPriceError(null);
   };
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
+    const priceNum = Number(itemForm.price);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      setPriceError('Price must be a positive number greater than 0');
+      return;
+    }
+    setPriceError(null);
     setIsSubmitting(true);
     try {
       const payload = {
@@ -329,10 +337,17 @@ export default function MenuPage() {
                 required
                 type="number"
                 step="0.01"
+                min="0.01"
                 value={itemForm.price}
-                onChange={(e) => setItemForm({ ...itemForm, price: Number(e.target.value) })}
-                className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl focus:outline-none transition-all"
+                onChange={(e) => {
+                  setItemForm({ ...itemForm, price: Number(e.target.value) });
+                  if (priceError) setPriceError(null);
+                }}
+                className={`w-full px-4 py-3 bg-gray-50 border-2 focus:outline-none rounded-xl transition-all ${priceError ? 'border-red-400 focus:border-red-500' : 'border-transparent focus:border-indigo-500'}`}
               />
+              {priceError && (
+                <p className="text-xs text-red-600 font-medium">{priceError}</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-bold text-gray-700">Category</label>

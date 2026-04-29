@@ -1,3 +1,6 @@
+// Cookie name matches STORAGE_KEYS.AUTH_TOKEN in packages/shared-types/src/constants.ts
+const COOKIE_NAME = 'auth_token';
+
 export interface User {
   id: string;
   username: string;
@@ -12,8 +15,6 @@ export interface AuthTokens {
   user: User;
 }
 
-// Use same keys as POS Desktop for consistency
-export const AUTH_TOKEN_KEY = 'token';
 export const AUTH_USER_KEY = 'user';
 
 function setCookie(name: string, value: string, maxAgeSeconds = 24 * 60 * 60) {
@@ -23,7 +24,7 @@ function setCookie(name: string, value: string, maxAgeSeconds = 24 * 60 * 60) {
     `${name}=${encodeURIComponent(value)}`,
     `Max-Age=${maxAgeSeconds}`,
     'Path=/',
-    'SameSite=Lax',
+    'SameSite=Strict',
   ];
 
   if (window.location.protocol === 'https:') {
@@ -33,33 +34,37 @@ function setCookie(name: string, value: string, maxAgeSeconds = 24 * 60 * 60) {
   document.cookie = cookieParts.join('; ');
 }
 
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie
+    .split(';')
+    .map((c) => c.trim())
+    .find((c) => c.startsWith(`${name}=`));
+  if (!match) return null;
+  return decodeURIComponent(match.slice(name.length + 1));
+}
+
 function deleteCookie(name: string) {
   if (typeof window === 'undefined') return;
-
-  document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax`;
+  document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Strict`;
 }
 
 export function setAuth(tokens: AuthTokens): void {
+  setCookie(COOKIE_NAME, tokens.token);
   if (typeof window !== 'undefined') {
-    localStorage.setItem(AUTH_TOKEN_KEY, tokens.token);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(tokens.user));
-    setCookie(AUTH_TOKEN_KEY, tokens.token);
   }
 }
 
 export function clearAuth(): void {
+  deleteCookie(COOKIE_NAME);
   if (typeof window !== 'undefined') {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
-    deleteCookie(AUTH_TOKEN_KEY);
   }
 }
 
 export function getToken(): string | null {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem(AUTH_TOKEN_KEY);
-  }
-  return null;
+  return getCookie(COOKIE_NAME);
 }
 
 export function getUser(): User | null {

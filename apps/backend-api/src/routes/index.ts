@@ -29,6 +29,13 @@ import riderRoutes from './rider.routes';
 import commissionRoutes from './commission.routes';
 import tableLockRoutes from './table-lock.routes';
 import featureAccessRoutes from './feature-access.routes';
+import branchRoutes from './branch.routes';
+import marketingRoutes from './marketing.routes';
+import reviewRoutes from './review.routes';
+import accountingRoutes from './accounting.routes';
+import taxRoutes from './tax.routes';
+import externalPlatformRoutes from './external-platform.routes';
+import qrOrderingRoutes from './qr-ordering.routes';
 
 export function setupRoutes(app: Application) {
   const apiPrefix = '/api/v1';
@@ -64,6 +71,13 @@ export function setupRoutes(app: Application) {
   app.use(`${apiPrefix}/commissions`, commissionRoutes);
   app.use(`${apiPrefix}/table-locks`, tableLockRoutes);
   app.use(`${apiPrefix}/feature-access`, featureAccessRoutes);
+  app.use(`${apiPrefix}/branches`, branchRoutes);
+  app.use(`${apiPrefix}/marketing`, marketingRoutes);
+  app.use(`${apiPrefix}/reviews`, reviewRoutes);
+  app.use(`${apiPrefix}/accounting`, accountingRoutes);
+  app.use(`${apiPrefix}/tax`, taxRoutes);
+  app.use(`${apiPrefix}/external-platform`, externalPlatformRoutes);
+  app.use(`${apiPrefix}/qr-ordering`, qrOrderingRoutes);
 
   // 404 handler
   app.use((_req, res) => {

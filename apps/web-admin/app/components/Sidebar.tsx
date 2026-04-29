@@ -12,6 +12,13 @@ import {
   Settings,
   BarChart3,
   LogOut,
+  Building2,
+  Megaphone,
+  Star,
+  BookOpen,
+  Globe,
+  FileText,
+  QrCode,
 } from 'lucide-react';
 import { clearAuth, getUser } from '../lib/auth';
 
@@ -51,6 +58,48 @@ const navItems = [
     icon: BarChart3,
     label: 'Reports',
     roles: ['ADMIN', 'MANAGER', 'CASHIER'],
+  },
+  {
+    href: '/branches',
+    icon: Building2,
+    label: 'Branches',
+    roles: ['ADMIN', 'MANAGER'],
+  },
+  {
+    href: '/marketing',
+    icon: Megaphone,
+    label: 'Marketing',
+    roles: ['ADMIN', 'MANAGER'],
+  },
+  {
+    href: '/reviews',
+    icon: Star,
+    label: 'Reviews',
+    roles: ['ADMIN', 'MANAGER'],
+  },
+  {
+    href: '/finance',
+    icon: BookOpen,
+    label: 'Finance',
+    roles: ['ADMIN', 'MANAGER'],
+  },
+  {
+    href: '/tax',
+    icon: FileText,
+    label: 'Tax Filings',
+    roles: ['ADMIN', 'MANAGER'],
+  },
+  {
+    href: '/qr-codes',
+    icon: QrCode,
+    label: 'QR Codes',
+    roles: ['ADMIN', 'MANAGER'],
+  },
+  {
+    href: '/external-orders',
+    icon: Globe,
+    label: 'External Orders',
+    roles: ['ADMIN', 'MANAGER'],
   },
   {
     href: '/settings',

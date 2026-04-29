@@ -43,6 +43,11 @@ export const riderService = {
     return apiClient.post('/riders/location', data);
   },
 
+  // Toggle rider availability (rider only)
+  updateAvailability: async (isAvailable: boolean) => {
+    return apiClient.put('/riders/availability', { isAvailable });
+  },
+
   // Get rider location (for tracking)
   getLocation: async (id: string) => {
     return apiClient.get(`/riders/${id}/location`);

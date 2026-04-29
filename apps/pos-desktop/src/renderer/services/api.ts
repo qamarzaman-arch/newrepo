@@ -4,6 +4,9 @@ import toast from 'react-hot-toast';
 
 const getConfiguredApiBaseUrl = () => {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
+  if (!env?.VITE_API_URL) {
+    console.warn('VITE_API_URL not set, using fallback localhost URL');
+  }
   return env?.VITE_API_URL || 'http://localhost:3001/api/v1';
 };
 
@@ -38,9 +41,10 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          // Token expired or invalid - logout
+          // Token expired or invalid - logout and redirect to login
           useAuthStore.getState().logout();
           toast.error('Session expired. Please login again.');
+          window.location.hash = '#/login';
           break;
         case 403:
           toast.error('You do not have permission to perform this action');

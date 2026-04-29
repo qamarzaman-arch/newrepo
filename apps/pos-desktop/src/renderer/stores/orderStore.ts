@@ -55,6 +55,7 @@ interface OrderState {
     isProcessing?: boolean;
     kitchenNotified?: boolean;
     tableLocked?: boolean;
+    pricesUnvalidated?: boolean;
   };
   heldOrders: HeldOrder[];
   voidedItems: Array<{
@@ -373,6 +374,7 @@ persist(
           discountPercent: heldOrder.discountPercent,
           discountAmount: heldOrder.discountAmount,
           tipAmount: heldOrder.tipAmount,
+          pricesUnvalidated: true,
         },
       };
     });
@@ -386,11 +388,10 @@ persist(
 
   cleanupExpiredHeldOrders: (maxAgeHours: number = 24) => {
     set((state) => {
-      const now = new Date();
+      const now = Date.now();
+      const maxAgeMs = maxAgeHours * 60 * 60 * 1000;
       const validOrders = state.heldOrders.filter((order) => {
-        const heldDate = new Date(order.heldAt);
-        const ageInHours = (now.getTime() - heldDate.getTime()) / (1000 * 60 * 60);
-        return ageInHours < maxAgeHours;
+        return now - new Date(order.heldAt).getTime() < maxAgeMs;
       });
       return { heldOrders: validOrders };
     });

@@ -200,6 +200,11 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Branch / source
+  branchId       String?
+  qrSessionId    String?
+  externalSource String? // null=in-house, FOODPANDA, UBEREATS, QR
+
   items               OrderItem[]
   payments            Payment[]
   table               Table?                     @relation(fields: [tableId], references: [id])
@@ -209,6 +214,10 @@ model Order {
   delivery            Delivery?
   kotTickets          KotTicket[]
   modificationHistory OrderModificationHistory[]
+  reviews             CustomerReview[]
+  taxFiling           TaxFiling?
+  externalOrder       ExternalPlatformOrder?
+  qrSession           QrSession?                 @relation("QrSessionOrders", fields: [qrSessionId], references: [id])
 
   @@index([orderNumber])
   @@index([status])
@@ -298,6 +307,7 @@ model Table {
 
   orders     Order[]
   tableLocks TableLock[]
+  qrSessions QrSession[]
 
   @@index([status])
   @@index([location])
@@ -329,6 +339,9 @@ model Customer {
 
   orders              Order[]
   loyaltyTransactions LoyaltyTransaction[]
+  campaignRecipients  CampaignRecipient[]
+  reviews             CustomerReview[]
+  qrSessions          QrSession[]
 
   @@index([phone])
   @@index([email])
@@ -992,8 +1005,8 @@ model PurchaseOrderItem {
 // Feature Access Control
 model FeatureAccess {
   id        String   @id @default(uuid())
-  feature   String   // Feature identifier (e.g., 'orders', 'inventory', 'reports')
-  role      String   // Role name (e.g., 'ADMIN', 'MANAGER', 'STAFF', 'RIDER')
+  feature   String // Feature identifier (e.g., 'orders', 'inventory', 'reports')
+  role      String // Role name (e.g., 'ADMIN', 'MANAGER', 'STAFF', 'RIDER')
   enabled   Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1001,4 +1014,245 @@ model FeatureAccess {
   @@unique([feature, role])
   @@index([feature])
   @@index([role])
+}
+
+// ========== MULTI-BRANCH MANAGEMENT ==========
+model Branch {
+  id           String   @id @default(uuid())
+  name         String
+  code         String   @unique
+  address      String?
+  city         String?
+  phone        String?
+  email        String?
+  managerId    String?
+  isHeadOffice Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  timezone     String?  @default("Asia/Karachi")
+  currency     String?  @default("PKR")
+  taxId        String? // FBR/PRA/SRB registration number
+  openingTime  String?
+  closingTime  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  campaigns      MarketingCampaign[]
+  reviews        CustomerReview[]
+  taxFilings     TaxFiling[]
+  journalEntries JournalEntry[]
+  qrSessions     QrSession[]
+  externalOrders ExternalPlatformOrder[]
+
+  @@index([code])
+  @@index([isActive])
+}
+
+// ========== MARKETING ==========
+model MarketingCampaign {
+  id              String    @id @default(uuid())
+  name            String
+  description     String?   @db.Text
+  type            String // EMAIL, SMS, PUSH, IN_APP, LOYALTY
+  status          String    @default("DRAFT") // DRAFT, SCHEDULED, ACTIVE, COMPLETED, CANCELLED
+  audience        String    @default("ALL") // ALL, VIP, NEW, INACTIVE, CUSTOM
+  audienceFilter  Json? // Custom filter spec
+  message         String    @db.Text
+  subject         String?
+  imageUrl        String?
+  ctaUrl          String?
+  scheduledAt     DateTime?
+  sentAt          DateTime?
+  recipientsCount Int       @default(0)
+  deliveredCount  Int       @default(0)
+  openedCount     Int       @default(0)
+  clickedCount    Int       @default(0)
+  branchId        String?
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  branch     Branch?             @relation(fields: [branchId], references: [id])
+  recipients CampaignRecipient[]
+
+  @@index([status])
+  @@index([branchId])
+  @@index([scheduledAt])
+}
+
+model CampaignRecipient {
+  id           String    @id @default(uuid())
+  campaignId   String
+  customerId   String
+  status       String    @default("PENDING") // PENDING, SENT, DELIVERED, OPENED, CLICKED, FAILED
+  sentAt       DateTime?
+  openedAt     DateTime?
+  clickedAt    DateTime?
+  errorMessage String?
+
+  campaign MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer Customer          @relation(fields: [customerId], references: [id])
+
+  @@unique([campaignId, customerId])
+  @@index([campaignId])
+  @@index([customerId])
+}
+
+// Customer reviews / feedback
+model CustomerReview {
+  id            String    @id @default(uuid())
+  orderId       String?
+  customerId    String?
+  rating        Int // 1-5
+  foodRating    Int?
+  serviceRating Int?
+  comment       String?   @db.Text
+  source        String    @default("IN_APP") // IN_APP, GOOGLE, FACEBOOK, FOODPANDA
+  status        String    @default("PUBLISHED") // PUBLISHED, HIDDEN, REPLIED
+  reply         String?   @db.Text
+  repliedAt     DateTime?
+  repliedById   String?
+  branchId      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  order    Order?    @relation(fields: [orderId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+  branch   Branch?   @relation(fields: [branchId], references: [id])
+
+  @@index([orderId])
+  @@index([customerId])
+  @@index([rating])
+  @@index([branchId])
+}
+
+// ========== FINANCE / ACCOUNTING ==========
+model ChartOfAccounts {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g. "1000", "4001"
+  name        String
+  type        String // ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
+  parentId    String?
+  isActive    Boolean  @default(true)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent   ChartOfAccounts?  @relation("AccountTree", fields: [parentId], references: [id])
+  children ChartOfAccounts[] @relation("AccountTree")
+  lines    JournalLine[]
+
+  @@index([type])
+  @@index([code])
+}
+
+model JournalEntry {
+  id          String   @id @default(uuid())
+  entryNumber String   @unique
+  date        DateTime @default(now())
+  description String?
+  reference   String? // Order ID, payment ID, expense ID, etc.
+  refType     String? // ORDER, PAYMENT, EXPENSE, MANUAL
+  totalDebit  Float    @default(0)
+  totalCredit Float    @default(0)
+  status      String   @default("POSTED") // DRAFT, POSTED, VOIDED
+  branchId    String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lines  JournalLine[]
+  branch Branch?       @relation(fields: [branchId], references: [id])
+
+  @@index([date])
+  @@index([refType, reference])
+  @@index([branchId])
+}
+
+model JournalLine {
+  id          String  @id @default(uuid())
+  entryId     String
+  accountId   String
+  debit       Float   @default(0)
+  credit      Float   @default(0)
+  description String?
+
+  entry   JournalEntry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account ChartOfAccounts @relation(fields: [accountId], references: [id])
+
+  @@index([entryId])
+  @@index([accountId])
+}
+
+// ========== TAX INTEGRATIONS (FBR / PRA / SRB) ==========
+model TaxFiling {
+  id               String    @id @default(uuid())
+  authority        String // FBR, PRA, SRB
+  invoiceNumber    String    @unique
+  orderId          String?   @unique
+  fbrInvoiceNumber String? // External reference returned by tax portal
+  amount           Float
+  taxAmount        Float
+  status           String    @default("PENDING") // PENDING, SUBMITTED, ACCEPTED, REJECTED
+  submittedAt      DateTime?
+  responseBody     Json?
+  errorMessage     String?
+  branchId         String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  order  Order?  @relation(fields: [orderId], references: [id])
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@index([authority])
+  @@index([status])
+  @@index([branchId])
+}
+
+// ========== EXTERNAL DELIVERY PLATFORMS (Foodpanda etc.) ==========
+model ExternalPlatformOrder {
+  id              String    @id @default(uuid())
+  platform        String // FOODPANDA, UBEREATS, CAREEM
+  externalId      String // Order id on the external platform
+  externalStatus  String?
+  rawPayload      Json
+  orderId         String?   @unique // Mapped local order
+  customerName    String?
+  customerPhone   String?
+  deliveryAddress String?
+  totalAmount     Float     @default(0)
+  status          String    @default("RECEIVED") // RECEIVED, ACCEPTED, REJECTED, COMPLETED
+  receivedAt      DateTime  @default(now())
+  acceptedAt      DateTime?
+  branchId        String?
+  errorMessage    String?
+
+  order  Order?  @relation(fields: [orderId], references: [id])
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  @@unique([platform, externalId])
+  @@index([platform])
+  @@index([status])
+  @@index([branchId])
+}
+
+// ========== QR / SELF-SERVICE ORDERING ==========
+model QrSession {
+  id         String    @id @default(uuid())
+  token      String    @unique
+  tableId    String?
+  branchId   String?
+  customerId String?
+  status     String    @default("ACTIVE") // ACTIVE, ORDERED, CLOSED, EXPIRED
+  startedAt  DateTime  @default(now())
+  expiresAt  DateTime
+  closedAt   DateTime?
+
+  table    Table?    @relation(fields: [tableId], references: [id])
+  branch   Branch?   @relation(fields: [branchId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+  orders   Order[]   @relation("QrSessionOrders")
+
+  @@index([token])
+  @@index([tableId])
+  @@index([status])
 }

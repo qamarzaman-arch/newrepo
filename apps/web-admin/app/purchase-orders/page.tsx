@@ -46,9 +46,11 @@ export default function PurchaseOrdersPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  const emptyItem = { description: '', quantity: 1, unitPrice: 0 };
+
   const [formData, setFormData] = useState({
     vendorId: '',
-    items: [] as Array<{ inventoryItemId: string; quantity: number; unitPrice: number }>,
+    items: [{ ...emptyItem }] as Array<{ description: string; quantity: number; unitPrice: number }>,
     notes: '',
   });
 
@@ -79,13 +81,19 @@ export default function PurchaseOrdersPage() {
       toast.error('Please add at least one item');
       return;
     }
+    for (const item of formData.items) {
+      if (!item.description.trim() || item.quantity <= 0 || item.unitPrice <= 0) {
+        toast.error('Each item must have a description, quantity > 0, and unit price > 0');
+        return;
+      }
+    }
 
     setIsSubmitting(true);
     try {
       await apiClient.post('/purchase-orders', formData);
       toast.success('Purchase order created!');
       setShowAddModal(false);
-      setFormData({ vendorId: '', items: [], notes: '' });
+      setFormData({ vendorId: '', items: [{ ...emptyItem }], notes: '' });
       fetchData();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to create purchase order');
@@ -330,10 +338,72 @@ export default function PurchaseOrdersPage() {
             />
           </div>
 
-          <div className="pt-4 border-t border-gray-100">
-            <p className="text-sm text-gray-500 italic">
-              * Items will be added in the next version. For now, create a draft and edit later.
-            </p>
+          <div className="pt-4 border-t border-gray-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-bold text-gray-700">Order Items</label>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, items: [...formData.items, { ...emptyItem }] })}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+              >
+                <Plus size={14} /> Add Row
+              </button>
+            </div>
+            {formData.items.map((item, idx) => (
+              <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                <input
+                  type="text"
+                  placeholder="Description"
+                  value={item.description}
+                  required
+                  onChange={(e) => {
+                    const updated = [...formData.items];
+                    updated[idx] = { ...updated[idx], description: e.target.value };
+                    setFormData({ ...formData, items: updated });
+                  }}
+                  className="col-span-6 px-3 py-2 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl text-sm focus:outline-none"
+                />
+                <input
+                  type="number"
+                  placeholder="Qty"
+                  min="1"
+                  value={item.quantity}
+                  required
+                  onChange={(e) => {
+                    const updated = [...formData.items];
+                    updated[idx] = { ...updated[idx], quantity: parseInt(e.target.value) || 1 };
+                    setFormData({ ...formData, items: updated });
+                  }}
+                  className="col-span-2 px-3 py-2 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl text-sm focus:outline-none"
+                />
+                <input
+                  type="number"
+                  placeholder="Unit $"
+                  min="0.01"
+                  step="0.01"
+                  value={item.unitPrice}
+                  required
+                  onChange={(e) => {
+                    const updated = [...formData.items];
+                    updated[idx] = { ...updated[idx], unitPrice: parseFloat(e.target.value) || 0 };
+                    setFormData({ ...formData, items: updated });
+                  }}
+                  className="col-span-3 px-3 py-2 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl text-sm focus:outline-none"
+                />
+                {formData.items.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = formData.items.filter((_, i) => i !== idx);
+                      setFormData({ ...formData, items: updated });
+                    }}
+                    className="col-span-1 text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
 
           <div className="flex gap-4">

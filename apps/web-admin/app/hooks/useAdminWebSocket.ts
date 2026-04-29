@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { getToken } from '../lib/auth';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:3001';
 
@@ -12,7 +13,13 @@ export function useAdminWebSocket() {
   const connect = useCallback(() => {
     if (socketRef.current?.connected) return;
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    // Disconnect and clean up any existing non-connected socket before creating a new one
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+
+    const token = getToken();
     if (!token) return;
 
     const socket = io(SOCKET_URL, {
@@ -65,10 +72,6 @@ export function useAdminWebSocket() {
     });
 
     socketRef.current = socket;
-
-    return () => {
-      socket.disconnect();
-    };
   }, []);
 
   const disconnect = useCallback(() => {
@@ -85,7 +88,9 @@ export function useAdminWebSocket() {
 
   useEffect(() => {
     connect();
-    return () => disconnect();
+    return () => {
+      disconnect();
+    };
   }, [connect, disconnect]);
 
   return {

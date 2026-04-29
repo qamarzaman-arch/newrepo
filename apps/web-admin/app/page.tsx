@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { 
-  BarChart3, Users, DollarSign, Package, 
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+  BarChart3, Users, DollarSign, Package,
   ShoppingCart, TrendingUp, AlertTriangle, Activity,
   Wifi, WifiOff
 } from 'lucide-react';
@@ -26,81 +26,96 @@ export default function Home() {
   const [topItems, setTopItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [partialErrors, setPartialErrors] = useState({
+    reportError: false,
+    staffCountError: false,
+    lowStockError: false,
+    topItemsError: false,
+  });
 
   // WebSocket integration for real-time updates
   const { isConnected, newOrders, lowStockAlerts, resetNewOrderCount } = useAdminWebSocket();
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        const today = new Date().toISOString().split('T')[0];
-        const [reportRes, staffRes, lowStockRes, topItemsRes] = await Promise.allSettled([
-          apiClient.get(`/reports/daily?date=${today}`),
-          apiClient.get('/users'),
-          apiClient.get('/inventory/low-stock'),
-          apiClient.get('/reports/top-items?limit=5'),
-        ]);
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const today = new Date().toISOString().split('T')[0];
+      const [reportRes, staffRes, lowStockRes, topItemsRes] = await Promise.allSettled([
+        apiClient.get(`/reports/daily?date=${today}`),
+        apiClient.get('/users'),
+        apiClient.get('/inventory/low-stock'),
+        apiClient.get('/reports/top-items?limit=5'),
+      ]);
 
-        if (reportRes.status === 'fulfilled') {
-          setReport(reportRes.value.data?.data || null);
-        }
-        if (staffRes.status === 'fulfilled') {
-          setStaffCount(staffRes.value.data?.data?.users?.length || 0);
-        }
-        if (lowStockRes.status === 'fulfilled') {
-          setLowStockCount(lowStockRes.value.data?.data?.items?.length || 0);
-        }
-        if (topItemsRes.status === 'fulfilled') {
-          setTopItems(topItemsRes.value.data?.data?.items || []);
-        }
-      } catch (err: any) {
-        setError('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
+      setPartialErrors({
+        reportError: reportRes.status === 'rejected',
+        staffCountError: staffRes.status === 'rejected',
+        lowStockError: lowStockRes.status === 'rejected',
+        topItemsError: topItemsRes.status === 'rejected',
+      });
+
+      if (reportRes.status === 'fulfilled') {
+        setReport(reportRes.value.data?.data || null);
       }
-    };
-
-    fetchDashboardData();
+      if (staffRes.status === 'fulfilled') {
+        setStaffCount(staffRes.value.data?.data?.users?.length || 0);
+      }
+      if (lowStockRes.status === 'fulfilled') {
+        setLowStockCount(lowStockRes.value.data?.data?.items?.length || 0);
+      }
+      if (topItemsRes.status === 'fulfilled') {
+        setTopItems(topItemsRes.value.data?.data?.items || []);
+      }
+    } catch (err: any) {
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   // Refresh data when new orders come in
   useEffect(() => {
     if (newOrders > 0) {
-      console.log(`[Dashboard] ${newOrders} new order(s) received`);
-      // Optionally refresh dashboard data
-      // fetchDashboardData();
+      fetchDashboardData();
     }
-  }, [newOrders]);
+  }, [newOrders, fetchDashboardData]);
 
   const stats = [
-    { 
-      label: 'Total Revenue Today', 
-      value: loading ? '…' : `$${(report?.totalRevenue || 0).toFixed(2)}`, 
-      icon: DollarSign, 
+    {
+      label: 'Total Revenue Today',
+      value: loading ? '…' : partialErrors.reportError ? '—' : `$${(report?.totalRevenue || 0).toFixed(2)}`,
+      icon: DollarSign,
       color: 'text-green-600',
       bg: 'bg-green-50',
+      hasError: partialErrors.reportError,
     },
-    { 
-      label: 'Orders Today', 
-      value: loading ? '…' : String(report?.totalOrders || 0), 
-      icon: ShoppingCart, 
+    {
+      label: 'Orders Today',
+      value: loading ? '…' : partialErrors.reportError ? '—' : String(report?.totalOrders || 0),
+      icon: ShoppingCart,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
+      hasError: partialErrors.reportError,
     },
-    { 
-      label: 'Total Staff', 
-      value: loading ? '…' : String(staffCount), 
-      icon: Users, 
+    {
+      label: 'Total Staff',
+      value: loading ? '…' : partialErrors.staffCountError ? '—' : String(staffCount),
+      icon: Users,
       color: 'text-purple-600',
       bg: 'bg-purple-50',
+      hasError: partialErrors.staffCountError,
     },
-    { 
-      label: 'Low Stock Alerts', 
-      value: loading ? '…' : String(lowStockCount), 
-      icon: Package, 
-      color: lowStockCount > 0 ? 'text-red-600' : 'text-gray-600',
-      bg: lowStockCount > 0 ? 'bg-red-50' : 'bg-gray-50',
+    {
+      label: 'Low Stock Alerts',
+      value: loading ? '…' : partialErrors.lowStockError ? '—' : String(lowStockCount),
+      icon: Package,
+      color: (!partialErrors.lowStockError && lowStockCount > 0) ? 'text-red-600' : 'text-gray-600',
+      bg: (!partialErrors.lowStockError && lowStockCount > 0) ? 'bg-red-50' : 'bg-gray-50',
+      hasError: partialErrors.lowStockError,
     },
   ];
 
@@ -121,7 +136,7 @@ export default function Home() {
             {isConnected ? <Wifi size={16} /> : <WifiOff size={16} />}
             {isConnected ? 'Live Updates' : 'Offline'}
           </div>
-          
+
           {/* New Orders Badge */}
           {newOrders > 0 && (
             <button
@@ -132,7 +147,7 @@ export default function Home() {
               {newOrders} New Order{newOrders > 1 ? 's' : ''}
             </button>
           )}
-          
+
           <div className="flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-xl font-bold text-sm">
             <Activity size={16} />
             Live Data
@@ -173,9 +188,14 @@ export default function Home() {
                 <div className={`p-4 rounded-2xl ${stat.bg} group-hover:scale-110 transition-transform ${stat.color}`}>
                   <Icon size={32} />
                 </div>
+                {stat.hasError && (
+                  <span title="Failed to load" className="text-amber-500">
+                    <AlertTriangle size={16} />
+                  </span>
+                )}
               </div>
               <p className="text-gray-500 font-bold uppercase tracking-wider text-xs mb-2">{stat.label}</p>
-              <h3 className="text-3xl font-extrabold text-gray-900">{stat.value}</h3>
+              <h3 className={`text-3xl font-extrabold ${stat.hasError ? 'text-amber-400' : 'text-gray-900'}`}>{stat.value}</h3>
             </div>
           );
         })}
@@ -221,6 +241,8 @@ export default function Home() {
                   <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                   <p className="text-gray-400 text-sm font-medium">Loading today&#39;s data...</p>
                 </div>
+              ) : partialErrors.reportError ? (
+                <p className="text-amber-500 font-medium flex items-center gap-2"><AlertTriangle size={16} /> Could not load report data</p>
               ) : (
                 <p className="text-gray-400 font-medium">No sales data for today yet</p>
               )}
@@ -234,7 +256,12 @@ export default function Home() {
             Top Items
           </h2>
           <div className="space-y-4">
-            {topItems.length > 0 ? topItems.map((item: any, i: number) => (
+            {partialErrors.topItemsError ? (
+              <div className="flex flex-col items-center justify-center py-10 text-amber-500">
+                <AlertTriangle size={40} className="mb-3" />
+                <p className="text-sm font-medium">Could not load top items</p>
+              </div>
+            ) : topItems.length > 0 ? topItems.map((item: any, i: number) => (
               <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors">
                 <div>
                   <p className="font-extrabold text-gray-900">{item.name || item.menuItem?.name || 'Item'}</p>

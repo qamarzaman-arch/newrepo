@@ -67,6 +67,8 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           isAuthenticated: false,
         });
+
+        localStorage.removeItem('auth-storage');
       },
 
       initialize: async () => {

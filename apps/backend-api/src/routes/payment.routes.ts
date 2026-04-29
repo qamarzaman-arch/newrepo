@@ -73,7 +73,7 @@ router.post('/validate-card', authenticate, paymentLimiter, async (req: AuthRequ
         gatewayResponse: JSON.stringify(stripeResult),
       },
     }).catch((err) => {
-      logger.warn('Could not store payment validation record:', err.message);
+      logger.error('Could not store payment validation record:', err.message);
     });
 
     res.json({

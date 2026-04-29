@@ -28,6 +28,7 @@ export default function DeliveryZonesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -59,27 +60,55 @@ export default function DeliveryZonesPage() {
     fetchData();
   }, []);
 
+  const defaultFormData = {
+    name: '',
+    description: '',
+    radius: 5,
+    baseFee: 3.99,
+    perKmFee: 0.50,
+    minOrderAmount: 15,
+    estimatedTime: 30,
+    isActive: true,
+    color: '#6366f1',
+  };
+
+  const handleEditZone = (zone: DeliveryZone) => {
+    setEditingZoneId(zone.id);
+    setFormData({
+      name: zone.name,
+      description: zone.description || '',
+      radius: zone.radius,
+      baseFee: zone.baseFee,
+      perKmFee: zone.perKmFee,
+      minOrderAmount: zone.minOrderAmount,
+      estimatedTime: zone.estimatedTime,
+      isActive: zone.isActive,
+      color: zone.color || '#6366f1',
+    });
+    setShowAddModal(true);
+  };
+
+  const closeModal = () => {
+    setShowAddModal(false);
+    setEditingZoneId(null);
+    setFormData(defaultFormData);
+  };
+
   const handleAddZone = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await apiClient.post('/delivery-zones', formData);
-      toast.success('Delivery zone created successfully!');
-      setShowAddModal(false);
-      setFormData({
-        name: '',
-        description: '',
-        radius: 5,
-        baseFee: 3.99,
-        perKmFee: 0.50,
-        minOrderAmount: 15,
-        estimatedTime: 30,
-        isActive: true,
-        color: '#6366f1',
-      });
+      if (editingZoneId) {
+        await apiClient.put(`/delivery-zones/${editingZoneId}`, formData);
+        toast.success('Delivery zone updated successfully!');
+      } else {
+        await apiClient.post('/delivery-zones', formData);
+        toast.success('Delivery zone created successfully!');
+      }
+      closeModal();
       fetchData();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to create delivery zone');
+      toast.error(err.response?.data?.message || (editingZoneId ? 'Failed to update delivery zone' : 'Failed to create delivery zone'));
     } finally {
       setIsSubmitting(false);
     }
@@ -137,7 +166,7 @@ export default function DeliveryZonesPage() {
             Configure delivery areas, fees, and coverage zones
           </p>
         </div>
-        <Button onClick={() => setShowAddModal(true)}>
+        <Button onClick={() => { setEditingZoneId(null); setFormData(defaultFormData); setShowAddModal(true); }}>
           <Plus size={18} />
           Add Delivery Zone
         </Button>
@@ -274,6 +303,13 @@ export default function DeliveryZonesPage() {
               <TableCell>
                 <div className="flex gap-2">
                   <button
+                    onClick={() => handleEditZone(zone)}
+                    className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all"
+                    title="Edit"
+                  >
+                    <Edit2 size={18} />
+                  </button>
+                  <button
                     onClick={() => handleDeleteZone(zone.id)}
                     className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                   >
@@ -325,11 +361,11 @@ export default function DeliveryZonesPage() {
         </div>
       )}
 
-      {/* Add Delivery Zone Modal */}
+      {/* Add / Edit Delivery Zone Modal */}
       <Modal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        title="Add Delivery Zone"
+        onClose={closeModal}
+        title={editingZoneId ? 'Edit Delivery Zone' : 'Add Delivery Zone'}
       >
         <form onSubmit={handleAddZone} className="space-y-6">
           <div className="space-y-2">
@@ -448,7 +484,7 @@ export default function DeliveryZonesPage() {
               variant="outline"
               type="button"
               className="flex-1"
-              onClick={() => setShowAddModal(false)}
+              onClick={closeModal}
             >
               Cancel
             </Button>
@@ -457,7 +493,9 @@ export default function DeliveryZonesPage() {
               className="flex-1"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Creating...' : 'Create Delivery Zone'}
+              {isSubmitting
+                ? (editingZoneId ? 'Saving...' : 'Creating...')
+                : (editingZoneId ? 'Update Zone' : 'Create Delivery Zone')}
             </Button>
           </div>
         </form>

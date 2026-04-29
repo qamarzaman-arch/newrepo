@@ -13,9 +13,11 @@ import { setupRoutes } from './routes';
 import { errorHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
 import { initializeWebSocketManager } from './utils/websocket';
-import { initSessionCleanupJob, initAuditLogCleanupJob } from './jobs/sessionCleanup';
+import { initSessionCleanupJob, initAuditLogCleanupJob, initTableLockCleanupJob } from './jobs/sessionCleanup';
 import { validateAndExitIfInvalid } from './config/configValidator';
 import { JwtPayload } from './middleware/auth';
+import { csrfProtection } from './middleware/csrfProtection';
+import { ensureChartOfAccountsSeeded } from './services/accounting.service';
 
 dotenv.config();
 
@@ -87,6 +89,7 @@ app.use(cors({
 }));
 
 app.use(compression());
+app.use(csrfProtection);
 
 // Stripe webhook needs raw body for signature verification
 app.use('/api/v1/payment-gateway/webhooks/stripe', express.raw({ type: 'application/json' }));
@@ -191,8 +194,35 @@ io.on('connection', (socket: SocketWithUser) => {
     socket.join(user.role.toLowerCase());
   }
 
-  // Join rooms for real-time updates
+  // Join rooms for real-time updates — enforce role-based access
   socket.on('join-room', (room: string) => {
+    const role = user?.role?.toUpperCase() || '';
+    const adminOnlyRooms = new Set(['admin', 'analytics', 'reports', 'manager']);
+    const kitchenRooms = new Set(['kitchen', 'kot']);
+    const cashierRooms = new Set(['orders', 'cashier', 'payments']);
+
+    const isAdminOrManager = role === 'ADMIN' || role === 'MANAGER';
+    const isKitchen = role === 'KITCHEN';
+    const isCashier = role === 'CASHIER';
+
+    if (adminOnlyRooms.has(room) && !isAdminOrManager) {
+      logger.warn(`Socket ${socket.id} (role: ${role}) denied access to room: ${room}`);
+      socket.emit('room-access-denied', { room, reason: 'Insufficient role' });
+      return;
+    }
+
+    if (kitchenRooms.has(room) && !isKitchen && !isAdminOrManager) {
+      logger.warn(`Socket ${socket.id} (role: ${role}) denied access to room: ${room}`);
+      socket.emit('room-access-denied', { room, reason: 'Insufficient role' });
+      return;
+    }
+
+    if (cashierRooms.has(room) && !isCashier && !isAdminOrManager) {
+      logger.warn(`Socket ${socket.id} (role: ${role}) denied access to room: ${room}`);
+      socket.emit('room-access-denied', { room, reason: 'Insufficient role' });
+      return;
+    }
+
     socket.join(room);
     logger.info(`Client ${socket.id} joined room: ${room}`);
   });
@@ -217,6 +247,10 @@ server.listen(PORT, () => {
   // Initialize cron jobs
   initSessionCleanupJob();
   initAuditLogCleanupJob();
+  initTableLockCleanupJob();
+
+  // Ensure chart of accounts seeded
+  ensureChartOfAccountsSeeded().catch((err) => logger.error('Chart seed failed:', err));
 });
 
 // Graceful shutdown

@@ -43,7 +43,7 @@ export const useFeatureAccessStore = create<FeatureAccessState>((set, get) => ({
     if (role === 'ADMIN') return true;
     
     const featureItem = features.find(f => f.feature === feature);
-    return featureItem?.enabled ?? true; // Default to enabled if not found
+    return featureItem?.enabled ?? false; // Default to denied if not found
   },
 
   clear: () => {

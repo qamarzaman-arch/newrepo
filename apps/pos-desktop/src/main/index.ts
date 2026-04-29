@@ -217,27 +217,30 @@ app.whenReady().then(() => {
       if (!db) {
         return { success: false, error: 'Database not initialized' };
       }
-      
-      const stmt = db.prepare(sql);
-      let result;
-      
-      // Determine query type
-      if (sql.trim().toUpperCase().startsWith('SELECT')) {
-        result = stmt.all(params);
-      } else if (sql.trim().toUpperCase().startsWith('INSERT')) {
-        const info = stmt.run(params);
-        result = { lastInsertRowid: info.lastInsertRowid, changes: info.changes };
-      } else {
-        const info = stmt.run(params);
-        result = { changes: info.changes };
+
+      const normalizedSql = sql.trim().toUpperCase();
+
+      // Only allow SELECT statements
+      if (!normalizedSql.startsWith('SELECT')) {
+        log.warn('db-query rejected non-SELECT statement');
+        return { success: false, error: 'Only SELECT queries are permitted' };
       }
-      
+
+      // Reject any dangerous keywords even inside SELECT (e.g. subqueries with side effects)
+      const forbidden = /\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|ATTACH)\b/i;
+      if (forbidden.test(sql)) {
+        log.warn('db-query rejected SQL containing forbidden keywords');
+        return { success: false, error: 'Query contains forbidden SQL keywords' };
+      }
+
+      const stmt = db.prepare(sql);
+      const result = stmt.all(params);
       return { success: true, data: result };
     } catch (error) {
       log.error('Database query error:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   });
@@ -295,8 +298,19 @@ app.whenReady().then(() => {
   const hardwareConfigPath = path.join(app.getPath('userData'), 'hardware-config.json');
   setupHardwareHandlers(hardwareConfigPath);
   log.info('Hardware handlers initialized');
-  
+
   createWindow();
+
+  if (mainWindow) {
+    mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': ["default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://localhost:* ws://localhost:*"]
+        }
+      });
+    });
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

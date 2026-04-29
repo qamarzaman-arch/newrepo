@@ -400,7 +400,6 @@ class OfflineQueueManager {
     }
 
     this.saveQueue();
-    this.isSyncing = false;
 
     // Show results
     if (successCount > 0) {

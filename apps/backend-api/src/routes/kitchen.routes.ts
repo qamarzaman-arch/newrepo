@@ -5,6 +5,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 import { getWebSocketManager } from '../utils/websocket';
+import { parsePagination } from '../utils/parsePagination';
 
 const router = Router();
 
@@ -26,7 +27,8 @@ const delayTicketSchema = z.object({
 // Get all KOT tickets with filters
 router.get('/tickets', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { status, course, priority, station, startDate, endDate, page = 1, limit = 50 } = req.query;
+    const { status, course, priority, station, startDate, endDate } = req.query;
+    const { page, limit } = parsePagination(req.query);
 
     const where: any = {};
 
@@ -57,8 +59,8 @@ router.get('/tickets', authenticate, async (req: AuthRequest, res: Response, nex
           },
         },
         orderBy: { orderedAt: 'desc' },
-        skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit),
+        skip: (page - 1) * limit,
+        take: limit,
       }),
       prisma.kotTicket.count({ where }),
     ]);
@@ -69,9 +71,9 @@ router.get('/tickets', authenticate, async (req: AuthRequest, res: Response, nex
         tickets,
         pagination: {
           total,
-          page: Number(page),
-          limit: Number(limit),
-          totalPages: Math.ceil(total / Number(limit)),
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
         },
       },
     });
