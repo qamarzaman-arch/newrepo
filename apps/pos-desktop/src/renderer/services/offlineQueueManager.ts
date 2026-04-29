@@ -476,12 +476,6 @@ class OfflineQueueManager {
     return [...this.queue];
   }
 
-  public clearQueue() {
-    this.queue = [];
-    this.saveQueue();
-    console.log('Offline queue cleared');
-  }
-
   public removeFromQueue(orderId: string) {
     this.queue = this.queue.filter((o) => o.id !== orderId);
     this.saveQueue();
