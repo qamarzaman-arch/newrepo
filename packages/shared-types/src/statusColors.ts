@@ -31,14 +31,7 @@ export const PAYMENT_STATUS_COLORS: Record<string, StatusColorConfig> = {
   REFUNDED: { backgroundColor: 'bg-red-100', textColor: 'text-red-800' },
 };
 
-export const ORDER_TYPE_LABELS: Record<string, string> = {
-  DINE_IN: 'Dine-In',
-  WALK_IN: 'Walk-In',
-  TAKEAWAY: 'Takeaway',
-  DELIVERY: 'Delivery',
-  PICKUP: 'Pickup',
-  RESERVATION: 'Reservation',
-};
+import { ORDER_TYPE_LABELS } from './constants';
 
 export function getOrderStatusColor(status: string): StatusColorConfig {
   return ORDER_STATUS_COLORS[status] || ORDER_STATUS_COLORS.PENDING;
