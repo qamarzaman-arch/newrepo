@@ -154,9 +154,8 @@ app.get('/health', async (_req: Request, res: Response) => {
 // API Routes
 setupRoutes(app);
 
-// Error handling middleware
+// Error handling middleware — errorHandler decides log level based on status code
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  logger.error('Unhandled error:', err);
   errorHandler(err, req, res, next);
 });
 

@@ -68,11 +68,17 @@ export function errorHandler(
     message = 'Validation failed: ' + err.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(', ');
   }
 
-  logger.error(`Error [${statusCode}]: ${message}`, {
-    stack: err.stack,
-    path: req.path,
-    method: req.method,
-  });
+  // Expected operational 4xx errors are warnings, not errors. Reserve error level for 5xx/unexpected.
+  const isExpected4xx = statusCode >= 400 && statusCode < 500;
+  if (isExpected4xx) {
+    logger.warn(`[${statusCode}] ${req.method} ${req.path}: ${message}`);
+  } else {
+    logger.error(`Error [${statusCode}]: ${message}`, {
+      stack: err.stack,
+      path: req.path,
+      method: req.method,
+    });
+  }
 
   res.status(statusCode).json({
     success: false,

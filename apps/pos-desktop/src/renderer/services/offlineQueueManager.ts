@@ -59,10 +59,21 @@ class OfflineQueueManager {
     window.addEventListener('offline', this.offlineHandler);
   }
 
+  private hasAuthToken(): boolean {
+    try {
+      const stored = localStorage.getItem('auth-storage');
+      if (!stored) return false;
+      const parsed = JSON.parse(stored);
+      return Boolean(parsed?.state?.token);
+    } catch {
+      return false;
+    }
+  }
+
   private startAutoSync() {
-    // Try to sync every 30 seconds if online
+    // Try to sync every 30 seconds if online AND authenticated
     this.syncInterval = setInterval(() => {
-      if (this.isOnline && this.queue.length > 0 && !this.isSyncing) {
+      if (this.isOnline && this.queue.length > 0 && !this.isSyncing && this.hasAuthToken()) {
         this.syncQueue();
       }
     }, 30000);
@@ -72,13 +83,33 @@ class OfflineQueueManager {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (stored) {
-        this.queue = JSON.parse(stored);
-        console.log(`Loaded ${this.queue.length} queued orders from storage`);
+        const loaded: QueuedOrder[] = JSON.parse(stored);
+        const before = loaded.length;
+        // Purge permanently-failed entries and successful entries on startup so the queue
+        // never accumulates stale records from previous sessions.
+        this.queue = loaded.filter(
+          (o) => !o.nonRetryableError && o.status !== 'success' && o.status !== 'failed'
+        );
+        const purged = before - this.queue.length;
+        if (purged > 0) {
+          console.log(`Purged ${purged} stale entries on load. Active queue: ${this.queue.length}`);
+          this.saveQueueImmediate();
+        } else {
+          console.log(`Loaded ${this.queue.length} queued orders from storage`);
+        }
       }
     } catch (error) {
       console.error('Failed to load offline queue:', error);
       this.queue = [];
     }
+  }
+
+  /** Wipe all queued entries (permanent failures, retries, everything). */
+  public clearQueue(): number {
+    const removed = this.queue.length;
+    this.queue = [];
+    this.saveQueueImmediate();
+    return removed;
   }
 
   private saveQueueImmediate() {
@@ -353,6 +384,12 @@ class OfflineQueueManager {
       return;
     }
 
+    // Don't attempt sync without an auth token — avoids 401 spam on backend
+    if (!this.hasAuthToken()) {
+      console.log('Skipping sync: not authenticated');
+      return;
+    }
+
     // Acquire lock to prevent concurrent syncs
     this.syncLock = true;
     this.isSyncing = true;
@@ -389,7 +426,7 @@ class OfflineQueueManager {
       } catch (error: any) {
         if (queuedOrder.nonRetryableError) {
           permanentFailCount++;
-          toast.error(`Order sync failed permanently: ${queuedOrder.error}`);
+          // Single summary toast emitted after the loop instead of per-order spam
         } else {
           failCount++;
         }

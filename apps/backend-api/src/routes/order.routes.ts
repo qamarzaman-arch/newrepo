@@ -280,6 +280,22 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
   try {
     const data = createOrderSchema.parse(req.body);
 
+    // Idempotency: if the same key has been seen, return the previously-created order instead of duplicating.
+    if (data.idempotencyKey) {
+      const existing = await prisma.idempotencyKey.findUnique({
+        where: { key: data.idempotencyKey },
+      });
+      if (existing && existing.orderId) {
+        const order = await prisma.order.findUnique({
+          where: { id: existing.orderId },
+          include: { items: true, payments: true, table: true, customer: true },
+        });
+        if (order) {
+          return res.json({ success: true, data: { order }, idempotent: true });
+        }
+      }
+    }
+
     // Generate unique order number
     const today = new Date();
     const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
@@ -637,6 +653,24 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
 
       return newOrder;
     });
+
+    // Record idempotency key so retries return the same order instead of duplicating.
+    if (data.idempotencyKey) {
+      try {
+        await prisma.idempotencyKey.create({
+          data: {
+            key: data.idempotencyKey,
+            requestPath: '/api/v1/orders',
+            requestBody: JSON.stringify(data).slice(0, 4000),
+            responseBody: JSON.stringify({ id: order.id, orderNumber: order.orderNumber }),
+            orderId: order.id,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          },
+        });
+      } catch (err) {
+        logger.warn(`Failed to persist idempotency key ${data.idempotencyKey}: ${err}`);
+      }
+    }
 
     // Emit real-time event via WebSocket
     const ws = getWebSocketManager();
