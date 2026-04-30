@@ -7,6 +7,7 @@ import {
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import apiClient from '../lib/api';
+import toast from 'react-hot-toast';
 
 const STATUS_OPTIONS = ['', 'PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'SERVED', 'COMPLETED', 'CANCELLED'];
 
@@ -72,13 +73,15 @@ export default function OrdersPage() {
       const pagination = data?.pagination;
       if (pagination) setTotalPages(Math.ceil(pagination.total / 50) || 1);
 
-      // compute stats
-      const all: Order[] = data?.orders || [];
+      // Stats come from dedicated summary endpoint so they reflect all orders, not just this page
+      const summaryRes = await apiClient.get('/orders/summary').catch(() => null);
+      const summary = summaryRes?.data?.data;
+      const pageOrders: Order[] = data?.orders || [];
       setStats({
-        total: pagination?.total || all.length,
-        active: all.filter((o: Order) => ['PENDING','CONFIRMED','PREPARING','READY'].includes(o.status)).length,
-        completed: all.filter((o: Order) => o.status === 'COMPLETED').length,
-        revenue: all.filter((o: Order) => o.status === 'COMPLETED').reduce((s: number, o: Order) => s + Number(o.totalAmount), 0),
+        total: pagination?.total ?? pageOrders.length,
+        active: summary?.activeOrders ?? pageOrders.filter((o) => ['PENDING','CONFIRMED','PREPARING','READY'].includes(o.status)).length,
+        completed: summary?.completedToday ?? pageOrders.filter((o) => o.status === 'COMPLETED').length,
+        revenue: summary?.revenueToday ?? pageOrders.filter((o) => o.status === 'COMPLETED').reduce((s, o) => s + Number(o.totalAmount), 0),
       });
     } catch (err: any) {
       setError('Failed to load orders');
@@ -98,7 +101,7 @@ export default function OrdersPage() {
         setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
       }
     } catch {
-      alert('Failed to update status');
+      toast.error('Failed to update order status');
     } finally {
       setUpdatingId(null);
     }

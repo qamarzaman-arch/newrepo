@@ -217,13 +217,17 @@ export function useRiderWebSocket(
     // Listen for pickup notifications
     const unsubPickup = subscribe('rider:pickup-ready', onPickupReady || (() => {}));
     const unsubAssigned = subscribe('delivery:assigned', onPickupReady || (() => {}));
+    const unsubLocation = onLocationUpdate
+      ? subscribe(`rider:${riderId}:location`, onLocationUpdate)
+      : () => {};
 
     return () => {
       unsubPickup();
       unsubAssigned();
+      unsubLocation();
       leaveRoom(`rider:${riderId}`);
     };
-  }, [subscribe, joinRoom, leaveRoom, isConnected, riderId, onPickupReady]);
+  }, [subscribe, joinRoom, leaveRoom, isConnected, riderId, onPickupReady, onLocationUpdate]);
 
   // Function to update rider location
   const updateLocation = useCallback((location: { lat: number; lng: number }) => {
@@ -241,6 +245,38 @@ export function useRiderWebSocket(
   }, [emit, riderId]);
 
   return { isConnected, updateLocation, acceptDelivery, completeDelivery };
+}
+
+// Hook for delivery dispatchers to receive live rider location pings.
+// Backend emits `rider:location` on the `delivery-tracking` and `admin` rooms
+// whenever a rider POSTs to /riders/location.
+export interface RiderLocationPayload {
+  riderId: string;
+  location: { lat: number; lng: number; accuracy?: number; speed?: number; heading?: number };
+  timestamp: string;
+  fullName?: string;
+  status?: string;
+  isAvailable?: boolean;
+}
+
+export function useDeliveryTrackingWebSocket(
+  onRiderLocation?: (payload: RiderLocationPayload) => void
+) {
+  const { subscribe, joinRoom, leaveRoom, isConnected } = useWebSocket();
+
+  useEffect(() => {
+    if (!isConnected) return;
+    joinRoom('delivery-tracking');
+    const unsub = subscribe('rider:location', (data: RiderLocationPayload) => {
+      onRiderLocation?.(data);
+    });
+    return () => {
+      unsub();
+      leaveRoom('delivery-tracking');
+    };
+  }, [subscribe, joinRoom, leaveRoom, isConnected, onRiderLocation]);
+
+  return { isConnected };
 }
 
 export default useWebSocket;

@@ -36,10 +36,53 @@ const createOrderSchema = z.object({
   idempotencyKey: z.string().optional(),
 });
 
+// Valid order status transitions (enforce workflow integrity)
+const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
+  PENDING:   ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['PREPARING', 'CANCELLED'],
+  PREPARING: ['READY', 'CANCELLED'],
+  READY:     ['SERVED', 'COMPLETED'],
+  SERVED:    ['COMPLETED'],
+  COMPLETED: [],
+  CANCELLED: [],
+  REFUNDED:  [],
+  VOIDED:    [],
+};
+
+// Dashboard summary for web-admin orders page
+router.get('/summary', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [activeOrders, completedToday, completedTodayOrders] = await Promise.all([
+      prisma.order.count({
+        where: { status: { in: ['PENDING', 'CONFIRMED', 'PREPARING', 'READY'] } },
+      }),
+      prisma.order.count({
+        where: { status: 'COMPLETED', completedAt: { gte: today } },
+      }),
+      prisma.order.findMany({
+        where: { status: 'COMPLETED', completedAt: { gte: today } },
+        select: { totalAmount: true },
+      }),
+    ]);
+
+    const revenueToday = completedTodayOrders.reduce(
+      (sum, o) => sum + Number(o.totalAmount), 0
+    );
+
+    res.json({ success: true, data: { activeOrders, completedToday, revenueToday } });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get all orders with filters
 router.get('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { status, orderType, paymentMethod, startDate, endDate } = req.query;
+    const rawSearch = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : undefined;
     const { page, limit } = parsePagination(req.query);
 
     const where: any = {};
@@ -52,6 +95,14 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
       } else if (statusList.length > 1) {
         where.status = { in: statusList };
       }
+    }
+
+    if (rawSearch) {
+      where.OR = [
+        { orderNumber: { contains: rawSearch, mode: 'insensitive' } },
+        { customerName: { contains: rawSearch, mode: 'insensitive' } },
+        { customerPhone: { contains: rawSearch, mode: 'insensitive' } },
+      ];
     }
 
     if (orderType) where.orderType = orderType;
@@ -692,12 +743,25 @@ router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER
   try {
     const { status, cancelReason } = req.body;
 
+    if (!status || typeof status !== 'string') {
+      throw new AppError('Status is required', 400);
+    }
+
     const order = await prisma.order.findUnique({
       where: { id: req.params.id },
     });
 
     if (!order) {
       throw new AppError('Order not found', 404);
+    }
+
+    // Enforce valid status transition to prevent workflow bypassing
+    const allowedTransitions = VALID_STATUS_TRANSITIONS[order.status] ?? [];
+    if (!allowedTransitions.includes(status)) {
+      throw new AppError(
+        `Cannot transition order from ${order.status} to ${status}. Allowed: ${allowedTransitions.join(', ') || 'none'}`,
+        400
+      );
     }
 
     const updatedOrder = await prisma.order.update({

@@ -46,6 +46,32 @@ export default function DeliveryZonesPage() {
   const [editingZone, setEditingZone] = useState<DeliveryZone | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [feeForm, setFeeForm] = useState({ latitude: '', longitude: '', orderAmount: '' });
+  const [feeResult, setFeeResult] = useState<{ zone?: any; fee: number; minimumOrder?: number; estimatedTimeMin?: number; estimatedTimeMax?: number; error?: string } | null>(null);
+  const [calculatingFee, setCalculatingFee] = useState(false);
+
+  const calculateFee = async () => {
+    const lat = parseFloat(feeForm.latitude);
+    const lng = parseFloat(feeForm.longitude);
+    if (isNaN(lat) || isNaN(lng)) {
+      toast.error('Enter valid latitude and longitude');
+      return;
+    }
+    const orderAmount = feeForm.orderAmount ? parseFloat(feeForm.orderAmount) : 0;
+    setCalculatingFee(true);
+    setFeeResult(null);
+    try {
+      const res = await apiClient.post('/delivery-zones/calculate-fee', {
+        latitude: lat, longitude: lng, orderAmount,
+      });
+      setFeeResult(res.data?.data);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.response?.data?.message || 'Calculation failed';
+      setFeeResult({ fee: 0, error: msg });
+    } finally {
+      setCalculatingFee(false);
+    }
+  };
 
   const fetchZones = useCallback(async () => {
     try {
@@ -174,6 +200,71 @@ export default function DeliveryZonesPage() {
           height={420}
         />
       )}
+
+      {/* Fee Calculator */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+          <MapPin size={18} className="text-red-600" /> Test Delivery Fee
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-xs font-bold text-gray-500 mb-1">Latitude</label>
+            <input
+              type="number"
+              step="any"
+              value={feeForm.latitude}
+              onChange={(e) => setFeeForm({ ...feeForm, latitude: e.target.value })}
+              placeholder="33.6844"
+              className="w-full px-3 py-2 bg-gray-50 border-2 border-transparent focus:border-red-500 rounded-xl focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 mb-1">Longitude</label>
+            <input
+              type="number"
+              step="any"
+              value={feeForm.longitude}
+              onChange={(e) => setFeeForm({ ...feeForm, longitude: e.target.value })}
+              placeholder="73.0479"
+              className="w-full px-3 py-2 bg-gray-50 border-2 border-transparent focus:border-red-500 rounded-xl focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 mb-1">Order Amount</label>
+            <input
+              type="number"
+              step="any"
+              value={feeForm.orderAmount}
+              onChange={(e) => setFeeForm({ ...feeForm, orderAmount: e.target.value })}
+              placeholder="0"
+              className="w-full px-3 py-2 bg-gray-50 border-2 border-transparent focus:border-red-500 rounded-xl focus:outline-none"
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={calculateFee}
+              disabled={calculatingFee}
+              className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl font-bold"
+            >
+              {calculatingFee ? 'Calculating...' : 'Calculate'}
+            </button>
+          </div>
+        </div>
+        {feeResult && (
+          <div className={`mt-4 p-4 rounded-xl ${feeResult.error ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-800'}`}>
+            {feeResult.error ? (
+              <p className="text-sm font-semibold">{feeResult.error}</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div><span className="block text-xs uppercase font-bold opacity-70">Zone</span><span className="font-extrabold">{feeResult.zone?.name}</span></div>
+                <div><span className="block text-xs uppercase font-bold opacity-70">Fee</span><span className="font-extrabold">Rs. {feeResult.fee.toFixed(2)}</span></div>
+                <div><span className="block text-xs uppercase font-bold opacity-70">Min Order</span><span className="font-extrabold">Rs. {Number(feeResult.minimumOrder || 0).toFixed(2)}</span></div>
+                <div><span className="block text-xs uppercase font-bold opacity-70">ETA</span><span className="font-extrabold">{feeResult.estimatedTimeMin}-{feeResult.estimatedTimeMax} min</span></div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {loading ? (
         <div className="flex items-center justify-center h-32">

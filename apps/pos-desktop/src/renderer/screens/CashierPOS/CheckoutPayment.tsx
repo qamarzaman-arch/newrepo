@@ -69,8 +69,6 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
     }
   }, [backendRates, fetchBackendRates]);
 
-  // Guard for empty orders - redirect back if no items
-  console.log('[CheckoutPayment] Rendering with', currentOrder.items?.length || 0, 'items');
   if (!currentOrder.items || currentOrder.items.length === 0) {
     return (
       <div className="flex h-full items-center justify-center bg-neutral-50">

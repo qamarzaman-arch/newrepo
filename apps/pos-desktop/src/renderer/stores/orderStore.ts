@@ -243,7 +243,7 @@ persist(
   },
 
   clearOrder: () => {
-    set({ currentOrder: { ...EMPTY_ORDER } });
+    set({ currentOrder: { ...EMPTY_ORDER }, voidedItems: [] });
   },
 
   setOrderType: (type) => {

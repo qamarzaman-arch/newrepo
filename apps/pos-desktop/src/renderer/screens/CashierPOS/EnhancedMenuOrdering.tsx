@@ -75,10 +75,8 @@ const EnhancedMenuOrdering: React.FC<Props> = ({
     available: true,
   });
 
-  const filteredItems = menuItems?.filter((item: any) => {
-    if (searchQuery) return item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return true;
-  }) || [];
+  // Server already filters by `search` param — no need to duplicate client-side
+  const filteredItems = menuItems || [];
 
   // Barcode scanner integration with proper cleanup
   useEffect(() => {

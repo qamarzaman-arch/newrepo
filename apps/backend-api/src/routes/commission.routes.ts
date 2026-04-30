@@ -7,7 +7,8 @@ import { logger, sanitize } from '../utils/logger';
 
 const router = Router();
 
-// Validation schemas
+const SETTING_KEY = 'commission_rates';
+
 const calculateCommissionSchema = z.object({
   userId: z.string(),
   startDate: z.string(),
@@ -16,66 +17,79 @@ const calculateCommissionSchema = z.object({
 
 const setCommissionRateSchema = z.object({
   userId: z.string(),
-  rate: z.number().min(0).max(100), // percentage
+  rate: z.number().min(0).max(100),
   type: z.enum(['DELIVERY', 'SALES', 'SERVICE']).default('DELIVERY'),
   effectiveFrom: z.string(),
   effectiveTo: z.string().optional(),
 });
 
-// Calculate commission for a user
+interface RateRecord {
+  userId: string;
+  rate: number;
+  type: 'DELIVERY' | 'SALES' | 'SERVICE';
+  effectiveFrom: string;
+  effectiveTo?: string;
+  createdById: string;
+  createdAt: string;
+}
+
+async function loadRates(): Promise<RateRecord[]> {
+  const setting = await prisma.setting.findUnique({ where: { key: SETTING_KEY } });
+  if (!setting?.value) return [];
+  try {
+    const parsed = JSON.parse(setting.value as unknown as string);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveRates(rates: RateRecord[]): Promise<void> {
+  await prisma.setting.upsert({
+    where: { key: SETTING_KEY },
+    create: { key: SETTING_KEY, value: JSON.stringify(rates), category: 'finance' },
+    update: { value: JSON.stringify(rates) },
+  });
+}
+
+function findRateForPeriod(rates: RateRecord[], userId: string, start: Date, end: Date): number {
+  const candidates = rates
+    .filter((r) => r.userId === userId)
+    .filter((r) => new Date(r.effectiveFrom) <= start)
+    .filter((r) => !r.effectiveTo || new Date(r.effectiveTo) >= end)
+    .sort((a, b) => new Date(b.effectiveFrom).getTime() - new Date(a.effectiveFrom).getTime());
+  return candidates[0]?.rate ?? 0;
+}
+
 router.post('/calculate', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = calculateCommissionSchema.parse(req.body);
 
-    const user = await (prisma as any).user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: data.userId },
-      select: {
-        id: true,
-        fullName: true,
-        role: true,
-        commissionRates: true,
-      },
+      select: { id: true, fullName: true, role: true },
     });
+    if (!user) throw new AppError('User not found', 404);
 
-    if (!user) {
-      throw new AppError('User not found', 404);
-    }
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
 
-    // Get deliveries completed by this user
-    const deliveries = await (prisma as any).delivery.findMany({
+    const deliveries = await prisma.delivery.findMany({
       where: {
         riderId: data.userId,
         status: 'DELIVERED',
-        deliveredAt: {
-          gte: new Date(data.startDate),
-          lte: new Date(data.endDate),
-        },
+        deliveredAt: { gte: start, lte: end },
       },
-      include: {
-        order: {
-          select: {
-            totalAmount: true,
-          },
-        },
-      },
+      include: { order: { select: { totalAmount: true } } },
     });
 
-    // Get applicable commission rate
-    const commissionRate = await (prisma as any).commissionRate.findFirst({
-      where: {
-        userId: data.userId,
-        effectiveFrom: { lte: new Date(data.startDate) },
-        OR: [
-          { effectiveTo: null },
-          { effectiveTo: { gte: new Date(data.endDate) } },
-        ],
-      },
-      orderBy: { effectiveFrom: 'desc' },
-    });
-
-    const rate = commissionRate?.rate || 0;
+    const rates = await loadRates();
+    const rate = findRateForPeriod(rates, data.userId, start, end);
     const totalDeliveries = deliveries.length;
-    const totalOrderValue = deliveries.reduce((sum: number, d: any) => sum + (d.order?.totalAmount || 0), 0);
+    const totalOrderValue = deliveries.reduce(
+      (sum, d) => sum + Number(d.order?.totalAmount ?? 0),
+      0
+    );
     const commissionAmount = (totalOrderValue * rate) / 100;
 
     res.json({
@@ -88,7 +102,6 @@ router.post('/calculate', authenticate, async (req: AuthRequest, res: Response, 
         totalOrderValue,
         commissionRate: rate,
         commissionAmount,
-        currency: 'USD',
       },
     });
   } catch (error) {
@@ -96,109 +109,84 @@ router.post('/calculate', authenticate, async (req: AuthRequest, res: Response, 
   }
 });
 
-// Set commission rate
 router.post('/rate', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = setCommissionRateSchema.parse(req.body);
 
-    const rate = await (prisma as any).commissionRate.create({
-      data: {
-        userId: data.userId,
-        rate: data.rate,
-        type: data.type,
-        effectiveFrom: new Date(data.effectiveFrom),
-        effectiveTo: data.effectiveTo ? new Date(data.effectiveTo) : null,
-        createdById: req.user!.userId,
-      },
-    });
+    const user = await prisma.user.findUnique({ where: { id: data.userId }, select: { id: true } });
+    if (!user) throw new AppError('User not found', 404);
+
+    const rates = await loadRates();
+    const newRecord: RateRecord = {
+      userId: data.userId,
+      rate: data.rate,
+      type: data.type,
+      effectiveFrom: data.effectiveFrom,
+      effectiveTo: data.effectiveTo,
+      createdById: req.user!.userId,
+      createdAt: new Date().toISOString(),
+    };
+    rates.push(newRecord);
+    await saveRates(rates);
 
     logger.info(`Commission rate set for user ${sanitize(data.userId)}: ${data.rate}% by ${sanitize(req.user!.username)}`);
 
-    res.status(201).json({
-      success: true,
-      data: { rate },
-    });
+    res.status(201).json({ success: true, data: { rate: newRecord } });
   } catch (error) {
     next(error);
   }
 });
 
-// Get commission history
 router.get('/history/:userId', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { userId } = req.params;
-    const { limit = '50', offset = '0' } = req.query;
+    const rates = await loadRates();
+    const history = rates
+      .filter((r) => r.userId === userId)
+      .sort((a, b) => new Date(b.effectiveFrom).getTime() - new Date(a.effectiveFrom).getTime());
 
-    const history = await (prisma as any).commissionHistory.findMany({
-      where: { userId },
-      take: parseInt(limit as string),
-      skip: parseInt(offset as string),
-      orderBy: { periodEnd: 'desc' },
-    });
-
-    const total = await (prisma as any).commissionHistory.count({ where: { userId } });
-
-    res.json({
-      success: true,
-      data: { history, total },
-    });
+    res.json({ success: true, data: { history, total: history.length } });
   } catch (error) {
     next(error);
   }
 });
 
-// Get commission report for all staff
 router.get('/report', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { startDate, endDate } = req.query;
-
     if (!startDate || !endDate) {
       throw new AppError('Start date and end date are required', 400);
     }
 
-    // Get all riders/staff with commission rates
-    const users = await (prisma as any).user.findMany({
+    const start = new Date(startDate as string);
+    const end = new Date(endDate as string);
+
+    const users = await prisma.user.findMany({
       where: {
-        role: { in: ['RIDER', 'STAFF'] },
+        role: { in: ['RIDER', 'STAFF', 'CASHIER', 'MANAGER'] as any },
         isActive: true,
       },
-      select: {
-        id: true,
-        fullName: true,
-        role: true,
-        commissionRates: {
-          where: {
-            effectiveFrom: { lte: new Date(endDate as string) },
-            OR: [
-              { effectiveTo: null },
-              { effectiveTo: { gte: new Date(startDate as string) } },
-            ],
-          },
-          take: 1,
-          orderBy: { effectiveFrom: 'desc' },
-        },
-      },
+      select: { id: true, fullName: true, role: true },
     });
 
-    // Calculate commissions for each user
+    const rates = await loadRates();
+
     const report = await Promise.all(
-      users.map(async (user: any) => {
-        const deliveries = await (prisma as any).delivery.findMany({
+      users.map(async (user) => {
+        const deliveries = await prisma.delivery.findMany({
           where: {
             riderId: user.id,
             status: 'DELIVERED',
-            deliveredAt: {
-              gte: new Date(startDate as string),
-              lte: new Date(endDate as string),
-            },
+            deliveredAt: { gte: start, lte: end },
           },
-          include: {
-            order: { select: { totalAmount: true } },
-          },
+          include: { order: { select: { totalAmount: true } } },
         });
 
-        const rate = user.commissionRates[0]?.rate || 0;
-        const totalOrderValue = deliveries.reduce((sum: number, d: any) => sum + (d.order?.totalAmount || 0), 0);
+        const rate = findRateForPeriod(rates, user.id, start, end);
+        const totalOrderValue = deliveries.reduce(
+          (sum, d) => sum + Number(d.order?.totalAmount ?? 0),
+          0
+        );
         const commissionAmount = (totalOrderValue * rate) / 100;
 
         return {
@@ -213,7 +201,7 @@ router.get('/report', authenticate, async (req: AuthRequest, res: Response, next
       })
     );
 
-    const totalCommission = report.reduce((sum: number, r: any) => sum + r.commissionAmount, 0);
+    const totalCommission = report.reduce((sum, r) => sum + r.commissionAmount, 0);
 
     res.json({
       success: true,

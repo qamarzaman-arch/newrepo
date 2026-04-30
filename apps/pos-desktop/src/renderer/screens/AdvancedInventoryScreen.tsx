@@ -153,7 +153,8 @@ const AdvancedInventoryScreen: React.FC = () => {
     try {
       await inventoryService.deleteItem(itemId);
       toast.success(`${itemName} deleted successfully`);
-      window.location.reload();
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['low-stock'] });
     } catch (error) {
       console.error('Failed to delete item:', error);
       toast.error('Failed to delete item');

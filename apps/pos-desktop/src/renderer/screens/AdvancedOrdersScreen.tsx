@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Search, Filter, Eye, XCircle, Clock, 
-  CheckCircle, AlertCircle, Calendar, Users, 
+import {
+  Search, Filter, Eye, XCircle, Clock,
+  CheckCircle, AlertCircle, Calendar, Users,
   DollarSign, RefreshCw, MoreVertical,
   Utensils, Edit2, Trash2, Plus
 } from 'lucide-react';
@@ -12,11 +12,35 @@ import { tableService } from '../services/tableService';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/authStore';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
+import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 const AdvancedOrdersScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'orders' | 'tables' | 'reservations'>('orders');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'orders' | 'tables' | 'reservations'>(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'tables' || tab === 'reservations') return tab;
+    return 'orders';
+  });
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'completed') return 'COMPLETED';
+    return '';
+  });
+
+  // Keep statusFilter in sync when the URL changes (e.g. navigate('/orders?tab=completed'))
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'completed') {
+      setActiveTab('orders');
+      setStatusFilter('COMPLETED');
+    } else if (tab === 'tables' || tab === 'reservations') {
+      setActiveTab(tab);
+    }
+  }, [location.search]);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);

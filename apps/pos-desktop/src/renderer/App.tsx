@@ -156,11 +156,7 @@ const DefaultRedirect: React.FC = () => {
   return <Navigate to="/cashier-pos" replace />;
 };
 
-// Dashboard wrapper that shows different dashboards based on user role
 const DashboardWrapper: React.FC = () => {
-  const { user } = useAuthStore();
-  
-  // All users use AdminDashboard for now
   return <AdminDashboard />;
 };
 
@@ -319,7 +315,7 @@ function AnimatedRoutes() {
           path="/staff-attendance"
           element={
             <ProtectedRoute>
-              <StaffScreen />
+              <AttendanceScreen />
             </ProtectedRoute>
           }
         />

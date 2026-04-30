@@ -3,17 +3,33 @@ import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Wifi, WifiOff, Clock, User, Bell } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { useQuery } from '@tanstack/react-query';
+import { inventoryService } from '../services/inventoryService';
 
 const routeTitles: Record<string, string> = {
-  '/pos': 'Point of Sale',
   '/dashboard': 'Dashboard',
   '/orders': 'Orders',
   '/kitchen': 'Kitchen Display',
-  '/tables': 'Table Management',
+  '/tables': 'Tables & Reservations',
   '/menu': 'Menu Management',
-  '/customers': 'Customers',
-  '/inventory': 'Inventory',
-  '/settings': 'Settings',
+  '/customers': 'Customer CRM',
+  '/inventory': 'Inventory Control',
+  '/settings': 'System Settings',
+  '/staff': 'Staff Management',
+  '/vendors': 'Vendor Management',
+  '/delivery': 'Delivery Management',
+  '/financial': 'Financial Management',
+  '/feature-access': 'Feature Access Control',
+  '/attendance': 'Staff Attendance',
+  '/staff-attendance': 'Staff Attendance',
+  '/cashier-pos': 'Point of Sale',
+  '/cashier-orders': 'Active Orders',
+  '/cashier-history': 'Order History',
+  '/cashier-tables': 'Tables',
+  '/shift-summary': 'Shift Summary',
+  '/rider': 'Rider Dashboard',
+  '/rider-deliveries': 'My Deliveries',
+  '/rider-history': 'Delivery History',
 };
 
 const TopBar: React.FC = () => {
@@ -21,6 +37,18 @@ const TopBar: React.FC = () => {
   const location = useLocation();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const { data: lowStockItems } = useQuery({
+    queryKey: ['topbar-low-stock'],
+    queryFn: async () => {
+      const response = await inventoryService.getInventory({ lowStock: true });
+      return response.data.data.items || [];
+    },
+    refetchInterval: 120000,
+    enabled: user?.role === 'ADMIN' || user?.role === 'MANAGER',
+  });
+
+  const alertCount = (lowStockItems?.length ?? 0);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -121,21 +149,34 @@ const TopBar: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* Notification bell */}
+          {/* Notification bell — shows low-stock alert count */}
           <motion.button
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.3 }}
             whileHover={{ scale: 1.1, rotate: 10 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              if (alertCount > 0) {
+                window.dispatchEvent(new CustomEvent('navigate', { detail: '/inventory' }));
+                import('react-hot-toast').then(({ default: toast }) => {
+                  toast(`${alertCount} item${alertCount > 1 ? 's' : ''} need restocking`, { icon: '⚠️' });
+                });
+              }
+            }}
+            aria-label={alertCount > 0 ? `${alertCount} alerts` : 'No alerts'}
             className="relative p-2 bg-primary-50 rounded-full border border-primary-200 hover:bg-primary-100 transition-colors"
           >
             <Bell className="w-5 h-5 text-primary-600" />
-            <motion.span
-              className="absolute top-0 right-0 w-3 h-3 bg-error-500 rounded-full border-2 border-white"
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
+            {alertCount > 0 && (
+              <motion.span
+                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-error-500 text-white text-[10px] font-bold rounded-full border-2 border-white flex items-center justify-center px-0.5"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                {alertCount > 9 ? '9+' : alertCount}
+              </motion.span>
+            )}
           </motion.button>
 
           {/* User info */}

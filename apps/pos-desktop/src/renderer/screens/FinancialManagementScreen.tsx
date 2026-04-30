@@ -9,11 +9,53 @@ import { useCurrencyFormatter } from '../hooks/useCurrency';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { reportService } from '../services/reportService';
 import { expenseService } from '../services/expenseService';
+import { commissionService } from '../services/commissionService';
 import toast from 'react-hot-toast';
 
 const FinancialManagementScreen: React.FC = () => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'taxes' | 'budget'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'taxes' | 'budget' | 'commissions'>('overview');
+  const today = new Date();
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const [commissionStart, setCommissionStart] = useState(monthStart.toISOString().split('T')[0]);
+  const [commissionEnd, setCommissionEnd] = useState(today.toISOString().split('T')[0]);
+  const [showSetRateModal, setShowSetRateModal] = useState(false);
+  const [rateForm, setRateForm] = useState({ userId: '', rate: '', type: 'DELIVERY' as 'DELIVERY' | 'SALES' | 'SERVICE', effectiveFrom: today.toISOString().split('T')[0] });
+
+  const { data: commissionReport, refetch: refetchCommissions } = useQuery({
+    queryKey: ['commission-report', commissionStart, commissionEnd],
+    queryFn: async () => {
+      const res = await commissionService.getReport({ startDate: commissionStart, endDate: commissionEnd });
+      return res.data?.data as { totalCommission: number; report: any[] } | undefined;
+    },
+    enabled: activeTab === 'commissions',
+  });
+
+  const handleSetRate = async () => {
+    if (!rateForm.userId.trim() || !rateForm.rate) {
+      toast.error('User ID and rate are required');
+      return;
+    }
+    const rateNum = parseFloat(rateForm.rate);
+    if (isNaN(rateNum) || rateNum < 0 || rateNum > 100) {
+      toast.error('Rate must be between 0 and 100');
+      return;
+    }
+    try {
+      await commissionService.setRate({
+        userId: rateForm.userId.trim(),
+        rate: rateNum,
+        type: rateForm.type,
+        effectiveFrom: rateForm.effectiveFrom,
+      });
+      toast.success('Commission rate set');
+      setShowSetRateModal(false);
+      setRateForm({ ...rateForm, userId: '', rate: '' });
+      refetchCommissions();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to set rate');
+    }
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
@@ -194,6 +236,7 @@ const FinancialManagementScreen: React.FC = () => {
           { id: 'expenses', label: 'Expenses', icon: DollarSign },
           { id: 'taxes', label: 'Taxes', icon: FileText },
           { id: 'budget', label: 'Budget', icon: PieChart },
+          { id: 'commissions', label: 'Commissions', icon: Calculator },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -478,6 +521,166 @@ const FinancialManagementScreen: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* COMMISSIONS TAB */}
+      {activeTab === 'commissions' && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-wrap items-end gap-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Start Date</label>
+              <input
+                type="date"
+                value={commissionStart}
+                onChange={(e) => setCommissionStart(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">End Date</label>
+              <input
+                type="date"
+                value={commissionEnd}
+                onChange={(e) => setCommissionEnd(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-2"
+              />
+            </div>
+            <button
+              onClick={() => refetchCommissions()}
+              className="px-4 py-2 bg-primary text-white rounded-lg font-medium"
+            >
+              Refresh
+            </button>
+            <button
+              onClick={() => setShowSetRateModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" /> Set Rate
+            </button>
+            <div className="ml-auto text-right">
+              <p className="text-xs text-gray-500">Total Commission</p>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(commissionReport?.totalCommission || 0)}</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 text-xs text-gray-600 uppercase">
+                <tr>
+                  <th className="px-4 py-3 text-left">Staff</th>
+                  <th className="px-4 py-3 text-left">Role</th>
+                  <th className="px-4 py-3 text-right">Deliveries</th>
+                  <th className="px-4 py-3 text-right">Order Value</th>
+                  <th className="px-4 py-3 text-right">Rate</th>
+                  <th className="px-4 py-3 text-right">Commission</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(commissionReport?.report || []).map((entry: any) => (
+                  <tr key={entry.userId} className="border-t border-gray-100">
+                    <td className="px-4 py-3 font-medium text-gray-900">{entry.userName}</td>
+                    <td className="px-4 py-3 text-gray-600">{entry.role}</td>
+                    <td className="px-4 py-3 text-right">{entry.totalDeliveries}</td>
+                    <td className="px-4 py-3 text-right">{formatCurrency(entry.totalOrderValue)}</td>
+                    <td className="px-4 py-3 text-right">{entry.commissionRate}%</td>
+                    <td className="px-4 py-3 text-right font-semibold text-green-600">{formatCurrency(entry.commissionAmount)}</td>
+                  </tr>
+                ))}
+                {(!commissionReport?.report || commissionReport.report.length === 0) && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                      No commission data for the selected period.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Set Commission Rate Modal */}
+      <AnimatePresence>
+        {showSetRateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Set Commission Rate</h2>
+                <button onClick={() => setShowSetRateModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">User ID</label>
+                  <input
+                    type="text"
+                    value={rateForm.userId}
+                    onChange={(e) => setRateForm({ ...rateForm, userId: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Rate (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={rateForm.rate}
+                    onChange={(e) => setRateForm({ ...rateForm, rate: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Type</label>
+                  <select
+                    value={rateForm.type}
+                    onChange={(e) => setRateForm({ ...rateForm, type: e.target.value as any })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                  >
+                    <option value="DELIVERY">Delivery</option>
+                    <option value="SALES">Sales</option>
+                    <option value="SERVICE">Service</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Effective From</label>
+                  <input
+                    type="date"
+                    value={rateForm.effectiveFrom}
+                    onChange={(e) => setRateForm({ ...rateForm, effectiveFrom: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                  />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => setShowSetRateModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSetRate}
+                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-medium"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Add Expense Modal */}
       <AnimatePresence>

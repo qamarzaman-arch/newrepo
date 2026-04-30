@@ -11,7 +11,30 @@
       "Bash(sed -n '45,60p' '/c/Users/techl/Documents/Latest Code/apps/backend-api/src/routes/delivery.routes.ts')",
       "Bash(sed -n '78,90p' '/c/Users/techl/Documents/Latest Code/apps/backend-api/src/routes/delivery.routes.ts')",
       "Bash(npx prisma *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(npx vite *)",
+      "Bash(netstat -ano)",
+      "Bash(echo \"Started PID $!\")",
+      "Bash(curl -s -o /dev/null -w \"backend /health: %{http_code}\\\\n\" http://localhost:3001/health)",
+      "Bash(curl -s -o /dev/null -w \"web-admin /: %{http_code}\\\\n\" http://localhost:3000/)",
+      "PowerShell(Get-Process -Name node,electron -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force -ErrorAction SilentlyContinue)",
+      "Bash(rm -rf apps/pos-desktop/node_modules/.vite)",
+      "Bash(nohup npm *)",
+      "Bash(disown)",
+      "Bash(curl -s -o /dev/null -w \"backend :3001/health → %{http_code}\\\\n\" http://localhost:3001/health)",
+      "Bash(curl -s -o /dev/null -w \"web-admin :3000 → %{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(echo \"restarted pid $!\")",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/health)",
+      "Bash(echo \"Backend :3001 → $\\(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/health\\)\")",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/)",
+      "Bash(echo \"Web-admin :3000 → $\\(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/\\)\")",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:5176/)",
+      "Bash(echo \"POS Vite :5176 → $\\(curl -s -o /dev/null -w '%{http_code}' http://localhost:5176/\\)\")",
+      "Bash(curl -s http://localhost:3001/api/v1/staff-schedules?startDate=2026-04-01\\\\&endDate=2026-04-30 -H \"Authorization: Bearer fake\")",
+      "Bash(grep -nA 15 \"calculate-fee\" \"/c/Users/techl/Documents/Latest Code/apps/backend-api/src/routes/delivery-zone.routes.ts\")",
+      "Bash(curl -s -o /dev/null http://localhost:3001/health)",
+      "Bash(curl -s -o /dev/null http://localhost:3000/)"
     ]
   }
 }

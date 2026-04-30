@@ -445,7 +445,12 @@ const AdvancedMenuScreen: React.FC = () => {
         await menuService.updateModifier(editingModifier.id, modifierFormData);
         toast.success('Modifier updated successfully');
       } else {
-        await menuService.createModifier(modifierFormData);
+        if (!modifierFormData.menuItemId) {
+          toast.error('Please select a menu item for the modifier');
+          return;
+        }
+        const { menuItemId, ...rest } = modifierFormData;
+        await menuService.createModifier(menuItemId, rest);
         toast.success('Modifier created successfully');
       }
       setShowModifierModal(false);

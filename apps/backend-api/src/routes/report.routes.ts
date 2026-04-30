@@ -68,9 +68,10 @@ router.get('/sales/daily', authenticate, async (req: AuthRequest, res: Response,
       success: true,
       data: {
         date: targetDate,
-        totalSales,           // Gross sales (what should be collected)
-        totalCollected,       // Actual cash/card received
-        outstandingBalance,   // Amount still owed (partial payments)
+        totalRevenue: totalSales,  // Alias for frontend compatibility
+        totalSales,
+        totalCollected,
+        outstandingBalance,
         totalOrders,
         avgOrderValue,
         paymentMethodBreakdown,
@@ -87,7 +88,7 @@ router.get('/sales/daily', authenticate, async (req: AuthRequest, res: Response,
 router.get('/sales/monthly', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { range = '30' } = req.query;
-    const days = parseInt(range as string);
+    const days = Math.min(parseInt(range as string) || 30, 365);
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     startDate.setHours(0, 0, 0, 0);
@@ -117,9 +118,13 @@ router.get('/sales/monthly', authenticate, async (req: AuthRequest, res: Respons
     res.json({
       success: true,
       data: {
+        totalRevenue: totalSales,
         totalSales,
         totalOrders: orders.length,
-        dailySales: Object.values(dailySales),
+        dailySales: Object.values(dailySales).map(d => ({
+          ...d,
+          avgOrderValue: d.orders > 0 ? d.revenue / d.orders : 0,
+        })),
         period: { start: startDate, end: new Date() },
       },
     });
@@ -132,9 +137,11 @@ router.get('/sales/monthly', authenticate, async (req: AuthRequest, res: Respons
 router.get('/products/top-selling', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { limit = 10, days = 30 } = req.query;
+    const daysCapped = Math.min(parseInt(days as string) || 30, 365);
+    const limitCapped = Math.min(parseInt(limit as string) || 10, 100);
 
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(days as string));
+    startDate.setDate(startDate.getDate() - daysCapped);
 
     const topItems = await prisma.orderItem.groupBy({
       by: ['menuItemId'],
@@ -146,22 +153,23 @@ router.get('/products/top-selling', authenticate, async (req: AuthRequest, res: 
         },
       },
       orderBy: { _sum: { quantity: 'desc' } },
-      take: parseInt(limit as string),
+      take: limitCapped,
     });
 
-    const items = await Promise.all(
-      topItems.map(async (item) => {
-        const menuItem = await prisma.menuItem.findUnique({
-          where: { id: item.menuItemId },
-          include: { category: true },
-        });
-        return {
-          ...menuItem,
-          totalQuantity: item._sum.quantity,
-          totalSales: item._sum.totalPrice,
-        };
-      })
-    );
+    // Batch-fetch all menu items in one query (avoids N+1)
+    const menuItemIds = topItems.map((item) => item.menuItemId);
+    const menuItems = await prisma.menuItem.findMany({
+      where: { id: { in: menuItemIds } },
+      include: { category: true },
+    });
+    const menuItemMap = new Map(menuItems.map((m) => [m.id, m]));
+
+    const items = topItems.map((item) => ({
+      ...menuItemMap.get(item.menuItemId),
+      totalQuantity: item._sum.quantity,
+      totalRevenue: item._sum.totalPrice,
+      totalSales: item._sum.totalPrice,
+    }));
 
     res.json({ success: true, data: { items } });
   } catch (error) {
@@ -174,7 +182,7 @@ router.get('/products/low-performing', authenticate, async (req: AuthRequest, re
   try {
     const { days = 30 } = req.query;
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(days as string));
+    startDate.setDate(startDate.getDate() - Math.min(parseInt(days as string) || 30, 365));
 
     const items = await prisma.menuItem.findMany({
       where: { isActive: true },
@@ -223,11 +231,11 @@ router.get('/customers/top', authenticate, async (req: AuthRequest, res: Respons
 });
 
 // Staff performance report
-router.get('/staff/performance', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/staff/performance', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { days = 30 } = req.query;
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(days as string));
+    startDate.setDate(startDate.getDate() - Math.min(parseInt(days as string) || 30, 365));
 
     const performances = await prisma.staffPerformance.findMany({
       where: { date: { gte: startDate } },
@@ -257,7 +265,7 @@ router.get('/staff/performance', authenticate, async (req: AuthRequest, res: Res
 });
 
 // Inventory valuation report
-router.get('/inventory/valuation', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/inventory/valuation', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const items = await prisma.inventoryItem.findMany({
       where: { isActive: true },
@@ -283,11 +291,11 @@ router.get('/inventory/valuation', authenticate, async (req: AuthRequest, res: R
 });
 
 // Expense summary report
-router.get('/expenses/summary', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/expenses/summary', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { days = 30 } = req.query;
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(days as string));
+    startDate.setDate(startDate.getDate() - Math.min(parseInt(days as string) || 30, 365));
 
     const expenses = await prisma.expense.findMany({
       where: { expenseDate: { gte: startDate } },
@@ -367,23 +375,26 @@ router.get('/daily', authenticate, async (req: AuthRequest, res: Response, next:
 // Top selling items
 router.get('/top-items', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { limit = 5 } = req.query;
+    const limitCapped = Math.min(parseInt(req.query.limit as string) || 5, 100);
     const topItems = await prisma.orderItem.groupBy({
       by: ['menuItemId'],
       _sum: { quantity: true },
       orderBy: { _sum: { quantity: 'desc' } },
-      take: parseInt(limit as string),
+      take: limitCapped,
     });
 
-    const itemsWithDetails = await Promise.all(
-      topItems.map(async (item) => {
-        const menuItem = await prisma.menuItem.findUnique({
-          where: { id: item.menuItemId },
-          select: { id: true, name: true, price: true },
-        });
-        return { ...menuItem, totalSold: item._sum.quantity || 0 };
-      })
-    );
+    // Batch-fetch all menu items in one query (avoids N+1)
+    const menuItemIds = topItems.map((item) => item.menuItemId);
+    const menuItems = await prisma.menuItem.findMany({
+      where: { id: { in: menuItemIds } },
+      select: { id: true, name: true, price: true },
+    });
+    const menuItemMap = new Map(menuItems.map((m) => [m.id, m]));
+
+    const itemsWithDetails = topItems.map((item) => ({
+      ...menuItemMap.get(item.menuItemId),
+      totalSold: item._sum.quantity || 0,
+    }));
 
     res.json({ success: true, data: { items: itemsWithDetails } });
   } catch (error) {

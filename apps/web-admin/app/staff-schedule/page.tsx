@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
+import {
   Calendar, Clock, Users, Plus, ChevronLeft, ChevronRight,
-  CheckCircle, XCircle, AlertCircle
+  CheckCircle, XCircle, AlertCircle, ArrowRightLeft, Check, X
 } from 'lucide-react';
 import { Button, Modal } from '@poslytic/ui-components';
 import apiClient from '../lib/api';
@@ -36,12 +36,77 @@ export default function StaffSchedulePage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [staffList, setStaffList] = useState<any[]>([]);
+  const [stats, setStats] = useState<{ totalShifts: number; totalHours: number; roleBreakdown: Record<string, number> } | null>(null);
+  const [swapRequests, setSwapRequests] = useState<any[]>([]);
+  const [swapModal, setSwapModal] = useState<StaffSchedule | null>(null);
+  const [swapTargetUserId, setSwapTargetUserId] = useState('');
+  const [swapReason, setSwapReason] = useState('');
+  const [swapBusy, setSwapBusy] = useState(false);
 
   // Load schedules for current week
   React.useEffect(() => {
     loadSchedules();
     loadStaff();
+    loadStats();
+    loadSwapRequests();
   }, [currentDate]);
+
+  const loadStats = async () => {
+    try {
+      const startDate = getWeekStart(currentDate).toISOString().split('T')[0];
+      const endDate = getWeekEnd(currentDate).toISOString().split('T')[0];
+      const response = await apiClient.get('/staff-schedules/stats/overview', {
+        params: { startDate, endDate },
+      });
+      setStats(response.data?.data || null);
+    } catch {
+      setStats(null);
+    }
+  };
+
+  const loadSwapRequests = async () => {
+    try {
+      const response = await apiClient.get('/staff-schedules/swap-requests');
+      setSwapRequests(response.data?.data?.requests || response.data?.data || []);
+    } catch {
+      setSwapRequests([]);
+    }
+  };
+
+  const submitSwap = async () => {
+    if (!swapModal || !swapTargetUserId || !swapReason.trim()) {
+      toast.error('Pick a target staff member and provide a reason');
+      return;
+    }
+    setSwapBusy(true);
+    try {
+      await apiClient.post('/staff-schedules/swap-request', {
+        scheduleId: swapModal.id,
+        targetUserId: swapTargetUserId,
+        reason: swapReason.trim(),
+      });
+      toast.success('Swap request sent');
+      setSwapModal(null);
+      setSwapTargetUserId('');
+      setSwapReason('');
+      loadSwapRequests();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to send swap request');
+    } finally {
+      setSwapBusy(false);
+    }
+  };
+
+  const respondToSwap = async (id: string, accept: boolean) => {
+    try {
+      await apiClient.post(`/staff-schedules/swap-request/${id}/respond`, { accept });
+      toast.success(accept ? 'Swap approved' : 'Swap rejected');
+      loadSwapRequests();
+      loadSchedules();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to respond');
+    }
+  };
 
   const loadSchedules = async () => {
     try {
@@ -204,12 +269,22 @@ export default function StaffSchedulePage() {
                             <p className="font-bold text-sm text-gray-900">{schedule.userName}</p>
                             <p className="text-xs text-gray-500">{schedule.role}</p>
                           </div>
-                          <button
-                            onClick={() => handleDeleteSchedule(schedule.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all"
-                          >
-                            <XCircle size={14} />
-                          </button>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button
+                              title="Request swap"
+                              onClick={() => { setSwapModal(schedule); setSwapTargetUserId(''); setSwapReason(''); }}
+                              className="p-1 text-gray-400 hover:text-indigo-600"
+                            >
+                              <ArrowRightLeft size={14} />
+                            </button>
+                            <button
+                              title="Cancel shift"
+                              onClick={() => handleDeleteSchedule(schedule.id)}
+                              className="p-1 text-gray-400 hover:text-red-500"
+                            >
+                              <XCircle size={14} />
+                            </button>
+                          </div>
                         </div>
                         <div className="flex items-center gap-1 text-xs text-gray-600">
                           <Clock size={12} />
@@ -281,7 +356,7 @@ export default function StaffSchedulePage() {
             <div>
               <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Total Hours</p>
               <h3 className="text-2xl font-black text-gray-900">
-                {Math.round(schedules.reduce((acc, s) => {
+                {stats?.totalHours ?? Math.round(schedules.reduce((acc, s) => {
                   const start = parseInt(s.startTime.split(':')[0]);
                   const end = parseInt(s.endTime.split(':')[0]);
                   return acc + (end - start);
@@ -291,6 +366,95 @@ export default function StaffSchedulePage() {
           </div>
         </div>
       </div>
+
+      {/* Swap Requests */}
+      <div className="bg-white rounded-3xl shadow-soft border border-gray-100 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
+            <ArrowRightLeft size={20} /> Shift Swap Requests
+          </h2>
+          <span className="text-xs font-bold uppercase tracking-widest text-gray-400">
+            {swapRequests.filter(r => r.status === 'PENDING').length} pending
+          </span>
+        </div>
+        {swapRequests.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">No swap requests.</p>
+        ) : (
+          <div className="space-y-3">
+            {swapRequests.map((req: any) => (
+              <div key={req.id} className="border border-gray-100 rounded-2xl p-4 flex flex-wrap items-center gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">
+                    {req.requester?.fullName || 'Requester'} → {req.targetUser?.fullName || 'Target'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Schedule {new Date(req.schedule?.date || Date.now()).toLocaleDateString()} {req.schedule?.startTime}-{req.schedule?.endTime}
+                  </p>
+                  <p className="text-xs text-gray-600 italic mt-1">"{req.reason}"</p>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  req.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                  req.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                  'bg-red-100 text-red-700'
+                }`}>{req.status}</span>
+                {req.status === 'PENDING' && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => respondToSwap(req.id, true)}
+                      className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold flex items-center gap-1"
+                    ><Check size={12} /> Approve</button>
+                    <button
+                      onClick={() => respondToSwap(req.id, false)}
+                      className="px-3 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg text-xs font-bold flex items-center gap-1"
+                    ><X size={12} /> Reject</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Swap Request Modal */}
+      <Modal isOpen={!!swapModal} onClose={() => setSwapModal(null)} title="Request Shift Swap">
+        {swapModal && (
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-xl p-4 text-sm">
+              <p><span className="font-bold">{swapModal.userName}</span> — {swapModal.role}</p>
+              <p className="text-gray-600">{swapModal.date} · {swapModal.startTime}-{swapModal.endTime}</p>
+            </div>
+            <div>
+              <label className="text-sm font-bold text-gray-700">Swap with *</label>
+              <select
+                value={swapTargetUserId}
+                onChange={(e) => setSwapTargetUserId(e.target.value)}
+                className="mt-1 w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl focus:outline-none"
+              >
+                <option value="">Select staff member</option>
+                {staffList.filter(s => s.id !== swapModal.userId).map(s => (
+                  <option key={s.id} value={s.id}>{s.fullName} ({s.role})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-bold text-gray-700">Reason *</label>
+              <textarea
+                value={swapReason}
+                onChange={(e) => setSwapReason(e.target.value)}
+                rows={3}
+                className="mt-1 w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-xl focus:outline-none"
+                placeholder="Why do you need to swap?"
+              />
+            </div>
+            <div className="flex gap-4">
+              <Button variant="outline" type="button" className="flex-1" onClick={() => setSwapModal(null)}>Cancel</Button>
+              <Button type="button" className="flex-1" disabled={swapBusy} onClick={submitSwap}>
+                {swapBusy ? 'Sending...' : 'Send Request'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Add Schedule Modal */}
       <Modal

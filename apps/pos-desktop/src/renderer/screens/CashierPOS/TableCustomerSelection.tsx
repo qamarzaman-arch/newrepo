@@ -112,18 +112,25 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
   // Real-time table polling with reduced frequency and optimistic updates
   const { data: tables, refetch: refetchTables } = useTables({ isActive: true });
 
-  // Check for locked tables
+  // Check for locked tables (poll backend)
   useEffect(() => {
-    const tableLockService = getTableLockService();
-    const locked = new Set<string>();
-    
-    tables?.forEach((table: any) => {
-      if (tableLockService.isTableLocked(table.id, user?.id)) {
-        locked.add(table.id);
-      }
-    });
-    
-    setLockedTables(locked);
+    let cancelled = false;
+    const fetchLocks = async () => {
+      const tableLockService = getTableLockService();
+      const all = await tableLockService.getAllLocks();
+      if (cancelled) return;
+      const locked = new Set<string>();
+      all.forEach((l) => {
+        if (l.userId !== user?.id) locked.add(l.tableId);
+      });
+      setLockedTables(locked);
+    };
+    fetchLocks();
+    const interval = setInterval(fetchLocks, 8000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [tables, user?.id]);
 
   useEffect(() => {
@@ -139,29 +146,27 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
     return () => {
       if (localTableId && user?.id) {
         const tableLockService = getTableLockService();
-        tableLockService.unlockTable(localTableId, user.id);
+        tableLockService.unlockTable(localTableId).catch(() => {});
       }
     };
   }, [localTableId, user?.id]);
   const availableTables = tables?.filter((t: any) => t.status === 'AVAILABLE') || [];
   const occupiedTables = tables?.filter((t: any) => t.status !== 'AVAILABLE') || [];
 
-  const handleTableSelect = (table: any) => {
+  const handleTableSelect = async (table: any) => {
     const tableLockService = getTableLockService();
-    
-    // Try to lock the table
-    const locked = tableLockService.lockTable(table.id, user?.id || 'unknown');
-    
-    if (!locked) {
-      toast.error('This table is currently being selected by another cashier. Please choose a different table.');
+
+    const result = await tableLockService.lockTable(table.id);
+    if (!result.success) {
+      const who = result.lockedBy ? ` (locked by ${result.lockedBy})` : '';
+      toast.error(`Table is being used by another cashier${who}. Please choose a different table.`);
       return;
     }
-    
-    // Unlock previous table if any
+
     if (localTableId && localTableId !== table.id) {
-      tableLockService.unlockTable(localTableId, user?.id || 'unknown');
+      await tableLockService.unlockTable(localTableId);
     }
-    
+
     setLocalTableId(table.id);
     setLocalTableNumber(table.number);
     setValidationError('');
@@ -181,7 +186,7 @@ const TableCustomerSelection: React.FC<Props> = ({ orderType, selectedTableId, o
     // Extend table lock when proceeding
     if (localTableId && user?.id) {
       const tableLockService = getTableLockService();
-      tableLockService.extendLock(localTableId, user.id);
+      tableLockService.extendLock(localTableId).catch(() => {});
     }
     
     onSelect({

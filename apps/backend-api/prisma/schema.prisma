@@ -48,6 +48,9 @@ model User {
   tableLocks         TableLock[]
   orderModifications OrderModificationHistory[]
   StaffPerformance   StaffPerformance[]
+  staffSchedules        StaffSchedule[]      @relation("ScheduledUser")
+  swapRequestsSent      ShiftSwapRequest[]   @relation("SwapRequester")
+  swapRequestsReceived  ShiftSwapRequest[]   @relation("SwapTarget")
 
   @@index([username])
   @@index([email])
@@ -1258,5 +1261,54 @@ model QrSession {
 
   @@index([token])
   @@index([tableId])
+  @@index([status])
+}
+
+// ========== STAFF SCHEDULING ==========
+model StaffSchedule {
+  id                  String   @id @default(uuid())
+  userId              String
+  date                DateTime @db.Date
+  startTime           String
+  endTime             String
+  breakDuration       Int      @default(30)
+  role                String?
+  notes               String?
+  status              String   @default("SCHEDULED")
+  isRecurring         Boolean  @default(false)
+  recurrencePattern   String?
+  recurrenceEndDate   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User                @relation("ScheduledUser", fields: [userId], references: [id], onDelete: Cascade)
+  swapRequests ShiftSwapRequest[]
+
+  @@index([userId])
+  @@index([date])
+  @@index([status])
+}
+
+model ShiftSwapRequest {
+  id             String    @id @default(uuid())
+  scheduleId     String
+  requesterId    String
+  targetUserId   String
+  reason         String
+  status         String    @default("PENDING")
+  responseReason String?
+  respondedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  schedule   StaffSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  requester  User          @relation("SwapRequester", fields: [requesterId], references: [id])
+  targetUser User          @relation("SwapTarget", fields: [targetUserId], references: [id])
+
+  @@index([scheduleId])
+  @@index([requesterId])
+  @@index([targetUserId])
   @@index([status])
 }

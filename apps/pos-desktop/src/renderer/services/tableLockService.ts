@@ -1,225 +1,92 @@
 /**
  * Table Lock Service
- * Prevents race conditions when multiple cashiers try to select the same table
+ * Uses backend DB-backed locks (Serializable transaction) to prevent race
+ * conditions across cashier devices.
  */
+import api from './api';
 
-interface TableLock {
-  tableId: string;
-  lockedBy: string;
-  lockedAt: number;
-  expiresAt: number;
+export interface TableLockInfo {
+  locked: boolean;
+  lockedBy?: string;
+  userId?: string;
+  expiresAt?: string;
+  isMyLock?: boolean;
 }
 
 class TableLockService {
-  private locks: Map<string, TableLock> = new Map();
-  private readonly LOCK_DURATION = 5 * 60 * 1000; // 5 minutes
-  private readonly STORAGE_KEY = 'pos_table_locks';
-  private cleanupInterval: NodeJS.Timeout | null = null;
+  private myLocks: Set<string> = new Set();
 
-  constructor() {
-    this.loadLocks();
-    this.startCleanup();
-  }
-
-  private loadLocks() {
+  async lockTable(tableId: string): Promise<{ success: boolean; lockedBy?: string }> {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY);
-      if (stored) {
-        const locks: TableLock[] = JSON.parse(stored);
-        locks.forEach(lock => {
-          if (lock.expiresAt > Date.now()) {
-            this.locks.set(lock.tableId, lock);
-          }
-        });
+      const res = await api.post('/table-locks/lock', { tableId });
+      const data = res.data?.data;
+      if (data?.success) {
+        this.myLocks.add(tableId);
+        return { success: true };
       }
-    } catch (error) {
-      console.error('Failed to load table locks:', error);
+      return { success: false, lockedBy: data?.lockedBy };
+    } catch (err: any) {
+      return { success: false, lockedBy: err?.response?.data?.error?.message };
     }
   }
 
-  private saveLocks() {
+  async unlockTable(tableId: string): Promise<boolean> {
     try {
-      const locks = Array.from(this.locks.values());
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(locks));
-    } catch (error) {
-      console.error('Failed to save table locks:', error);
-    }
-  }
-
-  private startCleanup() {
-    // Clean up expired locks every 30 seconds
-    this.cleanupInterval = setInterval(() => {
-      this.cleanupExpiredLocks();
-    }, 30000);
-  }
-
-  private cleanupExpiredLocks() {
-    const now = Date.now();
-    let cleaned = false;
-
-    this.locks.forEach((lock, tableId) => {
-      if (lock.expiresAt < now) {
-        this.locks.delete(tableId);
-        cleaned = true;
-      }
-    });
-
-    if (cleaned) {
-      this.saveLocks();
-    }
-  }
-
-  /**
-   * Attempt to lock a table
-   * @returns true if lock acquired, false if table is already locked
-   */
-  public lockTable(tableId: string, userId: string): boolean {
-    const now = Date.now();
-    const existingLock = this.locks.get(tableId);
-
-    // Check if table is already locked by someone else
-    if (existingLock) {
-      // If lock expired, allow new lock
-      if (existingLock.expiresAt < now) {
-        this.locks.delete(tableId);
-      } else if (existingLock.lockedBy !== userId) {
-        // Table is locked by someone else
-        return false;
-      }
-    }
-
-    // Create new lock
-    const lock: TableLock = {
-      tableId,
-      lockedBy: userId,
-      lockedAt: now,
-      expiresAt: now + this.LOCK_DURATION,
-    };
-
-    this.locks.set(tableId, lock);
-    this.saveLocks();
-    return true;
-  }
-
-  /**
-   * Release a table lock
-   */
-  public unlockTable(tableId: string, userId: string): boolean {
-    const lock = this.locks.get(tableId);
-    
-    if (!lock) {
-      return true; // Already unlocked
-    }
-
-    // Only allow unlock if locked by same user
-    if (lock.lockedBy === userId) {
-      this.locks.delete(tableId);
-      this.saveLocks();
+      await api.post('/table-locks/unlock', { tableId });
+      this.myLocks.delete(tableId);
       return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Check if a table is locked
-   */
-  public isTableLocked(tableId: string, userId?: string): boolean {
-    const lock = this.locks.get(tableId);
-    
-    if (!lock) {
+    } catch {
       return false;
     }
+  }
 
-    // Check if lock expired
-    if (lock.expiresAt < Date.now()) {
-      this.locks.delete(tableId);
-      this.saveLocks();
+  async getLockStatus(tableId: string): Promise<TableLockInfo> {
+    try {
+      const res = await api.get(`/table-locks/${tableId}`);
+      return res.data?.data || { locked: false };
+    } catch {
+      return { locked: false };
+    }
+  }
+
+  async extendLock(tableId: string): Promise<boolean> {
+    try {
+      await api.post('/table-locks/extend', { tableId });
+      return true;
+    } catch {
       return false;
     }
-
-    // If userId provided, check if locked by same user
-    if (userId && lock.lockedBy === userId) {
-      return false; // Not locked for this user
-    }
-
-    return true;
   }
 
-  /**
-   * Get lock info for a table
-   */
-  public getLockInfo(tableId: string): TableLock | null {
-    const lock = this.locks.get(tableId);
-    
-    if (!lock) {
-      return null;
+  async getAllLocks(): Promise<Array<{ tableId: string; userId: string; expiresAt: string; user?: any; table?: any }>> {
+    try {
+      const res = await api.get('/table-locks');
+      return res.data?.data?.locks || [];
+    } catch {
+      return [];
     }
-
-    // Check if expired
-    if (lock.expiresAt < Date.now()) {
-      this.locks.delete(tableId);
-      this.saveLocks();
-      return null;
-    }
-
-    return { ...lock };
   }
 
-  /**
-   * Extend lock duration
-   */
-  public extendLock(tableId: string, userId: string): boolean {
-    const lock = this.locks.get(tableId);
-    
-    if (!lock || lock.lockedBy !== userId) {
+  async forceUnlock(tableId: string): Promise<boolean> {
+    try {
+      await api.post('/table-locks/force-unlock', { tableId });
+      this.myLocks.delete(tableId);
+      return true;
+    } catch {
       return false;
     }
-
-    lock.expiresAt = Date.now() + this.LOCK_DURATION;
-    this.saveLocks();
-    return true;
   }
 
-  /**
-   * Force unlock (admin only)
-   */
-  public forceUnlock(tableId: string): void {
-    this.locks.delete(tableId);
-    this.saveLocks();
-  }
-
-  /**
-   * Get all locked tables
-   */
-  public getLockedTables(): TableLock[] {
-    this.cleanupExpiredLocks();
-    return Array.from(this.locks.values());
-  }
-
-  /**
-   * Clear all locks (use with caution)
-   */
-  public clearAllLocks(): void {
-    this.locks.clear();
-    this.saveLocks();
-  }
-
-  public destroy() {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-    }
+  isMyLock(tableId: string): boolean {
+    return this.myLocks.has(tableId);
   }
 }
 
-// Singleton instance
-let tableLockService: TableLockService | null = null;
+let instance: TableLockService | null = null;
 
 export const getTableLockService = (): TableLockService => {
-  if (!tableLockService) {
-    tableLockService = new TableLockService();
-  }
-  return tableLockService;
+  if (!instance) instance = new TableLockService();
+  return instance;
 };
 
 export default TableLockService;

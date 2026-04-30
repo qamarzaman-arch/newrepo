@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Settings, Store, Shield, Printer, Bell, 
+import {
+  Settings, Store, Shield, Printer, Bell,
   CreditCard, Palette, Save, RotateCcw,
-  AlertCircle, Smartphone, Monitor
+  AlertCircle, Smartphone, Monitor, Gavel
 } from 'lucide-react';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useAuthStore } from '../stores/authStore';
@@ -47,7 +47,7 @@ const AdvancedSettingsScreen: React.FC = () => {
 
   const tabs = [
     { id: 'general', label: 'General', icon: Store },
-    { id: 'business', label: 'Business Rules', icon: CreditCard },
+    { id: 'business', label: 'Business Rules', icon: Gavel },
     { id: 'payment', label: 'Payment Methods', icon: CreditCard },
     { id: 'hardware', label: 'Hardware & Devices', icon: Printer },
     { id: 'notifications', label: 'Notifications', icon: Bell },

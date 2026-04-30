@@ -5,7 +5,7 @@ export interface KotTicket {
   ticketNumber: string;
   orderId: string;
   course: string;
-  status: 'NEW' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED';
+  status: 'NEW' | 'RECEIVED' | 'PREPARING' | 'READY' | 'SERVED' | 'DISPATCHED' | 'COMPLETED' | 'DELAYED';
   priority: 'normal' | 'high' | 'urgent';
   orderedAt: string;
   startedAt?: string;
@@ -22,18 +22,6 @@ export const kitchenService = {
   getActiveTickets: () => api.get('/kitchen/tickets/active'),
   getStats: () => api.get('/kitchen/stats'),
   getTicket: (id: string) => api.get(`/kitchen/tickets/${id}`),
-  createTicket: (data: {
-    orderId: string;
-    items: Array<{
-      menuItemId: string;
-      name: string;
-      quantity: number;
-      notes?: string;
-    }>;
-    priority?: 'NORMAL' | 'HIGH' | 'URGENT';
-    notes?: string;
-    course?: string;
-  }) => api.post('/kitchen/tickets', data),
   updateStatus: (id: string, status: KotTicket['status']) =>
     api.patch(`/kitchen/tickets/${id}/status`, { status }),
   assignTicket: (id: string, data: { station?: string; assignedTo?: string }) =>

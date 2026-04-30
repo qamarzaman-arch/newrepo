@@ -68,7 +68,10 @@ export default function CustomersPage() {
     try {
       const res = await apiClient.get('/customers/loyalty/tiers');
       setTiers(res.data?.data?.tiers || []);
-    } catch {}
+    } catch {
+      // Loyalty tiers are optional — silently degrade to empty list
+      setTiers([]);
+    }
   }, []);
 
   useEffect(() => { fetchCustomers(); fetchTiers(); }, [fetchCustomers, fetchTiers]);

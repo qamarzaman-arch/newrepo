@@ -76,7 +76,7 @@ const AdvancedStaffScreen: React.FC = () => {
     queryKey: ['staff-performance'],
     queryFn: async () => {
       const response = await reportService.getStaffPerformance(30);
-      return response.data.data || [];
+      return response.data.data?.performances || [];
     },
   });
 
@@ -147,9 +147,9 @@ const AdvancedStaffScreen: React.FC = () => {
   };
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries(['staff-management']);
-    queryClient.invalidateQueries(['staff-shifts']);
-    queryClient.invalidateQueries(['staff-performance']);
+    queryClient.invalidateQueries({ queryKey: ['staff-management'] });
+    queryClient.invalidateQueries({ queryKey: ['staff-shifts'] });
+    queryClient.invalidateQueries({ queryKey: ['staff-performance'] });
     toast.success('Data refreshed successfully');
   };
 

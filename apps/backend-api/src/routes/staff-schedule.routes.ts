@@ -277,6 +277,36 @@ router.get('/conflicts/check', authenticate, async (req: AuthRequest, res: Respo
   }
 });
 
+// List swap requests (filter by user or status)
+router.get('/swap-requests', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { status, mine } = req.query;
+    const where: any = {};
+    if (status) where.status = status as string;
+    if (mine === 'true') {
+      where.OR = [
+        { requesterId: req.user!.userId },
+        { targetUserId: req.user!.userId },
+      ];
+    }
+
+    const requests = await (prisma as any).shiftSwapRequest.findMany({
+      where,
+      include: {
+        schedule: true,
+        requester: { select: { id: true, fullName: true } },
+        targetUser: { select: { id: true, fullName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    res.json({ success: true, data: { requests } });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Request shift swap
 router.post('/swap-request', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {

@@ -57,8 +57,8 @@ export default function ReportsPage() {
         if (staffRes.status === 'fulfilled') {
           setStaffPerformance(staffRes.value.data.data?.performances || []);
         }
-      } catch (err) {
-        console.error('Failed to fetch reports:', err);
+      } catch {
+        // fetch failure is handled silently; UI shows empty states
       } finally {
         setLoading(false);
       }
@@ -66,17 +66,26 @@ export default function ReportsPage() {
     fetchReports();
   }, [dateRange]);
 
+  const escapeCsvField = (value: string | number) => {
+    const str = String(value);
+    return str.includes(',') || str.includes('"') || str.includes('\n')
+      ? `"${str.replace(/"/g, '""')}"`
+      : str;
+  };
+
   const handleExport = () => {
-    const csv = [
-      ['Date', 'Revenue', 'Orders', 'Avg Order Value'].join(','),
-      ...salesData.map(d => [d.date, d.revenue, d.orders, d.avgOrderValue].join(',')),
-    ].join('\n');
+    const headers = ['Date', 'Revenue', 'Orders', 'Avg Order Value'].map(escapeCsvField);
+    const rows = salesData.map(d =>
+      [d.date, d.revenue, d.orders, d.avgOrderValue].map(escapeCsvField).join(',')
+    );
+    const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `sales-report-${dateRange}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (

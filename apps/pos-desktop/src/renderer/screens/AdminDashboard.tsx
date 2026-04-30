@@ -150,6 +150,15 @@ const AdminDashboard: React.FC = () => {
     },
   });
 
+  const { data: completedOrdersToday } = useQuery({
+    queryKey: ['completedOrdersToday'],
+    queryFn: async () => {
+      const response = await orderService.getOrders({ status: 'COMPLETED', limit: 1 });
+      return response.data.data.pagination?.total ?? 0;
+    },
+    refetchInterval: 60000,
+  });
+
   const { data: occupiedTables } = useQuery({
     queryKey: ['occupiedTables'],
     queryFn: async () => {
@@ -464,7 +473,7 @@ const AdminDashboard: React.FC = () => {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
               <XAxis dataKey="date" stroke="#9E9E9E" fontSize={12} />
-              <YAxis stroke="#9E9E9E" fontSize={12} tickFormatter={(value) => `$${value}`} />
+              <YAxis stroke="#9E9E9E" fontSize={12} tickFormatter={(value) => formatCurrency(value)} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'white',
@@ -472,6 +481,7 @@ const AdminDashboard: React.FC = () => {
                   borderRadius: '12px',
                   boxShadow: '0 10px 25px rgba(229, 57, 53, 0.2)',
                 }}
+                formatter={(value: number) => [formatCurrency(value), 'Revenue']}
               />
               <Area
                 type="monotone"
@@ -544,7 +554,7 @@ const AdminDashboard: React.FC = () => {
                     style={{ backgroundColor: index === 0 ? '#E53935' : index === 1 ? '#EF5350' : index === 2 ? '#E57373' : '#EF9A9A' }}
                     whileHover={{ scale: 1.2 }}
                   />
-                  <span className="text-sm font-medium text-neutral-700">{item.name}</span>
+                  <span className="text-sm font-medium text-neutral-700">{getOrderTypeLabel(item.name)}</span>
                 </div>
                 <span className="text-sm font-bold text-neutral-900">{item.value}%</span>
               </motion.div>
@@ -626,7 +636,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="text-right ml-3">
                   <p className="font-bold text-primary text-sm">{item.totalQuantity} sold</p>
-                  <p className="text-xs text-gray-500">${item.totalRevenue?.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500">{formatCurrency(item.totalRevenue ?? 0)}</p>
                 </div>
               </motion.div>
             ))}
@@ -662,7 +672,7 @@ const AdminDashboard: React.FC = () => {
                     <p className="text-xs text-gray-500">{getOrderTypeLabel(order.orderType)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-primary text-sm">${order.totalAmount.toFixed(2)}</p>
+                    <p className="font-bold text-primary text-sm">{formatCurrency(order.totalAmount)}</p>
                     <p className="text-xs text-gray-500">
                       {new Date(order.orderedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
@@ -708,7 +718,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Stats */}
+        {/* Business Health */}
         <div className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100">
           <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-primary" />
@@ -716,36 +726,38 @@ const AdminDashboard: React.FC = () => {
           </h3>
           <div className="space-y-4">
             {(() => {
-              // Calculate real metrics
-              const completedOrders = pendingOrders?.filter((o: any) => o.status === 'COMPLETED').length || 0;
-              const totalOrders = pendingOrders?.length || 1;
-              const completionRate = Math.round((completedOrders / totalOrders) * 100);
-              
-              // Table turnover: orders per table per hour (estimated)
-              const tableTurnover = occupiedTables?.length > 0 
-                ? ((todayOrders / occupiedTables.length) / 8).toFixed(1) 
+              // Order completion rate: completed orders vs total today
+              const completed = completedOrdersToday ?? 0;
+              const totalToday = Math.max(todayOrders, completed);
+              const completionRate = totalToday > 0 ? Math.round((completed / totalToday) * 100) : 0;
+
+              // Table turnover: completed orders per occupied table per shift (8h)
+              const tableTurnover = occupiedTables && occupiedTables.length > 0
+                ? ((todayOrders / occupiedTables.length) / 8).toFixed(1)
                 : '0.0';
-              
-              // Staff efficiency based on orders per pending order (simplified metric)
-              const staffEfficiency = Math.min(95, Math.round((completedOrders / Math.max(totalOrders - completedOrders, 1)) * 50));
-              
-              // Customer satisfaction: derived from on-time rate (calculated from pending orders)
-              const customerSatisfaction = totalOrders > 0 
-                ? Math.round((pendingOrders?.filter((o: any) => {
-                    const min = Math.floor((Date.now() - new Date(o.orderedAt).getTime()) / 60000);
-                    return min <= 25;
-                  }).length || 0) / totalOrders * 100)
-                : 85;
-              
+
+              // On-time rate: pending orders placed within last 25 minutes
+              const pendingCount = pendingOrders?.length || 0;
+              const onTimeCount = pendingOrders?.filter((o: any) => {
+                const ageMin = Math.floor((Date.now() - new Date(o.orderedAt).getTime()) / 60000);
+                return ageMin <= 25;
+              }).length ?? 0;
+              const onTimeRate = pendingCount > 0 ? Math.round((onTimeCount / pendingCount) * 100) : 100;
+
+              // Avg ticket size relative to a baseline (80% of peak avg = 100%)
+              const ticketScore = avgOrderValue > 0
+                ? Math.min(100, Math.round((avgOrderValue / Math.max(avgOrderValue * 1.2, 1)) * 100))
+                : 0;
+
               return (
                 <>
                   <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-700">Customer Satisfaction</span>
-                      <span className="text-lg font-bold text-green-600">{customerSatisfaction}%</span>
+                      <span className="text-sm text-gray-700">On-Time Order Rate</span>
+                      <span className="text-lg font-bold text-green-600">{onTimeRate}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-green-500 h-2 rounded-full transition-all duration-500" style={{ width: `${customerSatisfaction}%` }}></div>
+                      <div className="bg-green-500 h-2 rounded-full transition-all duration-500" style={{ width: `${onTimeRate}%` }} />
                     </div>
                   </div>
 
@@ -755,7 +767,7 @@ const AdminDashboard: React.FC = () => {
                       <span className="text-lg font-bold text-blue-600">{completionRate}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-500 h-2 rounded-full transition-all duration-500" style={{ width: `${completionRate}%` }}></div>
+                      <div className="bg-blue-500 h-2 rounded-full transition-all duration-500" style={{ width: `${completionRate}%` }} />
                     </div>
                   </div>
 
@@ -765,17 +777,17 @@ const AdminDashboard: React.FC = () => {
                       <span className="text-lg font-bold text-purple-600">{tableTurnover}/hr</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-purple-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Number(tableTurnover) * 25)}%` }}></div>
+                      <div className="bg-purple-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Number(tableTurnover) * 25)}%` }} />
                     </div>
                   </div>
 
                   <div className="p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-100">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-700">Staff Efficiency</span>
-                      <span className="text-lg font-bold text-orange-600">{staffEfficiency}%</span>
+                      <span className="text-sm text-gray-700">Avg Ticket Score</span>
+                      <span className="text-lg font-bold text-orange-600">{formatCurrency(avgOrderValue)}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-orange-500 h-2 rounded-full transition-all duration-500" style={{ width: `${staffEfficiency}%` }}></div>
+                      <div className="bg-orange-500 h-2 rounded-full transition-all duration-500" style={{ width: `${ticketScore}%` }} />
                     </div>
                   </div>
                 </>

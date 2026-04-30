@@ -41,10 +41,12 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          // Token expired or invalid - logout and redirect to login
+          // Token expired or invalid — logout, then navigate via history to avoid full reload
           useAuthStore.getState().logout();
           toast.error('Session expired. Please login again.');
-          window.location.hash = '#/login';
+          // Use replaceState so history isn't polluted; the router reads the path on next render.
+          window.history.replaceState(null, '', '/login');
+          window.dispatchEvent(new PopStateEvent('popstate'));
           break;
         case 403:
           toast.error('You do not have permission to perform this action');

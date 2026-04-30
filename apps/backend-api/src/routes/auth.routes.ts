@@ -87,12 +87,20 @@ router.post('/login', authLimiter, async (req: Request, res: Response, next: Nex
       { expiresIn: (process.env.JWT_EXPIRES_IN || '30d') as any }
     );
 
+    // Parse JWT_EXPIRES_IN to derive session expiry (keeps DB session aligned with JWT lifetime)
+    const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '30d';
+    const unitMs: Record<string, number> = { d: 86400000, h: 3600000, m: 60000, s: 1000 };
+    const match = jwtExpiresIn.match(/^(\d+)([dhms])$/);
+    const sessionExpiryMs = match
+      ? parseInt(match[1]) * (unitMs[match[2]] ?? 86400000)
+      : 30 * 86400000;
+
     // Create session
     await prisma.session.create({
       data: {
         userId: user.id,
         token,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        expiresAt: new Date(Date.now() + sessionExpiryMs),
       },
     });
 
@@ -213,6 +221,14 @@ router.get('/verify', async (req: Request, res: Response, next: NextFunction) =>
       token,
       process.env.JWT_SECRET as string
     );
+
+    // Verify that a valid (non-expired, non-revoked) DB session exists for this token
+    const session = await prisma.session.findFirst({
+      where: { token, expiresAt: { gte: new Date() } },
+    });
+    if (!session) {
+      throw new AppError('Session expired or revoked. Please login again.', 401);
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },

@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/database';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 import { validatePagination, createPaginationResponse } from '../utils/pagination';
@@ -81,7 +81,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
     }
 
     if (lowStock === 'true') {
-      where.currentStock = { lt: prisma.inventoryItem.fields.minStock as any };
+      where.status = { in: ['LOW_STOCK', 'OUT_OF_STOCK'] };
     }
 
     const [items, total] = await Promise.all([
@@ -104,6 +104,37 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
       data: { 
         items,
         pagination: createPaginationResponse(total, pagination.page, pagination.limit),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Inventory stats summary (total items, value, low-stock count, out-of-stock count)
+router.get('/stats', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const [totalItems, lowStockCount, outOfStockCount, valuationResult] = await Promise.all([
+      prisma.inventoryItem.count({ where: { isActive: true } }),
+      prisma.inventoryItem.count({ where: { isActive: true, status: 'LOW_STOCK' } }),
+      prisma.inventoryItem.count({ where: { isActive: true, status: 'OUT_OF_STOCK' } }),
+      prisma.inventoryItem.findMany({
+        where: { isActive: true },
+        select: { currentStock: true, costPerUnit: true },
+      }),
+    ]);
+
+    const totalValue = valuationResult.reduce(
+      (sum, item) => sum + item.currentStock * item.costPerUnit, 0
+    );
+
+    res.json({
+      success: true,
+      data: {
+        totalItems,
+        lowStockCount,
+        outOfStockCount,
+        totalValue,
       },
     });
   } catch (error) {
@@ -261,7 +292,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
 });
 
 // Create inventory item
-router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const validatedData = createInventoryItemSchema.parse(req.body);
 
@@ -312,7 +343,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
 });
 
 // Update inventory item
-router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = updateInventoryItemSchema.parse(req.body);
 
@@ -487,7 +518,7 @@ router.post('/:id/adjustment', authenticate, async (req: AuthRequest, res: Respo
 });
 
 // Delete inventory item (soft delete)
-router.delete('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.delete('/:id', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.inventoryItem.update({
       where: { id: req.params.id },

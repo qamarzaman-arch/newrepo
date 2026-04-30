@@ -125,7 +125,7 @@ const AdvancedKitchenScreen: React.FC = () => {
     toast.success(item?.completed ? 'Marked as incomplete' : 'Marked as complete');
   };
 
-  const handleStatusUpdate = async (ticketId: string, status: 'NEW' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED') => {
+  const handleStatusUpdate = async (ticketId: string, status: 'NEW' | 'PREPARING' | 'READY' | 'COMPLETED' | 'DELAYED') => {
     try {
       await kitchenService.updateStatus(ticketId, status as KotTicket['status']);
       toast.success(`Ticket marked as ${status}`);
@@ -195,7 +195,7 @@ const AdvancedKitchenScreen: React.FC = () => {
 
   const columns = [
     { id: 'NEW', title: 'New Orders', color: 'border-blue-500', bgColor: 'bg-blue-50' },
-    { id: 'IN_PROGRESS', title: 'In Progress', color: 'border-yellow-500', bgColor: 'bg-yellow-50' },
+    { id: 'PREPARING', title: 'In Progress', color: 'border-yellow-500', bgColor: 'bg-yellow-50' },
     { id: 'COMPLETED', title: 'Completed', color: 'border-green-500', bgColor: 'bg-green-50' },
   ];
 
@@ -380,7 +380,7 @@ const AdvancedKitchenScreen: React.FC = () => {
                                 <motion.button
                                   whileHover={{ scale: 1.05 }}
                                   whileTap={{ scale: 0.95 }}
-                                  onClick={() => handleStatusUpdate(ticket.id, 'IN_PROGRESS')}
+                                  onClick={() => handleStatusUpdate(ticket.id, 'PREPARING')}
                                   className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center justify-center gap-2"
                                 >
                                   <PlayCircle className="w-4 h-4" />
@@ -397,7 +397,7 @@ const AdvancedKitchenScreen: React.FC = () => {
                                 </motion.button>
                               </>
                             )}
-                            {ticket.status === 'IN_PROGRESS' && (
+                            {ticket.status === 'PREPARING' && (
                               <>
                                 <motion.button
                                   whileHover={{ scale: 1.05 }}
@@ -424,7 +424,7 @@ const AdvancedKitchenScreen: React.FC = () => {
                                 <motion.button
                                   whileHover={{ scale: 1.05 }}
                                   whileTap={{ scale: 0.95 }}
-                                  onClick={() => handleStatusUpdate(ticket.id, 'IN_PROGRESS')}
+                                  onClick={() => handleStatusUpdate(ticket.id, 'PREPARING')}
                                   className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center justify-center gap-2"
                                 >
                                   <PlayCircle className="w-4 h-4" />
