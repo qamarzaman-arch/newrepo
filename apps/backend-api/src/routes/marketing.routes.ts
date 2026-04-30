@@ -139,7 +139,17 @@ router.post('/campaigns/:id/send', authenticate, authorize('ADMIN', 'MANAGER'), 
     const customers = await prisma.customer.findMany({ where: customerWhere, select: { id: true } });
 
     const result = await prisma.$transaction(async (tx) => {
-      // Remove existing recipients (idempotent re-send protection not implemented; skipDuplicates would be ideal)
+      // Atomically claim the campaign: only one concurrent send wins.
+      // updateMany with the status guard returns count=0 if another caller already
+      // transitioned it out of DRAFT/SCHEDULED — preventing double-send on rapid clicks.
+      const claim = await tx.marketingCampaign.updateMany({
+        where: { id: campaign.id, status: { in: ['DRAFT', 'SCHEDULED'] } },
+        data: { status: 'ACTIVE', sentAt: now },
+      });
+      if (claim.count === 0) {
+        throw new AppError('Campaign already sent or send in progress', 409);
+      }
+
       await tx.campaignRecipient.deleteMany({ where: { campaignId: campaign.id } });
       if (customers.length > 0) {
         await tx.campaignRecipient.createMany({
@@ -149,18 +159,16 @@ router.post('/campaigns/:id/send', authenticate, authorize('ADMIN', 'MANAGER'), 
             status: 'SENT',
             sentAt: now,
           })),
+          skipDuplicates: true,
         });
       }
-      const updated = await tx.marketingCampaign.update({
+      return tx.marketingCampaign.update({
         where: { id: campaign.id },
         data: {
-          status: 'ACTIVE',
-          sentAt: now,
           recipientsCount: customers.length,
           deliveredCount: customers.length,
         },
       });
-      return updated;
     });
 
     res.json({ success: true, data: { campaign: result, sent: customers.length } });

@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Minus, ShoppingCart, X, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { formatCurrency } from '../../lib/currency';
 
 const API_BASE_URL =
@@ -200,7 +201,7 @@ export default function QrOrderingPage() {
   const placeOrder = async () => {
     if (!token) return;
     if (!customerName.trim()) {
-      alert('Please enter your name');
+      toast.error('Please enter your name');
       return;
     }
     if (Object.keys(cart).length === 0) return;
@@ -224,7 +225,7 @@ export default function QrOrderingPage() {
       setDrawerOpen(false);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: { message?: string } } } };
-      alert(e.response?.data?.error?.message || 'Failed to place order. Please try again.');
+      toast.error(e.response?.data?.error?.message || 'Failed to place order. Please try again.');
     } finally {
       setPlacing(false);
     }

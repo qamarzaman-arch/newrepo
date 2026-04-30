@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { Users, Clock, UserCheck, UserX, Plus, RefreshCw, AlertTriangle, X, Check } from 'lucide-react';
+import toast from 'react-hot-toast';
 import apiClient from '../lib/api';
 
 interface Employee {
@@ -60,7 +61,10 @@ export default function AttendancePage() {
   const activeUserIds = new Set(activeShifts.map(s => s.userId));
 
   const startShift = async () => {
-    if (!selectedEmployee) return alert('Select an employee');
+    if (!selectedEmployee) {
+      toast.error('Select an employee');
+      return;
+    }
     setSaving(true);
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -71,7 +75,7 @@ export default function AttendancePage() {
       setStartTime('');
       await fetchData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to start shift');
+      toast.error(err.response?.data?.message || 'Failed to start shift');
     } finally {
       setSaving(false);
     }
@@ -84,7 +88,7 @@ export default function AttendancePage() {
       await apiClient.patch(`/staff/shifts/${shiftId}`, { endTime: time });
       await fetchData();
     } catch {
-      alert('Failed to end shift');
+      toast.error('Failed to end shift');
     } finally {
       setEndingShiftId(null);
     }

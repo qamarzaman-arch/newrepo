@@ -34,7 +34,10 @@
       "Bash(curl -s http://localhost:3001/api/v1/staff-schedules?startDate=2026-04-01\\\\&endDate=2026-04-30 -H \"Authorization: Bearer fake\")",
       "Bash(grep -nA 15 \"calculate-fee\" \"/c/Users/techl/Documents/Latest Code/apps/backend-api/src/routes/delivery-zone.routes.ts\")",
       "Bash(curl -s -o /dev/null http://localhost:3001/health)",
-      "Bash(curl -s -o /dev/null http://localhost:3000/)"
+      "Bash(curl -s -o /dev/null http://localhost:3000/)",
+      "Bash(git -C \"C:/Users/techl/Documents/Latest Code\" log --oneline -- role-tests.spec.ts apps/pos-desktop/src/renderer/__tests__/role-tests.spec.ts)",
+      "Bash(git -C \"C:/Users/techl/Documents/Latest Code\" ls-files --error-unmatch role-tests.spec.ts)",
+      "Bash(git -C \"C:/Users/techl/Documents/Latest Code\" status --short)"
     ]
   }
 }

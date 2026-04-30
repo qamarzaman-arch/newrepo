@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChefHat, RefreshCw, AlertTriangle, Clock, CheckCircle, Flame, Activity } from 'lucide-react';
+import toast from 'react-hot-toast';
 import apiClient from '../lib/api';
 
 const TICKET_STATUS_STYLES: Record<string, string> = {
@@ -72,7 +73,7 @@ export default function KitchenPage() {
       await apiClient.patch(`/kitchen/tickets/${id}/status`, { status });
       await fetchTickets();
     } catch {
-      alert('Failed to update ticket');
+      toast.error('Failed to update ticket');
     } finally {
       setUpdatingId(null);
     }

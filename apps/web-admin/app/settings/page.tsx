@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { Settings, Save, RefreshCw, AlertTriangle, Check, Plus, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import apiClient from '../lib/api';
 
 interface Setting {
@@ -81,11 +82,11 @@ export default function SettingsPage() {
   const addCustomSetting = () => {
     const key = prompt('Setting key (snake_case, e.g. "low_stock_threshold"):');
     if (!key || !/^[a-z][a-z0-9_]*$/.test(key)) {
-      if (key) alert('Invalid key — use snake_case lowercase letters, numbers, and underscores only.');
+      if (key) toast.error('Invalid key — use snake_case lowercase letters, numbers, and underscores only.');
       return;
     }
     if (settings.some(s => s.key === key)) {
-      alert('A setting with that key already exists.');
+      toast.error('A setting with that key already exists.');
       return;
     }
     setSettings(prev => [...prev, { key, value: '', category: activeCategory, description: null }]);

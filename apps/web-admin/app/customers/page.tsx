@@ -5,6 +5,7 @@ import {
   Users, Search, Plus, RefreshCw, AlertTriangle, Edit2, Trash2,
   X, Check, Star, ChevronLeft, ChevronRight, Phone, Mail,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import apiClient from '../lib/api';
 
 interface Customer {
@@ -80,7 +81,10 @@ export default function CustomersPage() {
   const openEdit = (c: Customer) => { setEditingCustomer(c); setForm({ firstName: c.firstName, lastName: c.lastName, email: c.email || '', phone: c.phone || '' }); setShowModal(true); };
 
   const saveCustomer = async () => {
-    if (!form.firstName) return alert('First name required');
+    if (!form.firstName) {
+      toast.error('First name required');
+      return;
+    }
     setSaving(true);
     try {
       if (editingCustomer) {
@@ -91,7 +95,7 @@ export default function CustomersPage() {
       setShowModal(false);
       await fetchCustomers();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to save customer');
+      toast.error(err.response?.data?.message || 'Failed to save customer');
     } finally {
       setSaving(false);
     }
@@ -103,7 +107,7 @@ export default function CustomersPage() {
       await apiClient.delete(`/customers/${id}`);
       await fetchCustomers();
     } catch {
-      alert('Failed to delete customer');
+      toast.error('Failed to delete customer');
     }
   };
 

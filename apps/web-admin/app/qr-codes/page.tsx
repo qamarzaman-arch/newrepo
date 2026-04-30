@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { Printer, RefreshCw, QrCode as QrCodeIcon, Copy, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import apiClient from '../lib/api';
 
 interface Table {
@@ -84,7 +85,7 @@ export default function QrCodesPage() {
       loadSessions();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: { message?: string } } } };
-      alert(e.response?.data?.error?.message || 'Failed to expire session');
+      toast.error(e.response?.data?.error?.message || 'Failed to expire session');
     }
   };
 
@@ -99,9 +100,9 @@ export default function QrCodesPage() {
   const copyUrl = async (url: string) => {
     try {
       await navigator.clipboard.writeText(url);
-      alert('URL copied to clipboard');
+      toast.success('URL copied to clipboard');
     } catch {
-      // ignore
+      toast.error('Failed to copy URL');
     }
   };
 

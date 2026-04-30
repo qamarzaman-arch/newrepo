@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import {
   LayoutGrid, List, Plus, RefreshCw, AlertTriangle, Edit2, Trash2, X, Check,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import apiClient from '../lib/api';
 
 const STATUS_OPTIONS = ['AVAILABLE', 'OCCUPIED', 'RESERVED', 'NEEDS_CLEANING', 'OUT_OF_ORDER'] as const;
@@ -59,7 +60,10 @@ export default function TablesPage() {
   const openEdit = (t: Table) => { setEditingTable(t); setForm({ tableNumber: t.tableNumber, capacity: t.capacity, location: t.location || '', shape: t.shape || 'RECTANGLE', status: t.status }); setShowModal(true); };
 
   const saveTable = async () => {
-    if (!form.tableNumber) return alert('Table number required');
+    if (!form.tableNumber) {
+      toast.error('Table number required');
+      return;
+    }
     setSaving(true);
     try {
       if (editingTable) {
@@ -70,7 +74,7 @@ export default function TablesPage() {
       setShowModal(false);
       await fetchTables();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to save table');
+      toast.error(err.response?.data?.message || 'Failed to save table');
     } finally {
       setSaving(false);
     }
@@ -81,7 +85,7 @@ export default function TablesPage() {
       await apiClient.patch(`/tables/${id}/status`, { status });
       await fetchTables();
     } catch {
-      alert('Failed to update status');
+      toast.error('Failed to update status');
     }
   };
 
@@ -91,7 +95,7 @@ export default function TablesPage() {
       await apiClient.delete(`/tables/${id}`);
       await fetchTables();
     } catch {
-      alert('Failed to delete table');
+      toast.error('Failed to delete table');
     }
   };
 

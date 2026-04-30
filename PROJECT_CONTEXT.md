@@ -21,6 +21,7 @@
 13. [Authentication Flow](#13-authentication-flow)
 14. [Common Patterns & Conventions](#14-common-patterns--conventions)
 15. [Fixed Issues Reference](#15-fixed-issues-reference)
+15a. [Button / Functionality Audit (April 2026)](#15a-button--functionality-audit-april-2026)
 16. [Debugging Guide](#16-debugging-guide)
 
 ---
@@ -62,7 +63,7 @@ root/
 │   ├── backend-api/              # Express REST API
 │   │   ├── prisma/
 │   │   │   ├── schema.prisma     # Database schema (MySQL)
-│   │   │   ├── migrations/       # 5 migration files (Apr 18–27, 2026)
+│   │   │   ├── migrations/       # 7 migration files (Apr 18–29, 2026)
 │   │   │   └── seed.ts
 │   │   └── src/
 │   │       ├── server.ts         # App entry point
@@ -75,7 +76,7 @@ root/
 │   │       │   ├── csrfProtection.ts  # Origin/Referer validation
 │   │       │   ├── errorHandler.ts    # Global error handler
 │   │       │   └── rateLimiter.ts     # General + auth-specific limiters
-│   │       ├── routes/           # 32 route files (see §6)
+│   │       ├── routes/           # 38 route files (see §6)
 │   │       ├── services/
 │   │       │   ├── commission.service.ts
 │   │       │   ├── loyalty.service.ts
@@ -110,7 +111,7 @@ root/
 │   │               └── KitchenLayout.tsx
 │   │
 │   └── web-admin/
-│       └── app/                      # Next.js App Router
+│       └── app/                      # Next.js App Router (25 pages)
 │           ├── layout.tsx            # Root layout + auth gate
 │           ├── page.tsx              # Dashboard home
 │           ├── middleware.ts         # Route protection + role RBAC
@@ -122,15 +123,30 @@ root/
 │           │   ├── api.ts            # Axios client
 │           │   ├── auth.ts           # Cookie-based auth helpers
 │           │   └── currency.ts
+│           ├── attendance/page.tsx
+│           ├── branches/page.tsx
+│           ├── customers/page.tsx
 │           ├── delivery-zones/page.tsx
+│           ├── external-orders/page.tsx
+│           ├── feature-access/page.tsx
+│           ├── finance/page.tsx
 │           ├── inventory/page.tsx
+│           ├── kitchen/page.tsx
 │           ├── login/page.tsx
+│           ├── marketing/page.tsx
 │           ├── menu/page.tsx
+│           ├── orders/page.tsx
 │           ├── purchase-orders/page.tsx
+│           ├── qr-codes/page.tsx
+│           ├── qr/[token]/page.tsx   # Public QR-ordering customer page
 │           ├── recipes/page.tsx
 │           ├── reports/page.tsx
+│           ├── reviews/page.tsx
+│           ├── settings/page.tsx
 │           ├── staff/page.tsx
-│           └── staff-schedule/page.tsx
+│           ├── staff-schedule/page.tsx
+│           ├── tables/page.tsx
+│           └── tax/page.tsx
 │
 └── packages/
     ├── shared-types/src/
@@ -408,8 +424,14 @@ enum OrderType {
 | `commission.routes.ts` | Staff commission tracking |
 | `staff-schedule.routes.ts` | Schedule CRUD |
 | `order-modification.routes.ts` | Audit trail for order changes |
-| `discount.routes.ts` | Discounts + promos |
-| `index.ts` | Router composition |
+| `branch.routes.ts` | Multi-branch management |
+| `marketing.routes.ts` | Email/SMS campaign CRUD + send |
+| `review.routes.ts` | Customer reviews + reply/hide moderation |
+| `accounting.routes.ts` | Chart of accounts, P&L, balance sheet, journal entries |
+| `tax.routes.ts` | Tax submissions + retry |
+| `external-platform.routes.ts` | Aggregator orders (Uber/DoorDash-style) accept/reject |
+| `qr-ordering.routes.ts` | Public QR ordering sessions, menu, place/track order |
+| `index.ts` | Router composition (mounts all 38 routers under `/api/v1`) |
 
 ### Cron Jobs (`src/jobs/sessionCleanup.ts`)
 
@@ -566,7 +588,7 @@ img-src 'self' data:; connect-src 'self' http://localhost:* ws://localhost:*
 - `app/lib/auth.ts` — `setAuth()`, `getToken()`, `getUser()`, `clearAuth()`, `isAuthenticated()`
 - `app/middleware.ts` — reads `auth_token` cookie; protects all routes except `/login`; enforces role check: `/staff` and `/reports` require ADMIN or MANAGER role
 
-### All Pages
+### All Pages (25)
 
 | Route | File | Description |
 |-------|------|-------------|
@@ -575,11 +597,26 @@ img-src 'self' data:; connect-src 'self' http://localhost:* ws://localhost:*
 | `/menu` | `app/menu/page.tsx` | Menu items CRUD with price validation (price must be > 0) |
 | `/inventory` | `app/inventory/page.tsx` | Stock levels, adjustments |
 | `/staff` | `app/staff/page.tsx` | Staff management (admin-only route) |
-| `/staff-schedule` | `app/staff-schedule/page.tsx` | Weekly schedule view |
+| `/staff-schedule` | `app/staff-schedule/page.tsx` | Weekly schedule view + swap requests |
 | `/delivery-zones` | `app/delivery-zones/page.tsx` | Zone management with working Edit + Create + Delete |
 | `/purchase-orders` | `app/purchase-orders/page.tsx` | PO creation with item rows (description, qty, unit price) |
 | `/recipes` | `app/recipes/page.tsx` | Recipe management |
-| `/reports` | `app/reports/page.tsx` | Sales + staff reports (admin-only route) |
+| `/reports` | `app/reports/page.tsx` | Sales + staff reports + CSV export (admin-only route) |
+| `/orders` | `app/orders/page.tsx` | Orders list, status updates, summary panel |
+| `/customers` | `app/customers/page.tsx` | Customer CRUD + loyalty tier viewer |
+| `/tables` | `app/tables/page.tsx` | Tables CRUD + status updates |
+| `/kitchen` | `app/kitchen/page.tsx` | KOT board with 15s auto-refresh + status transitions |
+| `/attendance` | `app/attendance/page.tsx` | Clock-in/clock-out shifts |
+| `/feature-access` | `app/feature-access/page.tsx` | Role × feature matrix toggle + reset defaults |
+| `/settings` | `app/settings/page.tsx` | Key-value settings bulk edit |
+| `/branches` | `app/branches/page.tsx` | Multi-branch CRUD + active toggle |
+| `/finance` | `app/finance/page.tsx` | P&L, Balance Sheet, Journal Entries (with void) |
+| `/marketing` | `app/marketing/page.tsx` | Campaign CRUD + send |
+| `/reviews` | `app/reviews/page.tsx` | Reviews list, reply, hide |
+| `/tax` | `app/tax/page.tsx` | Tax submission + retry |
+| `/external-orders` | `app/external-orders/page.tsx` | Aggregator orders accept/reject (30s auto-refresh) |
+| `/qr-codes` | `app/qr-codes/page.tsx` | Generate / expire / print QR ordering sessions |
+| `/qr/[token]` | `app/qr/[token]/page.tsx` | Public customer QR ordering page (uses `publicApi`, no auth required) |
 
 ### Key Components
 
@@ -844,6 +881,41 @@ This section documents all issues fixed in the April 2026 review. Useful if simi
 | 33 | Delivery zone edit not implemented | `web-admin/app/delivery-zones/page.tsx` | Edit button populates form; submits PUT on update |
 | 34 | UserRole missing STAFF | `packages/shared-types/src/index.ts` | Added `'STAFF'` to UserRole union |
 | 35 | Storage key constants unused | `packages/shared-types/src/constants.ts` | `AUTH_TOKEN` updated to `'auth_token'` |
+
+---
+
+## 15a. Button / Functionality Audit (April 2026)
+
+A full-application sweep was performed verifying that **every clickable element executes real persistence** (API call, service method, store mutation, or hardware IPC) — no mocks, no stubs, no placeholders.
+
+### Coverage
+- POS Desktop: 29 screens audited (cashier flow, kitchen, delivery, admin/manager)
+- Web Admin: 25 pages audited (10 documented + 15 previously undocumented)
+- Shared components in `apps/pos-desktop/src/renderer/components/` and `packages/ui-components/`
+
+### Anti-pattern scans (all returned 0 matches)
+- Empty handlers `onClick={() => {}}`
+- No-op handlers (`null` / `undefined` / `noop` / `void 0`)
+- Hardcoded `const mock|fake|dummy|sample` data arrays
+- "Coming Soon" / "Not Implemented" UI text
+- Always-`disabled={true}` buttons in POS screens
+
+### Minor non-blocking findings
+- `apps/pos-desktop/src/renderer/components/EnhancedErrorBoundary.tsx:80` — `// TODO: Send to backend error tracking service` (Sentry-style hook). Boundary works; this is a future enhancement.
+
+### Resolved during the audit
+- **Marketing send idempotency** (`apps/backend-api/src/routes/marketing.routes.ts`) — replaced the pre-check with an atomic `updateMany` claim inside the transaction (`status IN [DRAFT, SCHEDULED] → ACTIVE`). Concurrent send requests now race on the where-clause; only one wins, the loser receives `409 Campaign already sent or send in progress`. Recipient inserts use `skipDuplicates: true` for belt-and-braces.
+- **`alert()` → `react-hot-toast`** — replaced 17 native `alert()` calls across 7 web-admin pages (`attendance`, `customers`, `kitchen`, `qr-codes`, `qr/[token]`, `settings`, `tables`). Toast UX uses `toast.error(...)` for failures and `toast.success(...)` for confirmations; the `<Toaster>` is already mounted in `app/layout.tsx` (renders on public QR page too).
+- **Duplicate `role-tests.spec.ts` removed** — root-level copy contained hardcoded test passwords (`admin123`, etc.); the canonical version at `apps/pos-desktop/src/renderer/__tests__/role-tests.spec.ts` reads them from `process.env.TEST_*_PASSWORD` via `.env.test`. Stale duplicate deleted via `git rm`.
+
+### Web-admin pages added in this audit (previously undocumented)
+`/orders`, `/customers`, `/tables`, `/kitchen`, `/attendance`, `/feature-access`, `/settings`, `/branches`, `/finance`, `/marketing`, `/reviews`, `/tax`, `/external-orders`, `/qr-codes`, `/qr/[token]`
+
+### Backend routes added in this audit (previously undocumented)
+`branch.routes.ts`, `marketing.routes.ts`, `review.routes.ts`, `accounting.routes.ts`, `tax.routes.ts`, `external-platform.routes.ts`, `qr-ordering.routes.ts`
+
+### Database migration added
+`20260429064438_add_competitor_features` (Apr 29 2026) — schema additions backing branches, marketing, reviews, accounting, tax, external-platform, and qr-ordering features.
 
 ---
 
