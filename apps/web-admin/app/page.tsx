@@ -156,9 +156,12 @@ export default function Home() {
       </header>
 
       {error && (
+        // QA C16: render the server-controlled error inside a container that
+        // does NOT echo it raw inside <code> for "free" — we constrain to a
+        // short text only and present a fixed remediation hint.
         <div className="bg-amber-50 border border-amber-200 text-amber-700 p-4 rounded-2xl flex items-center gap-3">
-          <AlertTriangle size={20} />
-          {error} — Backend may not be running. Start with <code className="bg-amber-100 px-2 py-0.5 rounded text-xs">npm run dev:api</code>
+          <AlertTriangle size={20} aria-hidden="true" />
+          <span>{String(error).slice(0, 200)} — Backend may not be running. Start with <code className="bg-amber-100 px-2 py-0.5 rounded text-xs">npm run dev:api</code></span>
         </div>
       )}
 
@@ -170,8 +173,9 @@ export default function Home() {
             Real-Time Low Stock Alerts ({lowStockAlerts.length})
           </div>
           <div className="space-y-1 max-h-32 overflow-y-auto">
-            {lowStockAlerts.slice(0, 5).map((alert: any, idx: number) => (
-              <div key={idx} className="text-xs text-red-600 bg-white/50 px-3 py-2 rounded-lg">
+            {lowStockAlerts.slice(0, 5).map((alert: any) => (
+              // QA C14: stable key via alert id so reorders don't break reconciliation.
+              <div key={alert.id ?? alert.name} className="text-xs text-red-600 bg-white/50 px-3 py-2 rounded-lg">
                 ⚠️ {alert.name || 'Item'} is running low on stock
               </div>
             ))}

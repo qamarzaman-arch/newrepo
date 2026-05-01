@@ -1,7 +1,14 @@
+# QA D34-D37: hardened compose
+#  - secrets via env (no defaults that ship with the image)
+#  - read-only filesystems where possible + tmpfs for /tmp
+#  - cap drops, no-new-privileges, resource limits
+#  - DB port no longer published to host by default (override in dev compose)
+#  - explicit healthcheck deps so dependents wait for ready, not just up
+#  - named network for service-to-service isolation
+
 version: '3.8'
 
 services:
-  # MySQL Database
   db:
     image: mysql:8.0
     container_name: pos_mysql
@@ -11,16 +18,28 @@ services:
       MYSQL_DATABASE: ${DB_NAME?DB_NAME is required}
       MYSQL_USER: ${DB_USER?DB_USER is required}
       MYSQL_PASSWORD: ${DB_PASSWORD?DB_PASSWORD is required}
-    ports:
-      - "3306:3306"
+    # QA D35: DB port not exposed to host in prod compose. Set DB_PORT_HOST in
+    # docker-compose.override.yml for local debugging.
+    expose:
+      - "3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    networks:
+      - pos_internal
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 10s
       retries: 10
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
 
-  # Backend API
   backend:
     build:
       context: ./apps/backend-api
@@ -30,22 +49,50 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: mysql://${DB_USER?DB_USER is required}:${DB_PASSWORD?DB_PASSWORD is required}@db:3306/${DB_NAME?DB_NAME is required}
+      DATABASE_URL: mysql://${DB_USER}:${DB_PASSWORD}@db:3306/${DB_NAME}
       JWT_SECRET: ${JWT_SECRET?JWT_SECRET is required}
       CORS_ORIGIN: ${CORS_ORIGIN?CORS_ORIGIN is required}
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      FORCE_HTTPS: ${FORCE_HTTPS:-true}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
     ports:
       - "3001:3001"
+    networks:
+      - pos_internal
+      - pos_external
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    # QA D36: capabilities drop + no-new-privileges. Backend doesn't bind low
+    # ports or need raw sockets, so it can drop everything except chown
+    # (needed for the node user to write logs) and net_bind_service.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - NET_BIND_SERVICE
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    volumes:
+      - backend_logs:/app/logs
+      - audit_archive:/app/audit-archive
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
 
-  # Web Admin (Next.js)
   web-admin:
     build:
       context: ./apps/web-admin
@@ -55,10 +102,45 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL?NEXT_PUBLIC_API_URL is required}
+      SERVER_ACTIONS_ALLOWED_ORIGINS: ${SERVER_ACTIONS_ALLOWED_ORIGINS:-}
     ports:
       - "3002:3000"
+    networks:
+      - pos_external
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - NET_BIND_SERVICE
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/.next/cache:size=128m,mode=0755
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+networks:
+  pos_internal:
+    driver: bridge
+    internal: true   # DB-only network; no outbound for db
+  pos_external:
+    driver: bridge
 
 volumes:
   mysql_data:
+  backend_logs:
+  audit_archive:

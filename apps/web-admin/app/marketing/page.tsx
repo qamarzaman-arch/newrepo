@@ -357,11 +357,24 @@ export default function MarketingPage() {
             />
           </div>
           <div>
-            <label className="text-sm font-bold text-gray-700">Schedule For</label>
+            <label className="text-sm font-bold text-gray-700" htmlFor="campaign-schedule">Schedule For</label>
             <input
+              id="campaign-schedule"
               type="datetime-local"
               value={form.scheduledAt}
-              onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })}
+              // QA C54: prevent scheduling for the past.
+              min={new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v && new Date(v).getTime() < Date.now()) {
+                  // Snap to "now" rather than rejecting silently.
+                  const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
+                    .toISOString().slice(0, 16);
+                  setForm({ ...form, scheduledAt: now });
+                  return;
+                }
+                setForm({ ...form, scheduledAt: v });
+              }}
               className="mt-1 w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-[#E53935] rounded-xl focus:outline-none"
             />
           </div>

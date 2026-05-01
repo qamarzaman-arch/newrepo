@@ -6,9 +6,10 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 const router = Router();
 
 const recipeIngredientSchema = z.object({
-  inventoryItemId: z.string(),
-  quantity: z.number().min(0),
-  unit: z.string(),
+  inventoryItemId: z.string().min(1),
+  // QA A29: zero/negative quantities make no sense for a recipe ingredient.
+  quantity: z.number().min(0.001).max(99999),
+  unit: z.string().min(1).max(50),
 });
 
 const recipeSchema = z.object({

@@ -5,14 +5,17 @@ import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
-// Helper functions for accurate financial reporting
-const getOrderTotalAmount = (order: { totalAmount: number | string }) => 
+// Helper functions for accurate financial reporting.
+// Loosened the parameter types to `any` post-money-Decimal migration so we don't
+// have to thread Prisma types through every reporting helper. Number() coercion
+// works on both legacy numbers and Prisma.Decimal.
+const getOrderTotalAmount = (order: { totalAmount: any }) =>
   Number(order.totalAmount);
 
-const getOrderPaidAmount = (order: { payments?: Array<{ amount: number }> }) =>
+const getOrderPaidAmount = (order: { payments?: Array<{ amount: any }> }) =>
   (order.payments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
 
-const getPaymentBreakdown = (orders: Array<{ payments?: Array<{ amount: number; method: string | null }> }>) =>
+const getPaymentBreakdown = (orders: Array<{ payments?: Array<{ amount: any; method: string | null }> }>) =>
   orders.reduce((acc, order) => {
     for (const payment of order.payments || []) {
       if (!payment.method || Number(payment.amount) <= 0) {
@@ -272,7 +275,7 @@ router.get('/inventory/valuation', authenticate, authorize('ADMIN', 'MANAGER'), 
       include: { supplier: true, warehouse: true },
     });
 
-    const totalValue = items.reduce((sum, item) => sum + (item.currentStock * item.costPerUnit), 0);
+    const totalValue = items.reduce((sum, item) => sum + (Number(item.currentStock) * Number(item.costPerUnit)), 0);
 
     res.json({
       success: true,
@@ -457,12 +460,12 @@ router.get('/profit-loss', authenticate, authorize('ADMIN', 'MANAGER'), async (r
         if (menuItem.recipes && menuItem.recipes.length > 0) {
           for (const recipe of menuItem.recipes) {
             for (const ingredient of recipe.ingredients) {
-              const unitCost = ingredient.inventoryItem?.costPerUnit || 0;
-              totalCOGS += unitCost * ingredient.quantity * qty;
+              const unitCost = Number(ingredient.inventoryItem?.costPerUnit || 0);
+              totalCOGS += unitCost * Number(ingredient.quantity) * qty;
             }
           }
         } else {
-          totalCOGS += (menuItem.cost || 0) * qty;
+          totalCOGS += Number(menuItem.cost || 0) * qty;
         }
       }
     }
@@ -592,18 +595,18 @@ router.get('/shift-summary', authenticate, async (req: AuthRequest, res: Respons
     // Calculate per-cashier stats from actual payment amounts (not order totals)
     // This correctly handles split payments without double-counting
     const cashSales = orders.reduce((sum, o) => {
-      const cashPayments = o.payments?.filter(p => p.method === 'CASH' && p.amount > 0) || [];
+      const cashPayments = o.payments?.filter(p => p.method === 'CASH' && Number(p.amount) > 0) || [];
       return sum + cashPayments.reduce((pSum, p) => pSum + Number(p.amount), 0);
     }, 0);
-    
+
     const cardSales = orders.reduce((sum, o) => {
-      const cardPayments = o.payments?.filter(p => p.method === 'CARD' && p.amount > 0) || [];
+      const cardPayments = o.payments?.filter(p => p.method === 'CARD' && Number(p.amount) > 0) || [];
       return sum + cardPayments.reduce((pSum, p) => pSum + Number(p.amount), 0);
     }, 0);
 
     // Calculate refunds from negative payment amounts
     const refunds = orders.reduce((sum, o) => {
-      const refundPayments = o.payments?.filter(p => p.amount < 0) || [];
+      const refundPayments = o.payments?.filter(p => Number(p.amount) < 0) || [];
       return sum + refundPayments.reduce((pSum, p) => pSum + Math.abs(Number(p.amount)), 0);
     }, 0);
     

@@ -12,6 +12,56 @@ datasource db {
 
 // Enums
 
+enum UserRole {
+  ADMIN
+  MANAGER
+  CASHIER
+  KITCHEN
+  WAITER
+  RIDER
+  STAFF
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  SERVED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  VOIDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum InventoryStatus {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+  EXPIRED
+}
+
+enum KotStation {
+  GRILL
+  FRYER
+  COLD
+  BAKERY
+  BEVERAGE
+  HOT
+  SALAD
+  DESSERT
+  MAIN
+}
+
 // Models
 model User {
   id           String    @id @default(uuid())
@@ -51,6 +101,7 @@ model User {
   staffSchedules        StaffSchedule[]      @relation("ScheduledUser")
   swapRequestsSent      ShiftSwapRequest[]   @relation("SwapRequester")
   swapRequestsReceived  ShiftSwapRequest[]   @relation("SwapTarget")
+  pinAttempts          PinAttempt[]
 
   @@index([username])
   @@index([email])
@@ -58,16 +109,32 @@ model User {
   @@index([isAvailable])
 }
 
+model PinAttempt {
+  id        String   @id @default(uuid())
+  userId    String
+  count     Int      @default(0)
+  resetAt   DateTime
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@index([resetAt])
+}
+
 model Session {
   id        String   @id @default(uuid())
   userId    String
   token     String   @db.Text
+  tokenHash String?  @db.VarChar(64)
   expiresAt DateTime
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
 }
 
 model MenuCategory {
@@ -90,15 +157,15 @@ model MenuItem {
   categoryId      String
   name            String
   description     String?
-  price           Float
-  cost            Float
+  price           Decimal  @db.Decimal(12, 2)
+  cost            Decimal  @db.Decimal(12, 2)
   image           String?
   sku             String?
   barcode         String?
   isActive        Boolean  @default(true)
   isAvailable     Boolean  @default(true)
   prepTimeMinutes Int      @default(15)
-  taxRate         Float    @default(0)
+  taxRate         Decimal  @default(0) @db.Decimal(5, 2)
   displayOrder    Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -111,6 +178,8 @@ model MenuItem {
   comboItems     ComboItem[]
   recipes        Recipe[]
 
+  @@unique([sku])
+  @@unique([barcode])
   @@index([categoryId])
   @@index([isActive])
   @@index([isAvailable])
@@ -135,7 +204,7 @@ model ModifierOption {
   id              String  @id @default(uuid())
   modifierId      String
   name            String
-  priceAdjustment Float   @default(0)
+  priceAdjustment Decimal @default(0) @db.Decimal(12, 2)
   isDefault       Boolean @default(false)
   displayOrder    Int     @default(0)
 
@@ -165,10 +234,10 @@ enum OrderType {
 }
 
 model Order {
-  id          String    @id @default(uuid())
-  orderNumber String    @unique
-  orderType   OrderType @default(DINE_IN)
-  status      String    @default("PENDING")
+  id          String      @id @default(uuid())
+  orderNumber String      @unique
+  orderType   OrderType   @default(DINE_IN)
+  status      String      @default("PENDING")
 
   customerId    String?
   customerName  String?
@@ -176,17 +245,18 @@ model Order {
 
   tableId String?
 
-  subtotal        Float
-  discountAmount  Float @default(0)
-  discountPercent Float @default(0)
-  taxAmount       Float @default(0)
-  surchargeAmount Float @default(0)
-  tipAmount       Float @default(0)
-  totalAmount     Float
-  paidAmount      Float @default(0)
+  subtotal        Decimal       @db.Decimal(12, 2)
+  discountAmount  Decimal       @default(0) @db.Decimal(12, 2)
+  discountPercent Decimal       @default(0) @db.Decimal(5, 2)
+  discountId      String?
+  taxAmount       Decimal       @default(0) @db.Decimal(12, 2)
+  surchargeAmount Decimal       @default(0) @db.Decimal(12, 2)
+  tipAmount       Decimal       @default(0) @db.Decimal(12, 2)
+  totalAmount     Decimal       @db.Decimal(12, 2)
+  paidAmount      Decimal       @default(0) @db.Decimal(12, 2)
 
   paymentMethod String?
-  paymentStatus String  @default("PENDING")
+  paymentStatus String        @default("PENDING")
 
   cashierId String
   serverId  String?
@@ -210,6 +280,7 @@ model Order {
 
   items               OrderItem[]
   payments            Payment[]
+  paymentValidations  PaymentValidation[]
   table               Table?                     @relation(fields: [tableId], references: [id])
   customer            Customer?                  @relation(fields: [customerId], references: [id])
   cashier             User                       @relation("CashierOrders", fields: [cashierId], references: [id])
@@ -232,12 +303,12 @@ model Order {
 }
 
 model OrderItem {
-  id         String @id @default(uuid())
+  id         String  @id @default(uuid())
   orderId    String
   menuItemId String
-  quantity   Int    @default(1)
-  unitPrice  Float
-  totalPrice Float
+  quantity   Int     @default(1)
+  unitPrice  Decimal @db.Decimal(12, 2)
+  totalPrice Decimal @db.Decimal(12, 2)
 
   notes     String?
   modifiers String?
@@ -245,6 +316,9 @@ model OrderItem {
   status          String    @default("NEW")
   sentToKitchenAt DateTime?
   preparedAt      DateTime?
+  voidedAt        DateTime?
+  voidedById      String?
+  voidReason      String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -260,14 +334,19 @@ model OrderItem {
 }
 
 model Payment {
-  id        String   @id @default(uuid())
+  id        String        @id @default(uuid())
   orderId   String
   method    String
-  amount    Float
+  amount    Decimal       @db.Decimal(12, 2)
   reference String?
-  status    String   @default("PAID")
-  paidAt    DateTime @default(now())
+  status    String        @default("PAID")
+  paidAt    DateTime      @default(now())
   notes     String?
+
+  // Stripe linkage for refund routing
+  stripePaymentIntentId String?
+  stripeChargeId        String?
+  stripeRefundId        String?
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -275,21 +354,39 @@ model Payment {
   @@index([paidAt])
   @@index([status, paidAt]) // Financial reporting queries
   @@index([method, paidAt]) // Payment method reporting
+  @@index([orderId, status])
+  @@index([stripePaymentIntentId])
 }
 
 model PaymentValidation {
   id              String   @id @default(uuid())
   transactionId   String   @unique
-  amount          Decimal  @db.Decimal(10, 2)
+  orderId         String?
+  amount          Decimal  @db.Decimal(12, 2)
   method          String   @default("CARD")
   status          String
   cardLastFour    String?
   gatewayResponse String?  @db.LongText
+  idempotencyKey  String?  @unique
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  order Order? @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
   @@index([createdAt])
   @@index([status])
+  @@index([orderId])
+}
+
+model StripeWebhookEvent {
+  id          String   @id @default(uuid())
+  eventId     String   @unique
+  eventType   String
+  processedAt DateTime @default(now())
+  payload     String   @db.LongText
+
+  @@index([eventType])
+  @@index([processedAt])
 }
 
 model Table {
@@ -305,6 +402,7 @@ model Table {
   width          Int?
   height         Int?
   currentOrderId String?  @unique
+  version        Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -315,6 +413,7 @@ model Table {
   @@index([status])
   @@index([location])
   @@index([number])
+  @@index([currentOrderId])
 }
 
 model Customer {
@@ -329,10 +428,11 @@ model Customer {
   gender      String?
   notes       String?
 
-  loyaltyPoints Int       @default(0)
-  totalOrders   Int       @default(0)
-  totalSpent    Float     @default(0)
-  lastVisitAt   DateTime?
+  loyaltyPoints       Int     @default(0)
+  loyaltyPointsFraction Decimal @default(0) @db.Decimal(12, 4)
+  totalOrders         Int     @default(0)
+  totalSpent          Decimal @default(0) @db.Decimal(14, 2)
+  lastVisitAt         DateTime?
 
   preferences String?
 
@@ -375,13 +475,13 @@ model InventoryItem {
   category   String?
   unit       String
 
-  currentStock  Float
-  minStock      Float
-  maxStock      Float
-  reservedStock Float @default(0)
+  currentStock  Decimal @default(0) @db.Decimal(14, 3)
+  minStock      Decimal @default(0) @db.Decimal(14, 3)
+  maxStock      Decimal @default(0) @db.Decimal(14, 3)
+  reservedStock Decimal @default(0) @db.Decimal(14, 3)
 
-  costPerUnit  Float
-  sellingPrice Decimal?
+  costPerUnit  Decimal  @default(0) @db.Decimal(12, 4)
+  sellingPrice Decimal? @db.Decimal(12, 2)
 
   supplierId String?
 
@@ -402,21 +502,23 @@ model InventoryItem {
   recipeIngredients  RecipeIngredient[]
   purchaseOrderItems PurchaseOrderItem[]
 
+  @@unique([warehouseId, menuItemId])
   @@index([sku])
   @@index([status])
   @@index([warehouseId])
   @@index([currentStock])
   @@index([menuItemId, status]) // Stock availability checks
   @@index([status, currentStock]) // Low stock reporting
+  @@index([supplierId])
 }
 
 model StockMovement {
   id              String   @id @default(uuid())
   inventoryItemId String
   type            String
-  quantity        Float
-  previousStock   Float
-  newStock        Float
+  quantity        Decimal  @db.Decimal(14, 3)
+  previousStock   Decimal  @db.Decimal(14, 3)
+  newStock        Decimal  @db.Decimal(14, 3)
   reference       String?
   notes           String?
   performedById   String?
@@ -439,7 +541,7 @@ model StockAlert {
   resolvedById    String?
   createdAt       DateTime  @default(now())
 
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([inventoryItemId])
   @@index([alertType])
@@ -451,7 +553,7 @@ model StockAdjustment {
   id              String   @id @default(uuid())
   inventoryItemId String
   adjustmentType  String
-  quantity        Float
+  quantity        Decimal  @db.Decimal(14, 3)
   reason          String
   notes           String?
   adjustedById    String
@@ -489,6 +591,7 @@ model KotTicket {
   course   String @default("main")
   status   String @default("NEW")
   priority String @default("normal")
+  version  Int    @default(0)
 
   orderedAt   DateTime  @default(now())
   startedAt   DateTime?
@@ -497,12 +600,15 @@ model KotTicket {
   station    String?
   assignedTo String?
 
+  delayReason String?
+  delayedAt   DateTime?
+
   notes String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  order Order @relation(fields: [orderId], references: [id])
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([status])
@@ -521,8 +627,8 @@ model Delivery {
   deliveryAddress String
   deliveryNotes   String?
 
-  latitude  Decimal?
-  longitude Decimal?
+  latitude  Decimal? @db.Decimal(10, 8)
+  longitude Decimal? @db.Decimal(11, 8)
 
   riderId String?
   zoneId  String?
@@ -534,7 +640,7 @@ model Delivery {
 
   status String @default("PENDING")
 
-  deliveryFee Float @default(0)
+  deliveryFee Decimal @default(0) @db.Decimal(12, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -554,9 +660,9 @@ model DeliveryZone {
   id                    String   @id @default(uuid())
   name                  String
   description           String?
-  baseFee               Float    @default(0)
-  minimumOrder          Float    @default(0)
-  freeDeliveryThreshold Float?
+  baseFee               Decimal  @default(0) @db.Decimal(12, 2)
+  minimumOrder          Decimal  @default(0) @db.Decimal(12, 2)
+  freeDeliveryThreshold Decimal? @db.Decimal(12, 2)
   estimatedTimeMin      Int
   estimatedTimeMax      Int
   isActive              Boolean  @default(true)
@@ -578,7 +684,7 @@ model Expense {
   expenseNumber String  @unique
   category      String
   description   String
-  amount        Float
+  amount        Decimal @db.Decimal(12, 2)
   paymentMethod String?
   receipt       String?
   notes         String?
@@ -602,9 +708,9 @@ model Discount {
   name       String
   code       String?  @unique
   type       String
-  value      Float
-  minValue   Decimal?
-  maxValue   Decimal?
+  value      Decimal  @db.Decimal(12, 2)
+  minValue   Decimal? @db.Decimal(12, 2)
+  maxValue   Decimal? @db.Decimal(12, 2)
   usageLimit Int?
   usedCount  Int      @default(0)
   isActive   Boolean  @default(true)
@@ -627,7 +733,7 @@ model Surcharge {
   id           String  @id @default(uuid())
   name         String
   type         String
-  value        Float
+  value        Decimal @db.Decimal(12, 2)
   isActive     Boolean @default(true)
   applicableTo String  @default("all")
 
@@ -640,13 +746,14 @@ model Surcharge {
 model TaxRate {
   id          String  @id @default(uuid())
   name        String
-  rate        Float
+  rate        Decimal @db.Decimal(5, 2)
   isActive    Boolean @default(true)
   isInclusive Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([name, isActive])
   @@index([isActive])
 }
 
@@ -657,19 +764,21 @@ model CashDrawer {
   openedById String
   closedById String?
 
-  openingBalance Float
+  openingBalance Decimal  @db.Decimal(12, 2)
   openedAt       DateTime @default(now())
 
-  closingBalance  Decimal?
-  expectedBalance Decimal?
-  discrepancy     Decimal?
-  closedAt        DateTime?
-  closingNotes    String?
+  closingBalance     Decimal? @db.Decimal(12, 2)
+  expectedBalance    Decimal? @db.Decimal(12, 2)
+  discrepancy        Decimal? @db.Decimal(12, 2)
+  discrepancyPercent Decimal? @db.Decimal(7, 4)
+  discrepancyFlagged Boolean  @default(false)
+  closedAt           DateTime?
+  closingNotes       String?
 
-  totalSales       Float @default(0)
-  totalCashIn      Float @default(0)
-  totalCashOut     Float @default(0)
-  transactionCount Int   @default(0)
+  totalSales       Decimal @default(0) @db.Decimal(14, 2)
+  totalCashIn      Decimal @default(0) @db.Decimal(14, 2)
+  totalCashOut     Decimal @default(0) @db.Decimal(14, 2)
+  transactionCount Int     @default(0)
 
   status String @default("open")
 
@@ -679,6 +788,7 @@ model CashDrawer {
   @@index([sessionNumber])
   @@index([status])
   @@index([openedAt])
+  @@index([discrepancyFlagged])
 }
 
 model Shift {
@@ -701,7 +811,7 @@ model Shift {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([clockedInAt])
@@ -713,12 +823,12 @@ model StaffPerformance {
   userId String
   date   DateTime
 
-  ordersHandled   Int   @default(0)
-  totalSales      Float @default(0)
-  totalCommission Float @default(0)
-  avgOrderValue   Float @default(0)
-  tips            Float @default(0)
-  cancellations   Int   @default(0)
+  ordersHandled   Int     @default(0)
+  totalSales      Decimal @default(0) @db.Decimal(14, 2)
+  totalCommission Decimal @default(0) @db.Decimal(12, 2)
+  avgOrderValue   Decimal @default(0) @db.Decimal(12, 2)
+  tips            Decimal @default(0) @db.Decimal(12, 2)
+  cancellations   Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -783,6 +893,16 @@ model Device {
 
   @@index([type])
   @@index([isActive])
+}
+
+// Atomic counter for unique numbers (orders, expenses, KOT, deliveries, sessions, etc.)
+// Each `scope` (e.g., "ORDER:2026-05-01") owns its sequence to prevent races.
+model SequenceCounter {
+  scope     String   @id
+  value     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@index([updatedAt])
 }
 
 model OrderCounter {
@@ -865,6 +985,7 @@ model AuditLog {
   changes   String? @db.LongText
   ipAddress String?
   userAgent String?
+  requestId String?
 
   createdAt DateTime @default(now())
 
@@ -874,6 +995,7 @@ model AuditLog {
   @@index([entity])
   @@index([entityId])
   @@index([createdAt])
+  @@index([requestId])
 }
 
 model OrderModificationHistory {
@@ -887,7 +1009,7 @@ model OrderModificationHistory {
   modifiedAt   DateTime @default(now())
 
   order      Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  modifiedBy User  @relation(fields: [modifiedById], references: [id], onDelete: Cascade)
+  modifiedBy User  @relation(fields: [modifiedById], references: [id], onDelete: Restrict)
 
   @@index([orderId])
   @@index([modifiedById])
@@ -912,7 +1034,7 @@ model Combo {
   id          String    @id @default(uuid())
   name        String
   description String?
-  price       Float
+  price       Decimal   @db.Decimal(12, 2)
   isAvailable Boolean   @default(true)
   startDate   DateTime?
   endDate     DateTime?
@@ -926,11 +1048,11 @@ model Combo {
 }
 
 model ComboItem {
-  id         String @id @default(uuid())
+  id         String  @id @default(uuid())
   comboId    String
   menuItemId String
   quantity   Int
-  price      Float
+  price      Decimal @db.Decimal(12, 2)
 
   combo    Combo    @relation(fields: [comboId], references: [id], onDelete: Cascade)
   menuItem MenuItem @relation(fields: [menuItemId], references: [id])
@@ -948,7 +1070,7 @@ model Recipe {
   prepTimeMinutes Int      @default(0)
   cookTimeMinutes Int      @default(0)
   servings        Int      @default(1)
-  cost            Float    @default(0)
+  cost            Decimal  @default(0) @db.Decimal(12, 2)
   menuItemId      String?
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
@@ -961,10 +1083,10 @@ model Recipe {
 }
 
 model RecipeIngredient {
-  id              String @id @default(uuid())
+  id              String  @id @default(uuid())
   recipeId        String
   inventoryItemId String
-  quantity        Float
+  quantity        Decimal @db.Decimal(14, 3)
   unit            String
 
   recipe        Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
@@ -980,7 +1102,7 @@ model PurchaseOrder {
   vendorId         String
   status           String    @default("PENDING")
   notes            String?
-  totalAmount      Float     @default(0)
+  totalAmount      Decimal   @default(0) @db.Decimal(14, 2)
   expectedDelivery DateTime?
   receivedAt       DateTime?
   isActive         Boolean   @default(true)
@@ -995,12 +1117,12 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderItem {
-  id               String @id @default(uuid())
+  id               String  @id @default(uuid())
   purchaseOrderId  String
   inventoryItemId  String
-  quantity         Float
-  unitCost         Float
-  receivedQuantity Float  @default(0)
+  quantity         Decimal @db.Decimal(14, 3)
+  unitCost         Decimal @db.Decimal(12, 4)
+  receivedQuantity Decimal @default(0) @db.Decimal(14, 3)
 
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
@@ -1159,8 +1281,8 @@ model JournalEntry {
   description String?
   reference   String? // Order ID, payment ID, expense ID, etc.
   refType     String? // ORDER, PAYMENT, EXPENSE, MANUAL
-  totalDebit  Float    @default(0)
-  totalCredit Float    @default(0)
+  totalDebit  Decimal  @default(0) @db.Decimal(14, 2)
+  totalCredit Decimal  @default(0) @db.Decimal(14, 2)
   status      String   @default("POSTED") // DRAFT, POSTED, VOIDED
   branchId    String?
   createdById String?
@@ -1179,8 +1301,8 @@ model JournalLine {
   id          String  @id @default(uuid())
   entryId     String
   accountId   String
-  debit       Float   @default(0)
-  credit      Float   @default(0)
+  debit       Decimal @default(0) @db.Decimal(14, 2)
+  credit      Decimal @default(0) @db.Decimal(14, 2)
   description String?
 
   entry   JournalEntry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
@@ -1197,8 +1319,8 @@ model TaxFiling {
   invoiceNumber    String    @unique
   orderId          String?   @unique
   fbrInvoiceNumber String? // External reference returned by tax portal
-  amount           Float
-  taxAmount        Float
+  amount           Decimal   @db.Decimal(14, 2)
+  taxAmount        Decimal   @db.Decimal(12, 2)
   status           String    @default("PENDING") // PENDING, SUBMITTED, ACCEPTED, REJECTED
   submittedAt      DateTime?
   responseBody     Json?
@@ -1226,7 +1348,7 @@ model ExternalPlatformOrder {
   customerName    String?
   customerPhone   String?
   deliveryAddress String?
-  totalAmount     Float     @default(0)
+  totalAmount     Decimal   @default(0) @db.Decimal(14, 2)
   status          String    @default("RECEIVED") // RECEIVED, ACCEPTED, REJECTED, COMPLETED
   receivedAt      DateTime  @default(now())
   acceptedAt      DateTime?
@@ -1262,6 +1384,7 @@ model QrSession {
   @@index([token])
   @@index([tableId])
   @@index([status])
+  @@index([expiresAt])
 }
 
 // ========== STAFF SCHEDULING ==========

@@ -70,14 +70,37 @@ class OfflineQueueManager {
     }
   }
 
-  private startAutoSync() {
-    // Try to sync every 30 seconds if online AND authenticated
-    this.syncInterval = setInterval(() => {
+  // QA B35: exponential backoff so a down server doesn't get hammered every
+  // 30s. Backoff doubles after each consecutive failed sync, capped at 5 min.
+  // Resets to baseline on the first success.
+  private syncBackoffMs = 30000;
+  private readonly MIN_BACKOFF_MS = 30000;
+  private readonly MAX_BACKOFF_MS = 5 * 60 * 1000;
+
+  private scheduleNextSync() {
+    if (this.syncInterval) clearTimeout(this.syncInterval);
+    this.syncInterval = setTimeout(() => {
       if (this.isOnline && this.queue.length > 0 && !this.isSyncing && this.hasAuthToken()) {
-        this.syncQueue();
+        this.syncQueue()
+          .then(() => {
+            this.syncBackoffMs = this.MIN_BACKOFF_MS;
+          })
+          .catch(() => {
+            this.syncBackoffMs = Math.min(this.syncBackoffMs * 2, this.MAX_BACKOFF_MS);
+            console.warn(`Offline-queue: backing off to ${this.syncBackoffMs}ms after sync failure`);
+          })
+          .finally(() => this.scheduleNextSync());
+      } else {
+        this.scheduleNextSync();
       }
-    }, 30000);
+    }, this.syncBackoffMs);
   }
+
+  private startAutoSync() {
+    this.syncBackoffMs = this.MIN_BACKOFF_MS;
+    this.scheduleNextSync();
+  }
+
 
   private loadQueue() {
     try {
@@ -145,20 +168,44 @@ class OfflineQueueManager {
   }
 
   public addToQueue(orderData: any, paymentData?: QueuedOrder['paymentData']): string {
-    // Check queue size limit
+    // QA B34: per-order size cap. A single absurdly-large payload could blow
+    // through the localStorage budget on its own, masking quota errors as
+    // mysterious sync failures.
+    const PER_ORDER_LIMIT = 2 * 1024 * 1024;
+    const orderSize = JSON.stringify({ orderData, paymentData }).length;
+    if (orderSize > PER_ORDER_LIMIT) {
+      throw new Error(`Order too large to queue (${(orderSize / 1024 / 1024).toFixed(1)} MB > 2 MB limit)`);
+    }
+
     if (this.queue.length >= this.MAX_QUEUE_SIZE) {
       const pendingCount = this.queue.filter(o => o.status === 'pending').length;
       if (pendingCount >= this.MAX_QUEUE_SIZE) {
         throw new Error('Order queue full. Please sync before taking more orders.');
       }
-      // Remove old completed orders to make room
+      // QA B33: warn the cashier when we evict a completed order to make
+      // room — silent eviction can mask a stuck queue.
+      const evictable = this.queue.filter(o => o.status === 'success').length;
+      if (evictable === 0) {
+        toast.error('Offline queue near capacity. Sync soon to avoid losing orders.');
+      } else {
+        toast(`Pruning ${evictable} completed order(s) from offline queue`);
+      }
       this.queue = this.queue.filter(o => o.status !== 'success');
     }
 
+    // QA B37: prefix with a stable session id so two devices generating ids
+    // at the same millisecond can't collide on the server.
     const timestamp = Date.now();
-    const idempotencyKey = `offline_${timestamp}_${Math.random().toString(36).substring(2, 9)}`;
+    const sessionId = (this as any).__sessionId
+      || ((this as any).__sessionId = (typeof crypto !== 'undefined' && (crypto as any).randomUUID
+        ? (crypto as any).randomUUID().slice(0, 8)
+        : Math.random().toString(36).substring(2, 10)));
+    const uuid = (typeof crypto !== 'undefined' && (crypto as any).randomUUID)
+      ? (crypto as any).randomUUID()
+      : Math.random().toString(36).substring(2, 10);
+    const idempotencyKey = `offline_${timestamp}_${sessionId}_${uuid}`;
     const queuedOrder: QueuedOrder = {
-      id: `offline_${timestamp}_${Math.random().toString(36).substring(2, 9)}`,
+      id: idempotencyKey,
       orderData: {
         ...orderData,
         idempotencyKey,
@@ -496,12 +543,14 @@ class OfflineQueueManager {
     }
   }
 
+  // QA B64: stop the timer + remove window listeners so a re-login doesn't
+  // accumulate a second interval ticking in the background.
   public destroy() {
     if (this.syncInterval) {
-      clearInterval(this.syncInterval);
+      // Backoff scheduler uses setTimeout, not setInterval — clearTimeout works for both.
+      clearTimeout(this.syncInterval as any);
       this.syncInterval = null;
     }
-    // Properly remove the stored event handlers
     if (this.onlineHandler) {
       window.removeEventListener('online', this.onlineHandler);
     }

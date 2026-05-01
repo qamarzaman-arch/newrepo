@@ -4,8 +4,13 @@ import { randomUUID } from 'crypto';
 import { prisma } from '../config/database';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import { qrTokenLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
+
+// QA C2 / C33: every public QR endpoint is rate-limited per (IP, token) so a
+// single QR cannot be used to spam orders or scrape the menu unbounded.
+router.use(['/sessions', '/sessions/:token', '/menu/:token', '/orders/:token'], qrTokenLimiter);
 
 const createSessionSchema = z.object({
   tableId: z.string().uuid().optional().nullable(),
@@ -110,9 +115,9 @@ router.post('/orders/:token', async (req: Request, res: Response, next: NextFunc
     let taxAmount = 0;
     const orderItemsData = data.items.map((it) => {
       const m = menuMap.get(it.menuItemId)!;
-      const lineTotal = m.price * it.quantity;
+      const lineTotal = Number(m.price) * it.quantity;
       subtotal += lineTotal;
-      taxAmount += lineTotal * (m.taxRate || 0);
+      taxAmount += lineTotal * Number(m.taxRate || 0);
       return {
         menuItemId: m.id,
         quantity: it.quantity,

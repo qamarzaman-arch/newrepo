@@ -5,6 +5,7 @@ import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 import { postExpenseJournalEntry } from '../services/accounting.service';
+import { nextSequence, dailyScope, dateStampUTC } from '../utils/sequence';
 
 const router = Router();
 
@@ -86,11 +87,11 @@ router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRe
   try {
     const data = createExpenseSchema.parse(req.body);
 
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
-    const count = await prisma.expense.count({
-      where: { createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } },
-    });
-    const expenseNumber = `EXP-${today}-${String(count + 1).padStart(3, '0')}`;
+    // QA A47: atomic per-day expense number via SequenceCounter.
+    const now = new Date();
+    const today = dateStampUTC(now);
+    const seq = await nextSequence(dailyScope('EXP', now));
+    const expenseNumber = `EXP-${today}-${String(seq).padStart(3, '0')}`;
 
     const expense = await prisma.expense.create({
       data: {
@@ -114,7 +115,7 @@ router.post('/', authenticate, authorize('ADMIN', 'MANAGER'), async (req: AuthRe
     try {
       await postExpenseJournalEntry(prisma, {
         id: expense.id,
-        amount: expense.amount,
+        amount: Number(expense.amount),
         category: expense.category,
         description: expense.description,
       });

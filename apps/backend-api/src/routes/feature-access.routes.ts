@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/database';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, AuthRequest, invalidateFeatureAccessCache } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 import { authorize } from '../middleware/auth';
@@ -86,6 +86,7 @@ router.patch('/', authenticate, authorize('ADMIN'), async (req: AuthRequest, res
     });
 
     logger.info(`Feature access updated: ${validatedData.feature} for ${validatedData.role} -> ${validatedData.enabled}`);
+    invalidateFeatureAccessCache();
 
     res.json({
       success: true,
@@ -126,6 +127,7 @@ router.patch('/bulk', authenticate, authorize('ADMIN'), async (req: AuthRequest,
     const results = await Promise.all(updates);
 
     logger.info(`Bulk feature access updated: ${validatedData.feature} for all roles -> ${validatedData.enabled}`);
+    invalidateFeatureAccessCache();
 
     res.json({
       success: true,
@@ -170,6 +172,7 @@ router.post('/reset', authenticate, authorize('ADMIN'), async (_req: AuthRequest
     });
 
     logger.info('Feature access reset to defaults');
+    invalidateFeatureAccessCache();
 
     res.json({
       success: true,

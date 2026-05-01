@@ -9,9 +9,28 @@ import { parsePagination } from '../utils/parsePagination';
 
 const router = Router();
 
+// QA A32: enforce a forward-only state machine. Stations can move through
+// receive → prep → ready → done, but not jump backwards (e.g. READY → RECEIVED)
+// which would invalidate downstream displays.
+const KOT_TRANSITIONS: Record<string, string[]> = {
+  NEW:        ['RECEIVED', 'PREPARING', 'CANCELLED'],
+  RECEIVED:   ['PREPARING', 'DELAYED', 'CANCELLED'],
+  PREPARING:  ['READY', 'DELAYED', 'CANCELLED'],
+  DELAYED:    ['PREPARING', 'READY', 'CANCELLED'],
+  READY:      ['SERVED', 'DISPATCHED', 'COMPLETED'],
+  SERVED:     ['COMPLETED'],
+  DISPATCHED: ['COMPLETED'],
+  COMPLETED:  [],
+  CANCELLED:  [],
+};
+
 // Validation schemas
 const updateTicketStatusSchema = z.object({
-  status: z.enum(['NEW', 'RECEIVED', 'PREPARING', 'READY', 'SERVED', 'DISPATCHED', 'COMPLETED', 'DELAYED']),
+  status: z.enum(['NEW', 'RECEIVED', 'PREPARING', 'READY', 'SERVED', 'DISPATCHED', 'COMPLETED', 'DELAYED', 'CANCELLED']),
+  // QA A31, B21: optional caller-supplied version for optimistic-lock. If
+  // provided, the update only proceeds when version matches; otherwise we
+  // return 409 so the caller can refetch.
+  version: z.number().int().nonnegative().optional(),
 });
 
 const assignTicketSchema = z.object({
@@ -318,35 +337,52 @@ router.patch('/tickets/:id/status', authenticate, async (req: AuthRequest, res: 
 
     const ticket = await prisma.kotTicket.findUnique({
       where: { id: req.params.id },
-      include: {
-        order: true,
-      },
+      include: { order: true },
     });
 
     if (!ticket) {
       throw new AppError('KOT ticket not found', 404);
     }
 
-    const updatedTicket = await prisma.kotTicket.update({
-      where: { id: req.params.id },
+    // QA A32: refuse invalid backwards transitions (READY → RECEIVED, etc.).
+    const allowed = KOT_TRANSITIONS[ticket.status] ?? [];
+    if (ticket.status !== data.status && !allowed.includes(data.status)) {
+      throw new AppError(
+        `Cannot transition KOT from ${ticket.status} to ${data.status}. Allowed: ${allowed.join(', ') || 'none'}`,
+        400
+      );
+    }
+
+    // QA A31, B21: optimistic-lock via the new `version` column. The
+    // updateMany either bumps version+writes status atomically, or fails (count=0)
+    // because someone else moved the ticket first.
+    const expectedVersion = data.version ?? (ticket as any).version ?? 0;
+    const bumped = await prisma.kotTicket.updateMany({
+      where: { id: req.params.id, version: expectedVersion },
       data: {
         status: data.status,
+        version: expectedVersion + 1,
         ...(data.status === 'PREPARING' && { startedAt: new Date() }),
         ...(data.status === 'COMPLETED' && { completedAt: new Date() }),
       },
+    });
+
+    if (bumped.count !== 1) {
+      throw new AppError('Ticket was modified by another user. Please refresh and retry.', 409);
+    }
+
+    const updatedTicket = await prisma.kotTicket.findUnique({
+      where: { id: req.params.id },
       include: {
         order: {
           include: {
-            items: {
-              include: {
-                menuItem: true,
-              },
-            },
+            items: { include: { menuItem: true } },
             table: true,
           },
         },
       },
     });
+    if (!updatedTicket) throw new AppError('Ticket vanished after update', 500);
 
     // Emit real-time event via WebSocket
     const ws = getWebSocketManager();
@@ -410,18 +446,13 @@ router.post('/tickets/:id/delay', authenticate, async (req: AuthRequest, res: Re
   try {
     const data = delayTicketSchema.parse(req.body);
 
-    const updatedTicket = await prisma.kotTicket.update({
-      where: { id: req.params.id },
-      data: {
-        status: 'DELAYED',
-      },
-    });
-
-    // Update notes separately to avoid circular reference
+    // QA A34: persist delay reason in dedicated columns rather than free-text notes.
     await prisma.kotTicket.update({
       where: { id: req.params.id },
       data: {
-        notes: `${updatedTicket.notes ? updatedTicket.notes + ' | ' : ''}Delayed: ${data.reason}${data.estimatedDelay ? ` (Est. ${data.estimatedDelay} min)` : ''}`,
+        status: 'DELAYED',
+        delayReason: data.reason + (data.estimatedDelay ? ` (Est. ${data.estimatedDelay} min)` : ''),
+        delayedAt: new Date(),
       },
     });
 
@@ -430,16 +461,13 @@ router.post('/tickets/:id/delay', authenticate, async (req: AuthRequest, res: Re
       include: {
         order: {
           include: {
-            items: {
-              include: {
-                menuItem: true,
-              },
-            },
+            items: { include: { menuItem: true } },
             table: true,
           },
         },
       },
     });
+    if (!ticket) throw new AppError('KOT ticket not found', 404);
 
     // Emit real-time event via WebSocket
     const ws = getWebSocketManager();

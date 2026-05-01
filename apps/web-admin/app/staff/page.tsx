@@ -68,11 +68,23 @@ export default function StaffPage() {
 
   const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
+    // QA C32: enforce min(8) password client-side. The placeholder said "min 8"
+    // but the form submitted any value.
+    if (!formData.password || formData.password.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+    if (!/[A-Z]/.test(formData.password) || !/[a-z]/.test(formData.password) || !/\d/.test(formData.password)) {
+      toast.error('Password must include upper, lower case letters and a digit');
+      return;
+    }
     setIsSubmitting(true);
     try {
       await apiClient.post('/users', formData);
       toast.success('Staff member added successfully!');
       setShowAddModal(false);
+      // QA C31: clear the password from React state immediately so it doesn't
+      // linger in heap dumps / dev-tools state inspectors.
       setFormData({
         username: '',
         fullName: '',

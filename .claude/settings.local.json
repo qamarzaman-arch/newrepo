@@ -41,7 +41,13 @@
       "Bash(tasklist)",
       "Bash(wmic process *)",
       "PowerShell(Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'node|electron' } | Select-Object ProcessId, Name, @{N='Cmd';E={$_.CommandLine}} | Format-Table -AutoSize -Wrap | Out-String -Width 500)",
-      "Bash(echo \"started PID $!\")"
+      "Bash(echo \"started PID $!\")",
+      "Bash(npx jest *)",
+      "Bash(awk -F'\\(' '{print $1}')",
+      "Bash(awk -F'\\(' '{ print $1 \":\" $2 }')",
+      "Bash(awk -F'[,:\\)]' '{ print $1 \":\" $2 }')",
+      "Bash(grep -n '\\\\$\\\\${' \"C:/Users/techl/Documents/Latest Code/apps/pos-desktop/src/renderer/screens/CashierPOS/CheckoutPayment.tsx\")",
+      "Bash(grep -nE '\\\\$\\\\{[a-zA-Z]+\\\\.toFixed' \"C:/Users/techl/Documents/Latest Code/apps/pos-desktop/src/renderer/screens/CashierPOS/CheckoutPayment.tsx\")"
     ]
   }
 }

@@ -1,32 +1,37 @@
-# Backend API Dockerfile
-FROM node:20-alpine
+# QA D34-D37: hardened backend Dockerfile
+#  - multi-stage build so dev/build deps don't ship to prod image
+#  - non-root user (node, uid 1000)
+#  - tini as PID 1 for proper signal handling / zombie reaping
+#  - explicit healthcheck endpoint
 
+FROM node:20-alpine AS deps
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy prisma schema
 COPY prisma ./prisma/
+RUN npm ci --include=dev && npx prisma generate
 
-# Generate Prisma client
-RUN npx prisma generate
-
-# Copy source code
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN npm run build && npm prune --omit=dev
 
-# Build TypeScript
-RUN npm run build
+FROM node:20-alpine AS runner
+RUN apk add --no-cache tini wget
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/package.json ./
 
-# Expose port
+# Drop to the built-in node user (uid 1000); ensure log/archive dirs are writable.
+RUN mkdir -p /app/logs /app/audit-archive && chown -R node:node /app
+USER node
+
 EXPOSE 3001
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
-# Start the server
-CMD ["npm", "start"]
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "dist/server.js"]

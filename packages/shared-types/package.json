@@ -16,12 +16,10 @@
   },
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./schemas": {
-      "import": "./dist/schemas/index.js",
-      "types": "./dist/schemas/index.d.ts"
+      "default": "./dist/index.js"
     }
   }
 }

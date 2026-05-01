@@ -15,9 +15,11 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
+        // QA D22 + dark mode parity: focus-visible ring and dark surfaces.
         className={cn(
-          'bg-white rounded-2xl p-6 shadow-soft border border-gray-100 transition-all',
+          'bg-white dark:bg-neutral-900 rounded-2xl p-6 shadow-soft border border-gray-100 dark:border-neutral-800 transition-all',
           hoverable && 'hover:shadow-medium hover:-translate-y-1',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
           className
         )}
         {...props}

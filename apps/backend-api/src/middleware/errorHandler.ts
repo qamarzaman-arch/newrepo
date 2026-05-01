@@ -39,16 +39,21 @@ export function errorHandler(
     message = err.message || 'Internal Server Error';
   }
 
-  // Prisma validation errors
-  if ((err as PrismaError).code === 'P2002') {
+  // QA A86: Prisma error details can leak internals via 500. Only surface
+  // a generic message in production; full Prisma error stays in the log.
+  const pErr = err as PrismaError;
+  if (pErr.code === 'P2002') {
     statusCode = 409;
-    message = `Duplicate field value: ${(err as PrismaError).meta?.target}`;
+    message = `Duplicate field value: ${pErr.meta?.target}`;
   }
-
-  // Prisma record not found
-  if ((err as PrismaError).code === 'P2025') {
+  if (pErr.code === 'P2025') {
     statusCode = 404;
     message = 'Record not found';
+  }
+  if (pErr.code && pErr.code.startsWith('P') && statusCode === 500) {
+    message = process.env.NODE_ENV === 'production'
+      ? 'A database error occurred. Please retry.'
+      : `[${pErr.code}] ${pErr.message}`;
   }
 
   // JWT errors
@@ -80,12 +85,17 @@ export function errorHandler(
     });
   }
 
+  // QA A53: gate stack-trace exposure on its own flag. Previously any non-prod
+  // env (including staging) leaked stacks, which is wrong if staging mirrors prod.
+  const exposeStack = process.env.EXPOSE_STACK === 'true';
+
   res.status(statusCode).json({
     success: false,
     error: {
       message,
       ...(err instanceof ZodError && { issues: err.issues }),
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+      ...((req as any).requestId && { requestId: (req as any).requestId }),
+      ...(exposeStack && { stack: err.stack }),
     },
   });
 }

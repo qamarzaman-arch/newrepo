@@ -62,12 +62,18 @@ const SplitBilling: React.FC<Props> = ({ isOpen, onClose, onConfirm, totalAmount
     setSelectedOption(option);
     
     if (option.type === 'EQUAL') {
-      const equalAmount = totalAmount / numberOfPeople;
+      // QA B13: equal split must add up to the original total. Splitting $10
+      // three ways naively yields 3 × $3.33 = $9.99. We give the first N-1
+      // splits the rounded share, and the LAST split absorbs whatever cents
+      // are left so totals reconcile to the cent.
+      const totalCents = Math.round(totalAmount * 100);
+      const baseShareCents = Math.floor(totalCents / numberOfPeople);
+      const remainderCents = totalCents - baseShareCents * (numberOfPeople - 1);
       setCustomSplits(
         Array.from({ length: numberOfPeople }, (_, i) => ({
           id: `person-${i}`,
           name: `Person ${i + 1}`,
-          amount: equalAmount,
+          amount: (i === numberOfPeople - 1 ? remainderCents : baseShareCents) / 100,
           items: [],
         }))
       );

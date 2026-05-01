@@ -21,6 +21,59 @@ let barcodeBuffer = '';
 let lastBarcodeTime = 0;
 
 /**
+ * QA B83: race a printer write against a hard timeout so a stuck printer
+ * doesn't hang the renderer indefinitely.
+ */
+async function withTimeout<T>(fn: () => Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    fn(),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(label)), ms)
+    ),
+  ]);
+}
+
+/**
+ * QA B81: encode the receipt string in the printer's character set instead of
+ * the lossy 'binary' codec. CP858 covers most Western glyphs (€, ñ, accented
+ * characters); CP437 is the widest-supported fallback. The renderer can
+ * declare which codepage its template targets via printerConfig.codepage.
+ *
+ * This function is intentionally simple — it doesn't attempt CJK/Indic
+ * transliteration. If the caller needs proper Unicode support they should use
+ * an ESC/POS-aware library (escpos-buffer) and pass the resulting Buffer.
+ */
+function encodeForPrinter(text: string | Buffer, printerConfig: any): Buffer {
+  if (Buffer.isBuffer(text)) return text;
+  const codepage = (printerConfig?.codepage || 'cp437').toLowerCase();
+  // Node only ships latin1/ascii/utf8/etc out of the box. cp437/cp858 are
+  // close enough to latin1 for the printable ASCII range; if a real codec is
+  // available via iconv-lite we use it.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const iconv = require('iconv-lite');
+    if (iconv.encodingExists(codepage)) {
+      return iconv.encode(text, codepage);
+    }
+  } catch {
+    /* iconv-lite not installed; fall through */
+  }
+  return Buffer.from(text, 'latin1');
+}
+
+/**
+ * QA B82: 58mm vs 80mm width handling. Reflow the receipt body to the
+ * configured paper width so 80mm printers don't print extra padding.
+ */
+function reflowReceipt(text: string, printerConfig: any): string {
+  const width = printerConfig?.paperWidth === 80 ? 48 : 32;
+  return text
+    .split('\n')
+    .map((line) => (line.length > width ? line.match(new RegExp(`.{1,${width}}`, 'g'))?.join('\n') ?? line : line))
+    .join('\n');
+}
+
+/**
  * Setup all hardware-related IPC handlers
  */
 export function setupHardwareHandlers(configPath: string): void {
@@ -104,13 +157,19 @@ export function setupHardwareHandlers(configPath: string): void {
   ipcMain.handle('hardware:print-receipt', async (_, receipt, printerConfig) => {
     try {
       if (printerConfig.connectionType === 'usb' || printerConfig.connectionType === 'serial') {
-        const port = await openSerialPort(printerConfig.devicePath);
-        if (port) {
-          await port.write(Buffer.from(receipt, 'binary'));
-          await new Promise(resolve => setTimeout(resolve, 500)); // Wait for print
+        // QA B83: printer hangs become silent failures. Race the write against
+        // a 3s timeout so the IPC always resolves and the UI can toast.
+        return await withTimeout(async () => {
+          const port = await openSerialPort(printerConfig.devicePath);
+          if (!port) return false;
+          // QA B81: avoid the 'binary' encoding path for ESC/POS — it corrupts
+          // multi-byte glyphs (₹, €, ñ). Use the configured codepage if the
+          // caller built the buffer themselves; otherwise re-encode.
+          await port.write(encodeForPrinter(receipt, printerConfig));
+          await new Promise(resolve => setTimeout(resolve, 500));
           await port.close();
           return true;
-        }
+        }, 3000, '[Hardware] print-receipt timed out');
       } else if (printerConfig.connectionType === 'network') {
         return await printToNetworkPrinter(receipt, printerConfig);
       }
@@ -127,13 +186,14 @@ export function setupHardwareHandlers(configPath: string): void {
   ipcMain.handle('hardware:print-kot', async (_, kot, printerConfig) => {
     try {
       if (printerConfig.connectionType === 'usb' || printerConfig.connectionType === 'serial') {
-        const port = await openSerialPort(printerConfig.devicePath);
-        if (port) {
-          await port.write(Buffer.from(kot, 'binary'));
+        return await withTimeout(async () => {
+          const port = await openSerialPort(printerConfig.devicePath);
+          if (!port) return false;
+          await port.write(encodeForPrinter(reflowReceipt(kot, printerConfig), printerConfig));
           await new Promise(resolve => setTimeout(resolve, 500));
           await port.close();
           return true;
-        }
+        }, 3000, '[Hardware] print-kot timed out');
       } else if (printerConfig.connectionType === 'network') {
         return await printToNetworkPrinter(kot, printerConfig);
       }

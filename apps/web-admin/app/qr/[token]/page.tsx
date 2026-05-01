@@ -200,16 +200,39 @@ export default function QrOrderingPage() {
 
   const placeOrder = async () => {
     if (!token) return;
-    if (!customerName.trim()) {
+
+    // QA C34, C35: name must contain at least one printable character and
+    // no HTML-injection vectors. We strip control chars and reject angle-brackets.
+    const trimmedName = customerName.trim();
+    if (trimmedName.length < 1) {
       toast.error('Please enter your name');
       return;
     }
+    if (trimmedName.length > 80) {
+      toast.error('Name is too long (max 80 characters)');
+      return;
+    }
+    if (/[<>]/.test(trimmedName)) {
+      toast.error('Name contains invalid characters');
+      return;
+    }
+    const sanitizedName = trimmedName.replace(/[\x00-\x1F\x7F]/g, '');
+
+    // QA C36: phone format validation. Accept digits + + space ( ) - only.
+    const trimmedPhone = customerPhone.trim();
+    if (trimmedPhone) {
+      if (!/^\+?[0-9 ()\-]{7,20}$/.test(trimmedPhone)) {
+        toast.error('Phone number format looks invalid');
+        return;
+      }
+    }
+
     if (Object.keys(cart).length === 0) return;
     setPlacing(true);
     try {
       const res = await publicApi.post(`/qr-ordering/orders/${token}`, {
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim() || undefined,
+        customerName: sanitizedName,
+        customerPhone: trimmedPhone || undefined,
         items: Object.values(cart).map((l) => ({
           menuItemId: l.menuItemId,
           quantity: l.quantity,
@@ -225,7 +248,12 @@ export default function QrOrderingPage() {
       setDrawerOpen(false);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: { message?: string } } } };
-      toast.error(e.response?.data?.error?.message || 'Failed to place order. Please try again.');
+      // QA C37: surface a friendly message rather than the raw backend error.
+      const raw = e.response?.data?.error?.message;
+      const friendly = raw && raw.length < 200 && !/SQL|Prisma|stack/i.test(raw)
+        ? raw
+        : 'We could not place your order right now. Please try again in a moment.';
+      toast.error(friendly);
     } finally {
       setPlacing(false);
     }

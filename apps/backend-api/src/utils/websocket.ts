@@ -1,5 +1,37 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { logger } from './logger';
+import {
+  WsOrderSummarySchema,
+  WsOrderStatusChangedSchema,
+  WsKotTicketSchema,
+  WsInventoryItemSchema,
+  WsTableStatusSchema,
+  WsDeliveryStatusSchema,
+  WsRiderLocationSchema,
+  WsCashDrawerOpenedSchema,
+  WsCashDrawerClosedSchema,
+  WsShiftSchema,
+  WsNotificationSchema,
+} from '@restaurant-pos/shared-types';
+import type { z } from 'zod';
+
+// QA D23-D26: validate payloads against the shared zod contracts before
+// broadcast. A schema violation logs and drops the event so the renderer
+// never receives a malformed payload that crashes its reducer.
+function safeEmit<S extends z.ZodTypeAny>(
+  io: SocketIOServer,
+  schema: S,
+  payload: unknown,
+  emitFn: (validated: z.infer<S>) => void,
+  context: string,
+) {
+  const result = schema.safeParse(payload);
+  if (!result.success) {
+    logger.warn(`WebSocket payload rejected (${context}): ${result.error.message}`);
+    return;
+  }
+  emitFn(result.data);
+}
 
 /**
  * WebSocket Event Manager for Real-Time Updates
@@ -53,20 +85,26 @@ export class WebSocketManager {
    * Emit order-related events
    */
   emitOrderCreated(order: Order) {
-    this.io.emit('order:created', order);
-    this.io.to('kitchen').emit('order:new', order);
+    safeEmit(this.io, WsOrderSummarySchema, order, (v) => {
+      this.io.emit('order:created', v);
+      this.io.to('kitchen').emit('order:new', v);
+    }, 'order:created');
     logger.info(`WebSocket: Order created - ${order.id}`);
   }
 
   emitOrderUpdated(orderId: string, order: Order) {
-    this.io.emit(`order:${orderId}:updated`, order);
-    this.io.to('kitchen').emit('order:updated', order);
+    safeEmit(this.io, WsOrderSummarySchema, order, (v) => {
+      this.io.emit(`order:${orderId}:updated`, v);
+      this.io.to('kitchen').emit('order:updated', v);
+    }, 'order:updated');
     logger.info(`WebSocket: Order updated - ${orderId}`);
   }
 
   emitOrderStatusChanged(orderId: string, status: string) {
-    this.io.emit(`order:${orderId}:status`, { orderId, status });
-    this.io.to('kitchen').emit('order:status-changed', { orderId, status });
+    safeEmit(this.io, WsOrderStatusChangedSchema, { orderId, status }, (v) => {
+      this.io.emit(`order:${orderId}:status`, v);
+      this.io.to('kitchen').emit('order:status-changed', v);
+    }, 'order:status-changed');
     logger.info(`WebSocket: Order status changed - ${orderId} to ${status}`);
   }
 
@@ -79,7 +117,9 @@ export class WebSocketManager {
    * Emit kitchen-related events
    */
   emitTicketCreated(ticket: Ticket) {
-    this.io.to('kitchen').emit('ticket:created', ticket);
+    safeEmit(this.io, WsKotTicketSchema, ticket, (v) => {
+      this.io.to('kitchen').emit('ticket:created', v);
+    }, 'ticket:created');
     logger.info(`WebSocket: Kitchen ticket created - ${ticket.id}`);
   }
 
@@ -97,7 +137,9 @@ export class WebSocketManager {
    * Emit inventory-related events
    */
   emitInventoryLow(item: InventoryItem) {
-    this.io.to('admin').emit('inventory:low-stock', item);
+    safeEmit(this.io, WsInventoryItemSchema, item, (v) => {
+      this.io.to('admin').emit('inventory:low-stock', v);
+    }, 'inventory:low-stock');
     logger.info(`WebSocket: Low stock alert - ${item.name}`);
   }
 
@@ -110,7 +152,9 @@ export class WebSocketManager {
    * Emit table-related events
    */
   emitTableStatusChanged(tableId: string, status: string) {
-    this.io.emit(`table:${tableId}:status`, { tableId, status });
+    safeEmit(this.io, WsTableStatusSchema, { tableId, status }, (v) => {
+      this.io.emit(`table:${tableId}:status`, v);
+    }, 'table:status');
     logger.info(`WebSocket: Table status changed - ${tableId} to ${status}`);
   }
 
@@ -123,11 +167,10 @@ export class WebSocketManager {
   }
 
   emitDeliveryStatusChanged(deliveryId: string, status: string, riderId?: string) {
-    this.io.emit(`delivery:${deliveryId}:status`, { deliveryId, status, riderId });
-    // Also notify specific rider room if rider assigned
-    if (riderId) {
-      this.io.to(`rider:${riderId}`).emit('delivery:assigned', { deliveryId, status });
-    }
+    safeEmit(this.io, WsDeliveryStatusSchema, { deliveryId, status, riderId: riderId ?? null }, (v) => {
+      this.io.emit(`delivery:${deliveryId}:status`, v);
+      if (v.riderId) this.io.to(`rider:${v.riderId}`).emit('delivery:assigned', { deliveryId, status });
+    }, 'delivery:status');
     logger.info(`WebSocket: Delivery status changed - ${deliveryId} to ${status}`);
   }
 
@@ -152,12 +195,14 @@ export class WebSocketManager {
     location: { lat: number; lng: number; accuracy?: number; speed?: number; heading?: number },
     extra?: { fullName?: string; status?: string; isAvailable?: boolean }
   ) {
+    // QA D27: bound the location payload before broadcast — bad GPS readings
+    // pollute every dashboard subscribed to this socket.
     const payload = { riderId, location, timestamp: new Date().toISOString(), ...extra };
-    // Per-rider channel for targeted subscriptions
-    this.io.emit(`rider:${riderId}:location`, payload);
-    // Broadcast channel for live tracking dashboards (admin + cashier/dispatch)
-    this.io.to('delivery-tracking').emit('rider:location', payload);
-    this.io.to('admin').emit('rider:location', payload);
+    safeEmit(this.io, WsRiderLocationSchema, payload, (v) => {
+      this.io.emit(`rider:${riderId}:location`, v);
+      this.io.to('delivery-tracking').emit('rider:location', v);
+      this.io.to('admin').emit('rider:location', v);
+    }, 'rider:location');
   }
 
   /**
@@ -177,7 +222,9 @@ export class WebSocketManager {
    * Broadcast system-wide notifications
    */
   broadcastNotification(notification: Notification) {
-    this.io.emit('notification:new', notification);
+    safeEmit(this.io, WsNotificationSchema, notification, (v) => {
+      this.io.emit('notification:new', v);
+    }, 'notification:new');
     logger.info(`WebSocket: Notification broadcast`);
   }
 
@@ -201,27 +248,36 @@ export class WebSocketManager {
    * Handle cashier-specific events
    */
   emitCashDrawerOpened(amount: number) {
-    this.io.to('admin').emit('cash-drawer:opened', { amount, timestamp: new Date() });
+    safeEmit(this.io, WsCashDrawerOpenedSchema, { amount, timestamp: new Date().toISOString() }, (v) => {
+      this.io.to('admin').emit('cash-drawer:opened', v);
+    }, 'cash-drawer:opened');
     logger.info(`WebSocket: Cash drawer opened - $${amount}`);
   }
 
   emitCashDrawerClosed(openingAmount: number, closingAmount: number) {
-    this.io.to('admin').emit('cash-drawer:closed', { 
-      openingAmount, 
+    const payload = {
+      openingAmount,
       closingAmount,
       difference: closingAmount - openingAmount,
-      timestamp: new Date() 
-    });
+      timestamp: new Date().toISOString(),
+    };
+    safeEmit(this.io, WsCashDrawerClosedSchema, payload, (v) => {
+      this.io.to('admin').emit('cash-drawer:closed', v);
+    }, 'cash-drawer:closed');
     logger.info(`WebSocket: Cash drawer closed`);
   }
 
   emitShiftStarted(cashierId: string) {
-    this.io.to('admin').emit('shift:started', { cashierId, timestamp: new Date() });
+    safeEmit(this.io, WsShiftSchema, { cashierId, timestamp: new Date().toISOString() }, (v) => {
+      this.io.to('admin').emit('shift:started', v);
+    }, 'shift:started');
     logger.info(`WebSocket: Shift started - ${cashierId}`);
   }
 
   emitShiftEnded(cashierId: string, summary: ShiftSummary) {
-    this.io.to('admin').emit('shift:ended', { cashierId, summary, timestamp: new Date() });
+    safeEmit(this.io, WsShiftSchema, { cashierId, summary, timestamp: new Date().toISOString() }, (v) => {
+      this.io.to('admin').emit('shift:ended', v);
+    }, 'shift:ended');
     logger.info(`WebSocket: Shift ended - ${cashierId}`);
   }
 }

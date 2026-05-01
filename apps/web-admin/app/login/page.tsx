@@ -62,6 +62,11 @@ export default function LoginPage() {
                 name="username"
                 type="text"
                 required
+                /* QA C17: bound length + tighten allowed chars */
+                minLength={3}
+                maxLength={64}
+                pattern="[A-Za-z0-9_.\-]+"
+                autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="mt-1 block w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"
@@ -78,6 +83,9 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 required
+                minLength={1}
+                maxLength={128}
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="mt-1 block w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"

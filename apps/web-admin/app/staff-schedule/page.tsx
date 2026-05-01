@@ -137,6 +137,30 @@ export default function StaffSchedulePage() {
 
   const handleAddSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // QA C51: detect overlapping shifts for the same user on the same day
+    // before sending. The backend should also enforce, but the client-side
+    // check gives an instant clear error.
+    const newStart = `${formData.date}T${formData.startTime}`;
+    const newEnd = `${formData.date}T${formData.endTime}`;
+    if (newEnd <= newStart) {
+      toast.error('End time must be after start time');
+      return;
+    }
+    const conflicts = (schedules || []).filter((s: any) => {
+      if (s.userId !== formData.userId) return false;
+      const sDate = (s.date || '').slice(0, 10);
+      if (sDate !== formData.date) return false;
+      const sStart = `${sDate}T${s.startTime}`;
+      const sEnd = `${sDate}T${s.endTime}`;
+      // Overlap if one starts before the other ends.
+      return newStart < sEnd && sStart < newEnd;
+    });
+    if (conflicts.length > 0) {
+      toast.error('This user already has an overlapping shift on that day');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await apiClient.post('/staff-schedules', formData);

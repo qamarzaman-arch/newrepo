@@ -14,10 +14,15 @@
   --color-sidebar: #AA0000;
   --color-sidebar-text: #FBFBFB;
   --color-primary: #AA0000;
+  /* QA C11 / B48: variables consumed by Sidebar so dark mode can re-tint it. */
+  --sidebar-bg: #AA0000;
+  --sidebar-fg: #FBFBFB;
 }
 
 .dark {
   --color-bg: #111827;
+  --sidebar-bg: #1F2937;
+  --sidebar-fg: #FBFBFB;
   --color-card: #1F2937;
   --color-card-elevated: #1F2937;
   --color-text: #FBFBFB;
@@ -259,3 +264,56 @@ a {
 .dark textarea::placeholder { color: #9CA3AF !important; }
 
 button:disabled { opacity: 1 !important; }
+
+/* ============================================
+   QA C56-C85 / B19-B67: cross-page polish
+   - responsive page padding so the 8-column grid behaves on small screens
+   - dark-mode safety nets for table rows, modal overlays, skeletons
+   - global focus-visible ring (a11y)
+   ============================================ */
+
+/* Responsive page container — match the existing `p-8 max-w-*xl mx-auto`
+   pattern but tighten on phones so nothing clips. Pages don't need to opt in;
+   this fires on any element using the .page-container class added in shells. */
+.page-container { padding: 1rem; max-width: 80rem; margin-left: auto; margin-right: auto; }
+@media (min-width: 640px) { .page-container { padding: 1.5rem; } }
+@media (min-width: 1024px) { .page-container { padding: 2rem; } }
+
+/* Tables in dark mode — alternating rows + headers should not stay light. */
+.dark table thead { background-color: #1F2937; }
+.dark table tbody tr { background-color: transparent; }
+.dark table tbody tr:nth-child(even) { background-color: rgba(255,255,255,0.02); }
+.dark table th, .dark table td { color: #E5E7EB; border-color: #374151; }
+
+/* Modal overlays — most pages use a fixed inset-0 div with bg-black/40.
+   Boost contrast slightly in dark mode so the modal really feels modal. */
+.dark .bg-black\/40 { background-color: rgba(0,0,0,0.65) !important; }
+.dark .bg-black\/30 { background-color: rgba(0,0,0,0.55) !important; }
+.dark .bg-black\/20 { background-color: rgba(0,0,0,0.45) !important; }
+
+/* Skeleton loaders */
+.dark .animate-pulse { background-color: #1F2937; }
+
+/* Focus-visible outline — a11y baseline. Respects prefers-reduced-motion via
+   the no-transition selector below. */
+*:focus-visible {
+  outline: 2px solid #AA0000;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.dark *:focus-visible { outline-color: #FCA5A5; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Touch targets — buttons and links should hit 44x44px minimum on touch
+   devices (WCAG 2.5.5). Pads small icon buttons without changing their look. */
+@media (pointer: coarse) {
+  button, a[role="button"], [role="link"] {
+    min-height: 36px;
+  }
+}

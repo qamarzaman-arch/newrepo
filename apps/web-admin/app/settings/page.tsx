@@ -65,7 +65,7 @@ export default function SettingsPage() {
       }
       merged.sort((a, b) => (a.category + a.key).localeCompare(b.category + b.key));
       setSettings(merged);
-      setOriginal(JSON.parse(JSON.stringify(merged)));
+      setOriginal(typeof structuredClone === 'function' ? structuredClone(merged) : JSON.parse(JSON.stringify(merged)));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load settings');
     } finally {
@@ -97,6 +97,42 @@ export default function SettingsPage() {
     setSettings(prev => prev.filter(s => s.key !== key));
   };
 
+  // QA C40-C53: well-known typed keys get format validation before save so
+  // garbage like an unparseable percentage or "abc" in a numeric field never
+  // reaches the DB. Unknown keys pass through unchanged.
+  const validateSetting = (key: string, value: string): string | null => {
+    const trimmed = value.trim();
+    const isPercent = /(_rate|_percent|_percentage)$/.test(key) || key === 'tax_rate' || key === 'service_charge_rate';
+    const isEmailKey = /(_email)$/.test(key) || key === 'restaurant_email';
+    const isPhoneKey = /(_phone)$/.test(key) || key === 'restaurant_phone';
+    const isCurrencyCode = key === 'currency';
+    const isTimezone = key === 'timezone';
+    const isNumericKey = ['loyalty_points_per_dollar', 'loyalty_min_spend', 'loyalty_points_value', 'low_stock_threshold'].includes(key);
+
+    if (isPercent && trimmed) {
+      const n = Number(trimmed);
+      if (!Number.isFinite(n) || n < 0 || n > 100) return `${key} must be a percent between 0 and 100`;
+    }
+    if (isEmailKey && trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      return `${key} is not a valid email address`;
+    }
+    if (isPhoneKey && trimmed && !/^\+?[0-9 ()-]{7,20}$/.test(trimmed)) {
+      return `${key} is not a valid phone number`;
+    }
+    if (isCurrencyCode && trimmed && !/^[A-Z]{3}$/.test(trimmed)) {
+      return `${key} must be a 3-letter ISO code (e.g. USD, PKR, EUR)`;
+    }
+    if (isTimezone && trimmed) {
+      try { new Intl.DateTimeFormat('en', { timeZone: trimmed }); }
+      catch { return `${key} is not a valid IANA timezone`; }
+    }
+    if (isNumericKey && trimmed) {
+      const n = Number(trimmed);
+      if (!Number.isFinite(n) || n < 0) return `${key} must be a non-negative number`;
+    }
+    return null;
+  };
+
   const saveSettings = async () => {
     const changed = settings.filter(s => {
       const orig = original.find(o => o.key === s.key);
@@ -108,13 +144,25 @@ export default function SettingsPage() {
       return;
     }
 
+    // QA C40-C53: validate before sending. First failure short-circuits.
+    for (const s of changed) {
+      const err = validateSetting(s.key, s.value);
+      if (err) {
+        setError(err);
+        toast.error(err);
+        return;
+      }
+    }
+
     setSaving(true);
     setError(null);
     try {
       await apiClient.post('/settings/bulk-sync', {
-        settings: changed.map(s => ({ key: s.key, value: s.value, category: s.category })),
+        settings: changed.map(s => ({ key: s.key, value: s.value.trim(), category: s.category })),
       });
-      setOriginal(JSON.parse(JSON.stringify(settings)));
+      // QA C40: structuredClone preserves Dates and is faster than JSON round-trip
+      // (and it's natively supported in modern browsers / Node 17+).
+      setOriginal(typeof structuredClone === 'function' ? structuredClone(settings) : JSON.parse(JSON.stringify(settings)));
       setSuccessMsg(`Saved ${changed.length} setting${changed.length === 1 ? '' : 's'}`);
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err: any) {

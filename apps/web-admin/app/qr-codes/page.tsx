@@ -89,8 +89,15 @@ export default function QrCodesPage() {
     }
   };
 
-  const customerUrl = (token: string) =>
-    typeof window !== 'undefined' ? `${window.location.origin}/qr/${token}` : `/qr/${token}`;
+  // QA C38: prefer an explicitly-configured public origin so a staging admin
+  // doesn't print QR codes that point at staging URLs. Set NEXT_PUBLIC_PUBLIC_BASE_URL
+  // (e.g. https://menu.example.com) in production.
+  const customerUrl = (token: string) => {
+    const fromEnv = process.env.NEXT_PUBLIC_PUBLIC_BASE_URL;
+    if (fromEnv) return `${fromEnv.replace(/\/$/, '')}/qr/${token}`;
+    if (typeof window !== 'undefined') return `${window.location.origin}/qr/${token}`;
+    return `/qr/${token}`;
+  };
 
   const qrSrc = (token: string, size = 300) =>
     `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(

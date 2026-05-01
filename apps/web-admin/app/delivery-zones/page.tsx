@@ -53,11 +53,24 @@ export default function DeliveryZonesPage() {
   const calculateFee = async () => {
     const lat = parseFloat(feeForm.latitude);
     const lng = parseFloat(feeForm.longitude);
+    // QA C46: bound to legal lat/lng ranges client-side too.
     if (isNaN(lat) || isNaN(lng)) {
       toast.error('Enter valid latitude and longitude');
       return;
     }
-    const orderAmount = feeForm.orderAmount ? parseFloat(feeForm.orderAmount) : 0;
+    if (lat < -90 || lat > 90) {
+      toast.error('Latitude must be between -90 and 90');
+      return;
+    }
+    if (lng < -180 || lng > 180) {
+      toast.error('Longitude must be between -180 and 180');
+      return;
+    }
+    // QA C47: defensive default for orderAmount so a NaN never reaches the API.
+    const orderAmount = (() => {
+      const n = parseFloat(feeForm.orderAmount);
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    })();
     setCalculatingFee(true);
     setFeeResult(null);
     try {

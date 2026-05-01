@@ -20,7 +20,16 @@
     "db:generate": "cd apps/backend-api && npx prisma generate",
     "db:migrate": "cd apps/backend-api && npx prisma migrate dev",
     "db:studio": "cd apps/backend-api && npx prisma studio",
-    "db:seed": "cd apps/backend-api && npm run seed"
+    "db:seed": "cd apps/backend-api && npm run seed",
+    "db:seed:defaults": "cd apps/backend-api && npm run seed:defaults",
+    "typecheck": "npm run typecheck:api && npm run typecheck:web && npm run typecheck:pos",
+    "typecheck:api": "cd apps/backend-api && npm run typecheck",
+    "typecheck:web": "cd apps/web-admin && npx tsc --noEmit",
+    "typecheck:pos": "cd apps/pos-desktop && npx tsc --noEmit",
+    "lint:queries": "cd apps/backend-api && npm run lint:queries",
+    "test": "cd apps/backend-api && npm test",
+    "precommit": "npm run lint:queries && npm run typecheck:api",
+    "prepare": "husky install || true"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

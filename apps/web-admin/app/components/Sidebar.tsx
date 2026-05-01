@@ -143,8 +143,9 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="w-64 min-h-screen flex flex-col"
-      style={{ backgroundColor: '#AA0000', color: '#FBFBFB' }}
+      // QA C11: drive sidebar colour from a CSS variable so dark mode can
+      // adjust it instead of being permanently #AA0000.
+      className="w-64 min-h-screen flex flex-col bg-[var(--sidebar-bg,#AA0000)] text-[var(--sidebar-fg,#FBFBFB)]"
     >
       <div className="p-6 border-b border-white/15 flex items-center gap-3">
         <img
@@ -159,7 +160,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 py-4 overflow-y-auto">
+      <nav className="flex-1 py-4 overflow-y-auto" aria-label="Primary navigation">
         {navSections.map((section) => {
           const visible = section.items.filter((item) => item.roles.includes(user.role));
           if (visible.length === 0) return null;
@@ -171,7 +172,11 @@ export default function Sidebar() {
               </p>
               {visible.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                // QA C12: use exact match OR `/`-suffix match. The previous
+                // `startsWith(item.href)` highlighted `/orders-archive` when
+                // we were on `/orders`.
+                const isActive =
+                  pathname === item.href || pathname.startsWith(`${item.href}/`);
                 return (
                   <Link
                     key={item.href}
@@ -201,10 +206,13 @@ export default function Sidebar() {
 
       <div className="p-4 border-t border-white/15 flex flex-col gap-2">
         <button
+          type="button"
           onClick={toggleTheme}
-          className="flex items-center gap-3 px-4 py-2.5 rounded-lg w-full transition-colors text-sm"
+          // QA C13: focus-visible ring so keyboard users can see focus.
+          className="flex items-center gap-3 px-4 py-2.5 rounded-lg w-full transition-colors text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
           style={{ color: '#FBFBFB', backgroundColor: 'rgba(255,255,255,0.10)' }}
-          aria-label="Toggle theme"
+          aria-label="Toggle dark / light theme"
+          aria-pressed={theme === 'dark'}
         >
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>

@@ -10,17 +10,25 @@ export function useAdminWebSocket() {
   const [newOrders, setNewOrders] = useState(0);
   const [lowStockAlerts, setLowStockAlerts] = useState<any[]>([]);
 
-  const connect = useCallback(() => {
-    if (socketRef.current?.connected) return;
+  // QA C64: state guard so a fast remount/reconnect can't end up with two
+  // sockets racing to claim socketRef.
+  const connectingRef = useRef(false);
 
-    // Disconnect and clean up any existing non-connected socket before creating a new one
+  const connect = useCallback(() => {
+    if (socketRef.current?.connected || connectingRef.current) return;
+    connectingRef.current = true;
+
     if (socketRef.current) {
+      socketRef.current.removeAllListeners();
       socketRef.current.disconnect();
       socketRef.current = null;
     }
 
     const token = getToken();
-    if (!token) return;
+    if (!token) {
+      connectingRef.current = false;
+      return;
+    }
 
     const socket = io(SOCKET_URL, {
       auth: { token },
@@ -33,12 +41,23 @@ export function useAdminWebSocket() {
     socket.on('connect', () => {
       console.log('[Admin WS] Connected');
       setIsConnected(true);
+      connectingRef.current = false;
       socket.emit('join-room', 'admin');
     });
 
     socket.on('disconnect', () => {
       console.log('[Admin WS] Disconnected');
       setIsConnected(false);
+      connectingRef.current = false;
+    });
+
+    // QA C65: surface socket errors instead of silently swallowing them.
+    socket.on('connect_error', (err) => {
+      console.warn('[Admin WS] connect_error:', err.message);
+      connectingRef.current = false;
+    });
+    socket.on('error', (err) => {
+      console.warn('[Admin WS] socket error:', err);
     });
 
     // Listen for new orders

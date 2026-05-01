@@ -184,8 +184,8 @@ router.post('/journal-entries/:id/void', authenticate, authorize('ADMIN', 'MANAG
         credit: l.debit,
         description: `Reversal of ${entry.entryNumber}`,
       }));
-      const totalDebit = reverseLines.reduce((s, l) => s + l.debit, 0);
-      const totalCredit = reverseLines.reduce((s, l) => s + l.credit, 0);
+      const totalDebit = reverseLines.reduce((s, l) => s + Number(l.debit), 0);
+      const totalCredit = reverseLines.reduce((s, l) => s + Number(l.credit), 0);
       const entryNumber = await generateEntryNumber(tx as any);
 
       const reverseEntry = await tx.journalEntry.create({

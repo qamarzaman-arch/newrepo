@@ -36,11 +36,21 @@ export function useActiveOrders() {
   });
 
   const completeOrder = useMutation({
-    mutationFn: (orderId: string) =>
-      orderService.updateStatus(orderId, 'COMPLETED'),
-    onSuccess: () => {
+    mutationFn: async ({ orderId, currentStatus }: { orderId: string; currentStatus: string }) => {
+      // Skip if already completed to avoid transition error
+      if (currentStatus === 'COMPLETED') {
+        return { success: true, skipped: true };
+      }
+      const response = await orderService.updateStatus(orderId, 'COMPLETED');
+      return response.data;
+    },
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['cashier-active-orders'] });
-      toast.success('Order marked as completed');
+      if (data?.skipped) {
+        toast.success('Order already completed');
+      } else {
+        toast.success('Order marked as completed');
+      }
     },
     onError: () => toast.error('Failed to complete order'),
   });

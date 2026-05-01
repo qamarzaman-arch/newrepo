@@ -45,19 +45,37 @@ export const authLimiter: RequestHandler = rateLimit({
 export const apiLimiter: RequestHandler = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // 100 requests per window per IP
-  message: {
-    success: false,
-    error: {
-      message: 'Too many requests. Please slow down.',
-      code: 'RATE_LIMIT_EXCEEDED',
-    },
-  },
+  // QA A55: standardize the JSON shape with the rest of the API. The previous
+  // `message` object was returned as-is by express-rate-limit which doesn't
+  // match our `{ success, error: { message, code } }` envelope.
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
-    // Skip rate limiting for health checks
-    if (req.path === '/health') return true;
-    return false;
+  handler: (_req, res) => {
+    res.status(429).json({
+      success: false,
+      error: { message: 'Too many requests. Please slow down.', code: 'RATE_LIMIT_EXCEEDED' },
+    });
+  },
+  skip: (req) => req.path === '/health',
+});
+
+// QA A85: separate, much stricter limiter for upload endpoints. Uploads are
+// expensive and an obvious DoS surface.
+export const uploadLimiter: RequestHandler = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const userId = (req as any).user?.userId || 'anonymous';
+    return `${ip}:${userId}`;
+  },
+  handler: (_req, res) => {
+    res.status(429).json({
+      success: false,
+      error: { message: 'Too many uploads. Slow down.', code: 'RATE_LIMIT_EXCEEDED' },
+    });
   },
 });
 
@@ -79,6 +97,30 @@ export const paymentLimiter: RequestHandler = rateLimit({
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     const userId = (req as any).user?.userId || 'anonymous';
     return `${ip}:${userId}`;
+  },
+});
+
+// QA C2 / C33: per-token rate limit for QR ordering. Public endpoints — no auth
+// header to key on, so we key on the QR session token (in URL params or body)
+// plus IP. Without this a single QR can spam orders or get scraped.
+export const qrTokenLimiter: RequestHandler = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const token = (req.params as any)?.token
+      || (req.body as any)?.token
+      || (req.query as any)?.token
+      || 'anonymous';
+    return `qr:${ip}:${token}`;
+  },
+  handler: (_req, res) => {
+    res.status(429).json({
+      success: false,
+      error: { message: 'Too many QR ordering requests. Slow down.', code: 'RATE_LIMIT_EXCEEDED' },
+    });
   },
 });
 

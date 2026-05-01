@@ -120,8 +120,13 @@ export default function OrdersPage() {
           <h1 className="text-3xl font-extrabold text-gray-900">Orders</h1>
           <p className="text-gray-500 mt-1">Manage and track all restaurant orders</p>
         </div>
-        <button onClick={fetchOrders} className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors">
-          <RefreshCw size={16} /> Refresh
+        <button
+          type="button"
+          onClick={fetchOrders}
+          aria-label="Refresh orders list"
+          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+        >
+          <RefreshCw size={16} aria-hidden="true" /> Refresh
         </button>
       </div>
 
@@ -138,8 +143,10 @@ export default function OrdersPage() {
           { label: 'Active', value: stats.active, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
           { label: 'Completed Today', value: stats.completed, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
           { label: 'Revenue', value: `$${stats.revenue.toFixed(2)}`, icon: DollarSign, color: 'text-purple-600', bg: 'bg-purple-50' },
-        ].map((s, i) => (
-          <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        ].map((s) => (
+          // QA C25: stable key. Index would shift if the labels are ever
+          // re-ordered or filtered.
+          <div key={s.label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center ${s.color} mb-3`}>
               <s.icon size={20} />
             </div>

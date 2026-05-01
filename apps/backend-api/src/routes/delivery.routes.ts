@@ -5,6 +5,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 import { findZoneForPoint } from '../utils/geo';
+import { nextSequence, dailyScope, dateStampUTC } from '../utils/sequence';
 
 const router = Router();
 
@@ -14,8 +15,9 @@ const createDeliverySchema = z.object({
   customerPhone: z.string().min(10),
   deliveryAddress: z.string().min(1),
   deliveryNotes: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
+  // QA A39: bound to legal lat/lng ranges.
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
   estimatedTime: z.number().positive().optional(),
   deliveryFee: z.number().default(0),
 });
@@ -120,47 +122,51 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
   try {
     const validatedData = createDeliverySchema.parse(req.body);
 
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
-    const count = await prisma.delivery.count({
-      where: { createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } },
-    });
-    const deliveryNumber = `DEL-${today}-${String(count + 1).padStart(3, '0')}`;
+    const now = new Date();
+    const today = dateStampUTC(now);
+    const seq = await nextSequence(dailyScope('DEL', now));
+    const deliveryNumber = `DEL-${today}-${String(seq).padStart(3, '0')}`;
 
-    // Auto-assign zone + use zone's fee if caller didn't override
-    let zoneId: string | undefined;
-    let deliveryFee = Number(validatedData.deliveryFee || 0);
-    let estimatedTime = validatedData.estimatedTime;
+    // QA A37: zone lookup + delivery create must share a transaction so the
+    // zone can't be deleted between resolution and persistence.
+    const delivery = await prisma.$transaction(async (tx) => {
+      let zoneId: string | undefined;
+      let deliveryFee = Number(validatedData.deliveryFee || 0);
+      let estimatedTime = validatedData.estimatedTime;
 
-    if (validatedData.latitude !== undefined && validatedData.longitude !== undefined) {
-      const zones = await (prisma as any).deliveryZone.findMany({ where: { isActive: true } });
-      const match = findZoneForPoint(
-        { lat: Number(validatedData.latitude), lng: Number(validatedData.longitude) },
-        zones
-      );
-      if (match) {
-        const matched = zones.find((z: any) => z.id === match.id);
-        zoneId = matched.id;
-        if (!validatedData.deliveryFee) deliveryFee = Number(matched.baseFee || 0);
-        if (!estimatedTime) estimatedTime = matched.estimatedTimeMin || matched.estimatedTimeMax;
+      if (validatedData.latitude !== undefined && validatedData.longitude !== undefined) {
+        const zones = await (tx as any).deliveryZone.findMany({ where: { isActive: true } });
+        const match = findZoneForPoint(
+          { lat: Number(validatedData.latitude), lng: Number(validatedData.longitude) },
+          zones
+        );
+        if (match) {
+          const matched = zones.find((z: any) => z.id === match.id);
+          zoneId = matched.id;
+          if (!validatedData.deliveryFee) deliveryFee = Number(matched.baseFee || 0);
+          if (!estimatedTime) estimatedTime = matched.estimatedTimeMin || matched.estimatedTimeMax;
+        }
       }
-    }
 
-    const delivery = await prisma.delivery.create({
-      data: {
-        deliveryNumber,
-        customerName: validatedData.customerName,
-        customerPhone: validatedData.customerPhone,
-        deliveryAddress: validatedData.deliveryAddress,
-        deliveryNotes: validatedData.deliveryNotes,
-        latitude: validatedData.latitude,
-        longitude: validatedData.longitude,
-        estimatedTime,
-        deliveryFee,
-        orderId: validatedData.orderId,
-        ...(zoneId ? { zoneId } : {}),
-      },
-      include: { order: true, rider: true, zone: true },
+      return tx.delivery.create({
+        data: {
+          deliveryNumber,
+          customerName: validatedData.customerName,
+          customerPhone: validatedData.customerPhone,
+          deliveryAddress: validatedData.deliveryAddress,
+          deliveryNotes: validatedData.deliveryNotes,
+          latitude: validatedData.latitude,
+          longitude: validatedData.longitude,
+          estimatedTime,
+          deliveryFee,
+          orderId: validatedData.orderId,
+          ...(zoneId ? { zoneId } : {}),
+        },
+        include: { order: true, rider: true, zone: true },
+      });
     });
+
+    const zoneId = (delivery as any).zoneId;
 
     logger.info(`Delivery created: ${sanitize(deliveryNumber)} by ${sanitize(req.user!.username)}${zoneId ? ` in zone ${zoneId}` : ''}`);
     res.status(201).json({ success: true, data: { delivery } });
@@ -195,6 +201,29 @@ router.patch('/:id/status', authenticate, async (req: AuthRequest, res: Response
 router.patch('/:id/assign-rider', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { riderId } = req.body;
+    if (!riderId || typeof riderId !== 'string') {
+      throw new AppError('riderId is required', 400);
+    }
+
+    // QA A38: verify the rider is available and not already over the active-
+    // delivery cap before assigning.
+    const MAX_ACTIVE_PER_RIDER = Number(process.env.RIDER_MAX_ACTIVE_DELIVERIES || 5);
+    const rider = await prisma.user.findUnique({ where: { id: riderId } });
+    if (!rider || rider.role !== 'RIDER') {
+      throw new AppError('User is not a rider', 400);
+    }
+    if (rider.isActive === false || rider.isAvailable === false) {
+      throw new AppError('Rider is unavailable', 409);
+    }
+    const activeCount = await prisma.delivery.count({
+      where: {
+        riderId,
+        status: { in: ['ASSIGNED', 'PICKED_UP', 'IN_TRANSIT'] },
+      },
+    });
+    if (activeCount >= MAX_ACTIVE_PER_RIDER) {
+      throw new AppError(`Rider has reached active-delivery cap (${MAX_ACTIVE_PER_RIDER})`, 409);
+    }
 
     const delivery = await prisma.delivery.update({
       where: { id: req.params.id },

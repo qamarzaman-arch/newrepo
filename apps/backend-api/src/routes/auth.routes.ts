@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../config/database';
-import { authenticate, authorize, AuthRequest } from '../middleware/auth';
+import { authenticate, authorize, AuthRequest, JWT_ISSUER, JWT_AUDIENCE, JWT_ALGORITHM, JWT_VERIFY_OPTIONS } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 import { verifyAndUpgradeSecret } from '../utils/pinSecurity';
@@ -12,14 +12,20 @@ import { PIN_BCRYPT_ROUNDS } from '../config/constants';
 
 const router = Router();
 
-// Validation schemas
-const loginSchema = z.object({
-  username: z.string().min(1),
-  password: z.string().min(1).optional(),
-  pin: z.string().length(4).optional(),
-}).refine((v) => Boolean(v.password) || Boolean(v.pin), {
-  message: 'Either password or pin is required',
+// QA A6: split into a clean discriminated union — exactly one of password/pin
+// must be present, and we know which up-front so the route doesn't have to
+// re-derive it.
+const passwordLoginSchema = z.object({
+  username: z.string().min(1).max(64),
+  password: z.string().min(1).max(128),
+  pin: z.undefined().optional(),
 });
+const pinLoginSchema = z.object({
+  username: z.string().min(1).max(64),
+  pin: z.string().length(4).regex(/^\d{4}$/),
+  password: z.undefined().optional(),
+});
+const loginSchema = z.union([passwordLoginSchema, pinLoginSchema]);
 
 const registerSchema = z.object({
   username: z.string().min(3),
@@ -36,37 +42,45 @@ const registerSchema = z.object({
   pin: z.string().length(4).optional(),
 });
 
+// QA A1 / A2: prebuilt dummy bcrypt hash so a "user not found" path still
+// performs an equivalent compare. This stops timing oracles that distinguish
+// "valid username + wrong password" from "no such username".
+const DUMMY_BCRYPT_HASH = '$2a$12$CwTycUXWue0Thq9StjUM0uJ8R5q8wb5L1.4r5W1sY7sIeY3iQF8Bm';
+
 // Login
 router.post('/login', authLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { username, password, pin } = loginSchema.parse(req.body);
 
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { username },
-    });
+    const user = await prisma.user.findUnique({ where: { username } });
 
     if (!user || !user.isActive) {
+      // Burn an equivalent bcrypt cycle so attackers can't time us into
+      // confirming valid usernames.
+      await bcrypt.compare(password ?? pin ?? 'dummy', DUMMY_BCRYPT_HASH);
       throw new AppError('Invalid credentials', 401);
     }
 
-    // Check PIN login (if provided)
     if (pin) {
       if (!user.pin) {
+        await bcrypt.compare(pin, DUMMY_BCRYPT_HASH);
         throw new AppError('Invalid PIN', 401);
       }
-
       const isValidPin = await verifyAndUpgradeSecret(pin, user.pin, async (hashedPin) => {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { pin: hashedPin },
-        });
+        try {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { pin: hashedPin },
+          });
+        } catch (err) {
+          // QA A5: log silent upgrade failures so they're investigable.
+          logger.warn(`PIN hash upgrade failed for ${user.username}: ${(err as Error).message}`);
+        }
       });
       if (!isValidPin) {
         throw new AppError('Invalid PIN', 401);
       }
     } else {
-      // Check password
       if (!password) {
         throw new AppError('Password is required', 400);
       }
@@ -76,7 +90,13 @@ router.post('/login', authLimiter, async (req: Request, res: Response, next: Nex
       }
     }
 
-    // Generate JWT token
+    // QA A48 / A4 / A7: pin issuer/audience/algorithm and derive session
+    // expiry from the JWT itself instead of recomputing.
+    const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '30d';
+    if (!/^\d+[dhms]$/.test(jwtExpiresIn)) {
+      // Fail fast — silently defaulting to 30d is how tokens "secretly live forever".
+      throw new AppError('JWT_EXPIRES_IN is not a valid duration like "30d" / "12h" / "60m"', 500);
+    }
     const token = jwt.sign(
       {
         userId: user.id,
@@ -84,16 +104,19 @@ router.post('/login', authLimiter, async (req: Request, res: Response, next: Nex
         role: user.role,
       },
       process.env.JWT_SECRET as string,
-      { expiresIn: (process.env.JWT_EXPIRES_IN || '30d') as any }
+      {
+        expiresIn: jwtExpiresIn as any,
+        issuer: JWT_ISSUER,
+        audience: JWT_AUDIENCE,
+        algorithm: JWT_ALGORITHM,
+      }
     );
 
-    // Parse JWT_EXPIRES_IN to derive session expiry (keeps DB session aligned with JWT lifetime)
-    const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '30d';
-    const unitMs: Record<string, number> = { d: 86400000, h: 3600000, m: 60000, s: 1000 };
-    const match = jwtExpiresIn.match(/^(\d+)([dhms])$/);
-    const sessionExpiryMs = match
-      ? parseInt(match[1]) * (unitMs[match[2]] ?? 86400000)
-      : 30 * 86400000;
+    // Derive session expiry from the JWT exp claim — single source of truth.
+    const decodedForExpiry = jwt.decode(token) as { exp?: number } | null;
+    const sessionExpiryMs = decodedForExpiry?.exp
+      ? decodedForExpiry.exp * 1000 - Date.now()
+      : 30 * 86_400_000;
 
     // Create session
     await prisma.session.create({
@@ -219,7 +242,8 @@ router.get('/verify', async (req: Request, res: Response, next: NextFunction) =>
 
     const decoded: any = jwt.verify(
       token,
-      process.env.JWT_SECRET as string
+      process.env.JWT_SECRET as string,
+      JWT_VERIFY_OPTIONS,
     );
 
     // Verify that a valid (non-expired, non-revoked) DB session exists for this token
@@ -257,21 +281,37 @@ router.get('/verify', async (req: Request, res: Response, next: NextFunction) =>
   }
 });
 
-// Per-userId rate limiting for validate-pin (max 10 attempts per 15 minutes)
-const pinValidationAttempts = new Map<string, { count: number; resetAt: number }>();
+// QA A3: PIN attempts persisted in DB so a process restart or a sibling
+// replica can't be used to bypass the limiter. Backed by the new PinAttempt
+// table — see schema.prisma.
 const PIN_RATE_WINDOW_MS = 15 * 60 * 1000;
 const PIN_RATE_MAX = 10;
 
-function checkPinRateLimit(userId: string): boolean {
-  const now = Date.now();
-  const entry = pinValidationAttempts.get(userId);
-  if (!entry || now > entry.resetAt) {
-    pinValidationAttempts.set(userId, { count: 1, resetAt: now + PIN_RATE_WINDOW_MS });
+async function checkPinRateLimit(userId: string): Promise<boolean> {
+  const now = new Date();
+  const existing = await prisma.pinAttempt.findUnique({ where: { userId } });
+
+  if (!existing || existing.resetAt < now) {
+    await prisma.pinAttempt.upsert({
+      where: { userId },
+      create: { userId, count: 1, resetAt: new Date(now.getTime() + PIN_RATE_WINDOW_MS) },
+      update: { count: 1, resetAt: new Date(now.getTime() + PIN_RATE_WINDOW_MS) },
+    });
     return true;
   }
-  if (entry.count >= PIN_RATE_MAX) return false;
-  entry.count++;
-  return true;
+
+  if (existing.count >= PIN_RATE_MAX) return false;
+
+  // Atomic increment so two parallel attempts can't both pass the cap.
+  const bumped = await prisma.pinAttempt.updateMany({
+    where: { userId, count: { lt: PIN_RATE_MAX } },
+    data: { count: { increment: 1 } },
+  });
+  return bumped.count > 0;
+}
+
+async function clearPinRateLimit(userId: string): Promise<void> {
+  await prisma.pinAttempt.deleteMany({ where: { userId } });
 }
 
 // Validate PIN for the authenticated user only
@@ -285,7 +325,7 @@ router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Respons
 
     const userId = req.user!.userId;
 
-    if (!checkPinRateLimit(userId)) {
+    if (!(await checkPinRateLimit(userId))) {
       logger.warn(`PIN rate limit exceeded for userId ${userId}`);
       return res.status(429).json({
         success: false,
@@ -319,14 +359,18 @@ router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Respons
     });
 
     if (!isValid) {
-      logger.warn(`Failed PIN validation attempt by ${currentUser.fullName} (${currentUser.username}) for operation: ${operation}`);
+      logger.warn(`Failed PIN validation attempt by ${currentUser.username} for operation: ${operation}`);
       return res.json({
         success: true,
         data: { valid: false },
       });
     }
 
-    logger.info(`PIN validated successfully for ${currentUser.fullName} (${currentUser.username}, Role: ${currentUser.role}) - Operation: ${operation}`);
+    // QA A78: log username + result only; don't include role.
+    logger.info(`PIN validated for ${currentUser.username}; operation=${operation}`);
+    // QA A3: clear the counter on success so the user isn't penalized for
+    // earlier mistypes.
+    await clearPinRateLimit(userId);
 
     res.json({
       success: true,

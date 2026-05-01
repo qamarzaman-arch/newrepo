@@ -20,6 +20,7 @@ import comboRoutes from './combo.routes';
 import recipeRoutes from './recipe.routes';
 import purchaseOrderRoutes from './purchase-order.routes';
 import paymentRoutes from './payment.routes';
+import paymentWebhookRoutes from './payment-webhook.routes';
 import cashDrawerRoutes from './cash-drawer.routes';
 import auditLogRoutes from './audit-log.routes';
 import orderModificationRoutes from './order-modification.routes';
@@ -36,48 +37,57 @@ import accountingRoutes from './accounting.routes';
 import taxRoutes from './tax.routes';
 import externalPlatformRoutes from './external-platform.routes';
 import qrOrderingRoutes from './qr-ordering.routes';
+import { authenticate, requireFeature } from '../middleware/auth';
 
 export function setupRoutes(app: Application) {
   const apiPrefix = '/api/v1';
 
+  // QA C48: feature-access enforcement at the route-prefix level. Each prefix
+  // gates on the feature ID surfaced in the admin UI. authenticate runs first
+  // so requireFeature can read req.user.role; routes inside still apply their
+  // own authorize() / role guards on top.
+  const gate = (feature: string) => [authenticate, requireFeature(feature)];
+
   // API routes
-  app.use(`${apiPrefix}/auth`, authRoutes);
-  app.use(`${apiPrefix}/users`, userRoutes);
-  app.use(`${apiPrefix}/menu`, menuRoutes);
-  app.use(`${apiPrefix}/orders`, orderRoutes);
-  app.use(`${apiPrefix}/tables`, tableRoutes);
-  app.use(`${apiPrefix}/customers`, customerRoutes);
-  app.use(`${apiPrefix}/inventory`, inventoryRoutes);
-  app.use(`${apiPrefix}/kitchen`, kitchenRoutes);
-  app.use(`${apiPrefix}/delivery`, deliveryRoutes);
-  app.use(`${apiPrefix}/expenses`, expenseRoutes);
-  app.use(`${apiPrefix}/discounts`, discountRoutes);
-  app.use(`${apiPrefix}/reports`, reportRoutes);
-  app.use(`${apiPrefix}/settings`, settingRoutes);
-  app.use(`${apiPrefix}/devices`, deviceRoutes);
+  app.use(`${apiPrefix}/auth`, authRoutes); // never feature-gated
+  app.use(`${apiPrefix}/feature-access`, featureAccessRoutes); // admin-only inside
+  app.use(`${apiPrefix}/payments/webhooks`, paymentWebhookRoutes); // unauth (signature-verified)
+
+  app.use(`${apiPrefix}/users`, gate('staff'), userRoutes);
+  app.use(`${apiPrefix}/menu`, gate('menu'), menuRoutes);
+  app.use(`${apiPrefix}/orders`, gate('orders'), orderRoutes);
+  app.use(`${apiPrefix}/tables`, gate('tables'), tableRoutes);
+  app.use(`${apiPrefix}/customers`, gate('customers'), customerRoutes);
+  app.use(`${apiPrefix}/inventory`, gate('inventory'), inventoryRoutes);
+  app.use(`${apiPrefix}/kitchen`, gate('kitchen'), kitchenRoutes);
+  app.use(`${apiPrefix}/delivery`, gate('delivery'), deliveryRoutes);
+  app.use(`${apiPrefix}/expenses`, gate('financial'), expenseRoutes);
+  app.use(`${apiPrefix}/discounts`, gate('orders'), discountRoutes);
+  app.use(`${apiPrefix}/reports`, gate('reports'), reportRoutes);
+  app.use(`${apiPrefix}/settings`, gate('settings'), settingRoutes);
+  app.use(`${apiPrefix}/devices`, gate('settings'), deviceRoutes);
   app.use(`${apiPrefix}/sync`, syncRoutes);
-  app.use(`${apiPrefix}/vendors`, vendorRoutes);
-  app.use(`${apiPrefix}/staff`, staffRoutes);
-  app.use(`${apiPrefix}/combos`, comboRoutes);
-  app.use(`${apiPrefix}/recipes`, recipeRoutes);
-  app.use(`${apiPrefix}/purchase-orders`, purchaseOrderRoutes);
-  app.use(`${apiPrefix}/payments`, paymentRoutes);
-  app.use(`${apiPrefix}/cash-drawer`, cashDrawerRoutes);
-  app.use(`${apiPrefix}/audit-logs`, auditLogRoutes);
-  app.use(`${apiPrefix}/order-modifications`, orderModificationRoutes);
-  app.use(`${apiPrefix}/delivery-zones`, deliveryZoneRoutes);
-  app.use(`${apiPrefix}/staff-schedules`, staffScheduleRoutes);
-  app.use(`${apiPrefix}/riders`, riderRoutes);
-  app.use(`${apiPrefix}/commissions`, commissionRoutes);
-  app.use(`${apiPrefix}/table-locks`, tableLockRoutes);
-  app.use(`${apiPrefix}/feature-access`, featureAccessRoutes);
-  app.use(`${apiPrefix}/branches`, branchRoutes);
-  app.use(`${apiPrefix}/marketing`, marketingRoutes);
-  app.use(`${apiPrefix}/reviews`, reviewRoutes);
-  app.use(`${apiPrefix}/accounting`, accountingRoutes);
-  app.use(`${apiPrefix}/tax`, taxRoutes);
-  app.use(`${apiPrefix}/external-platform`, externalPlatformRoutes);
-  app.use(`${apiPrefix}/qr-ordering`, qrOrderingRoutes);
+  app.use(`${apiPrefix}/vendors`, gate('vendors'), vendorRoutes);
+  app.use(`${apiPrefix}/staff`, gate('staff'), staffRoutes);
+  app.use(`${apiPrefix}/combos`, gate('menu'), comboRoutes);
+  app.use(`${apiPrefix}/recipes`, gate('inventory'), recipeRoutes);
+  app.use(`${apiPrefix}/purchase-orders`, gate('vendors'), purchaseOrderRoutes);
+  app.use(`${apiPrefix}/payments`, gate('orders'), paymentRoutes);
+  app.use(`${apiPrefix}/cash-drawer`, gate('financial'), cashDrawerRoutes);
+  app.use(`${apiPrefix}/audit-logs`, gate('reports'), auditLogRoutes);
+  app.use(`${apiPrefix}/order-modifications`, gate('orders'), orderModificationRoutes);
+  app.use(`${apiPrefix}/delivery-zones`, gate('delivery'), deliveryZoneRoutes);
+  app.use(`${apiPrefix}/staff-schedules`, gate('staff'), staffScheduleRoutes);
+  app.use(`${apiPrefix}/riders`, gate('delivery'), riderRoutes);
+  app.use(`${apiPrefix}/commissions`, gate('financial'), commissionRoutes);
+  app.use(`${apiPrefix}/table-locks`, gate('tables'), tableLockRoutes);
+  app.use(`${apiPrefix}/branches`, gate('settings'), branchRoutes);
+  app.use(`${apiPrefix}/marketing`, gate('settings'), marketingRoutes);
+  app.use(`${apiPrefix}/reviews`, gate('customers'), reviewRoutes);
+  app.use(`${apiPrefix}/accounting`, gate('financial'), accountingRoutes);
+  app.use(`${apiPrefix}/tax`, gate('financial'), taxRoutes);
+  app.use(`${apiPrefix}/external-platform`, gate('delivery'), externalPlatformRoutes);
+  app.use(`${apiPrefix}/qr-ordering`, qrOrderingRoutes); // public QR ordering — own gating
 
   // 404 handler
   app.use((_req, res) => {

@@ -81,8 +81,17 @@ export default function ReviewsPage() {
     }
   };
 
-  const handleHide = async (id: string) => {
-    if (!confirm('Hide this review?')) return;
+  // QA C55: confirmHide marks the row as pending-hide; the inline custom
+  // modal in the JSX renders a real dialog instead of a native confirm() that
+  // looks out of place in the design system.
+  const [pendingHideId, setPendingHideId] = useState<string | null>(null);
+
+  const requestHide = (id: string) => setPendingHideId(id);
+
+  const handleHide = async () => {
+    if (!pendingHideId) return;
+    const id = pendingHideId;
+    setPendingHideId(null);
     try {
       await apiClient.put(`/reviews/${id}/hide`);
       toast.success('Review hidden');
@@ -236,7 +245,7 @@ export default function ReviewsPage() {
                 </button>
                 {!r.isHidden && (
                   <button
-                    onClick={() => handleHide(r.id)}
+                    onClick={() => requestHide(r.id)}
                     className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200 flex items-center gap-1"
                   >
                     <EyeOff size={14} /> Hide
@@ -270,6 +279,24 @@ export default function ReviewsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* QA C55: custom confirm modal for hiding reviews. */}
+      <Modal
+        isOpen={!!pendingHideId}
+        onClose={() => setPendingHideId(null)}
+        title="Hide this review?"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-neutral-300">
+            The review will no longer appear in customer-facing surfaces. You can restore it from
+            the moderation queue.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" type="button" onClick={() => setPendingHideId(null)}>Cancel</Button>
+            <Button variant="danger" type="button" onClick={handleHide}>Hide review</Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

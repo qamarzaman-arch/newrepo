@@ -6,6 +6,7 @@ import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 import { paymentLimiter } from '../middleware/rateLimiter';
 import { paymentGatewayService } from '../services/paymentGateway.service';
+import { toCentsSafe } from '../utils/money';
 
 const router = Router();
 
@@ -30,9 +31,33 @@ router.post('/validate-card', authenticate, paymentLimiter, async (req: AuthRequ
   try {
     const { amount, cardDetails } = validateCardSchema.parse(req.body);
 
-    // Log payment attempt with user context
+    // QA A25: idempotency. If the caller passes Idempotency-Key and we've
+    // already created a PaymentIntent for it, return the cached response
+    // instead of opening a duplicate Stripe charge.
+    const idempotencyKey = (req.headers['idempotency-key'] as string | undefined)?.trim();
+    if (idempotencyKey) {
+      const existing = await prisma.paymentValidation.findUnique({
+        where: { idempotencyKey },
+      });
+      if (existing) {
+        return res.json({
+          success: true,
+          data: {
+            transactionId: existing.transactionId,
+            status: existing.status,
+            amount: Number(existing.amount),
+          },
+          idempotent: true,
+        });
+      }
+    }
+
+    // QA A76: mask the card last-4. The clear value still lives in the
+    // PaymentValidation row for reconciliation, but it should not be in
+    // application logs.
+    const maskedLast4 = cardDetails?.lastFour ? `****${cardDetails.lastFour.slice(-2).padStart(4, '*')}` : undefined;
     logger.info(`Card payment validation requested by ${sanitize(req.user?.username || 'unknown')}: ${amount}`, {
-      lastFour: cardDetails?.lastFour,
+      lastFour: maskedLast4,
       userId: req.user?.userId,
     });
 
@@ -46,15 +71,16 @@ router.post('/validate-card', authenticate, paymentLimiter, async (req: AuthRequ
       throw new AppError('Invalid card last four digits format', 400);
     }
 
-    // Create Stripe Payment Intent
+    // Create Stripe Payment Intent.
+    // QA A22: never put PII (username, full name, email, phone) into Stripe metadata.
+    // QA A23: convert to integer cents in a precision-safe way using string formatting.
+    const amountCents = toCentsSafe(amount);
     const paymentIntentData = {
-      amount: Math.round(amount * 100), // Convert to cents
+      amount: amountCents,
       currency: 'usd',
       orderId: `manual-${Date.now()}`,
       metadata: {
-        userId: req.user?.userId,
-        username: req.user?.username,
-        cardLastFour: cardDetails?.lastFour,
+        userId: req.user?.userId ?? '',
       },
     };
 
@@ -63,18 +89,22 @@ router.post('/validate-card', authenticate, paymentLimiter, async (req: AuthRequ
     // Log successful validation
     logger.info(`Stripe PaymentIntent created: ${sanitize(stripeResult.paymentIntentId)}`);
 
-    await prisma.paymentValidation.create({
-      data: {
-        transactionId: stripeResult.paymentIntentId,
-        amount: amount,
-        method: 'CARD',
-        status: stripeResult.status.toUpperCase(),
-        cardLastFour: cardDetails?.lastFour,
-        gatewayResponse: JSON.stringify(stripeResult),
-      },
-    }).catch((err) => {
-      logger.error('Could not store payment validation record:', err.message);
-    });
+    try {
+      await prisma.paymentValidation.create({
+        data: {
+          transactionId: stripeResult.paymentIntentId,
+          amount: amount,
+          method: 'CARD',
+          status: stripeResult.status.toUpperCase(),
+          cardLastFour: cardDetails?.lastFour,
+          gatewayResponse: JSON.stringify(stripeResult),
+          idempotencyKey: idempotencyKey,
+        },
+      });
+    } catch (err: any) {
+      // QA A24: do not swallow audit-write failures.
+      logger.error(`PaymentValidation insert failed for ${stripeResult.paymentIntentId}: ${err.message}`);
+    }
 
     res.json({
       success: true,

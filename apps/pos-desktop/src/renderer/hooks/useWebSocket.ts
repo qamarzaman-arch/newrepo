@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../stores/authStore';
+import { registerGlobalSocket } from '../utils/socketRegistry';
 
 const getSocketUrl = () => {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
@@ -15,16 +16,37 @@ export function useWebSocket() {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const messageHandlers = useRef<Map<string, MessageHandler[]>>(new Map());
+  // QA B40: track which rooms we joined so we can rejoin them after reconnect.
+  const joinedRoomsRef = useRef<Set<string>>(new Set());
   const { token } = useAuthStore();
   const isConnectingRef = useRef(false);
+  // QA B39: exponential reconnect with hard ceiling. We do reconnects manually
+  // so we can pause when the user is logged out (no token).
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 8;
+  const BASE_BACKOFF_MS = 1000;
+  const MAX_BACKOFF_MS = 30_000;
+
+  const scheduleReconnect = useCallback(() => {
+    if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      console.warn('Socket.IO: gave up after max reconnect attempts');
+      return;
+    }
+    const delay = Math.min(BASE_BACKOFF_MS * 2 ** reconnectAttemptsRef.current, MAX_BACKOFF_MS);
+    reconnectAttemptsRef.current++;
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+    reconnectTimerRef.current = setTimeout(() => {
+      // re-call connect — defined below; useCallback ref will capture fresh token.
+      connectRef.current?.();
+    }, delay);
+  }, []);
+
+  const connectRef = useRef<() => void>();
 
   const connect = useCallback(() => {
     if (!token || isConnectingRef.current) return;
-
-    // Skip if already connected
-    if (socketRef.current?.connected) {
-      return;
-    }
+    if (socketRef.current?.connected) return;
 
     isConnectingRef.current = true;
 
@@ -32,35 +54,40 @@ export function useWebSocket() {
       const socket = io(SOCKET_URL, {
         auth: { token },
         transports: ['websocket', 'polling'],
-        reconnection: false, // Disable auto-reconnection for now
-        timeout: 5000, // Short timeout to fail fast
+        reconnection: false, // QA B39: we own the reconnect loop ourselves.
+        timeout: 5000,
       });
 
       socket.on('connect', () => {
         console.log('Socket.IO connected');
         setIsConnected(true);
         isConnectingRef.current = false;
+        reconnectAttemptsRef.current = 0;
+        // QA B40: rejoin every room the consumer asked us to be in.
+        for (const room of joinedRoomsRef.current) {
+          socket.emit('join-room', room);
+        }
       });
 
       socket.on('disconnect', (reason) => {
         console.log('Socket.IO disconnected:', reason);
         setIsConnected(false);
         isConnectingRef.current = false;
+        // Only reconnect if we still have a token (logout clears it).
+        if (useAuthStore.getState().token) {
+          scheduleReconnect();
+        }
       });
 
-      socket.on('connect_error', (error) => {
-        console.warn('Socket.IO not available - real-time features disabled');
+      socket.on('connect_error', () => {
         setIsConnected(false);
         isConnectingRef.current = false;
         socket.disconnect();
+        if (useAuthStore.getState().token) {
+          scheduleReconnect();
+        }
       });
 
-      socket.on('reconnect_failed', () => {
-        console.error('Socket.IO max reconnection attempts reached');
-        isConnectingRef.current = false;
-      });
-
-      // Listen for all custom events and dispatch to registered handlers
       socket.onAny((eventName, ...args) => {
         const handlers = messageHandlers.current.get(eventName) || [];
         const payload = args.length === 1 ? args[0] : args;
@@ -74,13 +101,23 @@ export function useWebSocket() {
       });
 
       socketRef.current = socket;
+      registerGlobalSocket(socket);
     } catch (error) {
       console.warn('Socket.IO initialization failed:', error);
       isConnectingRef.current = false;
+      scheduleReconnect();
     }
-  }, [token]);
+  }, [token, scheduleReconnect]);
+
+  // Keep a ref to the latest connect so scheduleReconnect can re-fire it.
+  useEffect(() => { connectRef.current = connect; }, [connect]);
 
   const disconnect = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    reconnectAttemptsRef.current = MAX_RECONNECT_ATTEMPTS; // halt the loop
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
@@ -120,12 +157,15 @@ export function useWebSocket() {
   }, []);
 
   const joinRoom = useCallback((room: string) => {
+    // QA B40: remember the room set so reconnect can rejoin everything.
+    joinedRoomsRef.current.add(room);
     if (socketRef.current?.connected) {
       socketRef.current.emit('join-room', room);
     }
   }, []);
 
   const leaveRoom = useCallback((room: string) => {
+    joinedRoomsRef.current.delete(room);
     if (socketRef.current?.connected) {
       socketRef.current.emit('leave-room', room);
     }

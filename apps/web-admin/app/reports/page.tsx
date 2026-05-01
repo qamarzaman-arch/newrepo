@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package, Calendar, Download } from 'lucide-react';
 import apiClient from '../lib/api';
+import toast from 'react-hot-toast';
 
 interface SalesReport {
   date: string;
@@ -25,11 +26,15 @@ export default function ReportsPage() {
   const [staffPerformance, setStaffPerformance] = useState<any[]>([]);
   const [summary, setSummary] = useState({ totalRevenue: 0, totalOrders: 0, avgOrderValue: 0, topItem: '-' });
 
+  // QA C44: brittle parseInt(dateRange.replace('d','')) replaced by an enum
+  // map so callers can't ship arbitrary inputs.
+  const RANGE_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, '365d': 365 };
+
   useEffect(() => {
     const fetchReports = async () => {
       setLoading(true);
       try {
-        const rangeDays = parseInt(dateRange.replace('d', ''), 10) || 7;
+        const rangeDays = RANGE_DAYS[dateRange] ?? 7;
         const [salesRes, topRes, staffRes] = await Promise.allSettled([
           apiClient.get(`/reports/sales/monthly?range=${rangeDays}`),
           apiClient.get(`/reports/products/top-selling?limit=10&days=${rangeDays}`),
@@ -57,8 +62,19 @@ export default function ReportsPage() {
         if (staffRes.status === 'fulfilled') {
           setStaffPerformance(staffRes.value.data.data?.performances || []);
         }
-      } catch {
-        // fetch failure is handled silently; UI shows empty states
+
+        // QA C45: surface a toast when ALL three metrics failed so the user
+        // doesn't stare at three empty charts wondering what happened.
+        const allFailed = [salesRes, topRes, staffRes].every((r) => r.status === 'rejected');
+        if (allFailed) {
+          toast.error('Could not load any report. Check your connection and try again.');
+        }
+      } catch (err) {
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.error('reports fetch failed:', err);
+        }
+        toast.error('Failed to load reports');
       } finally {
         setLoading(false);
       }

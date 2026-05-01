@@ -141,3 +141,6 @@ export * from './constants';
 
 // Re-export status colors
 export * from './statusColors';
+
+// Re-export WebSocket event contracts
+export * from './wsContracts';

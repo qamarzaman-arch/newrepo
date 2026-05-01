@@ -321,8 +321,23 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
       if (!paymentResult.success) {
         toast.error(paymentResult.error || 'Payment processing failed');
 
+        // QA B16: order is on the server but payment failed. Queue a retry so
+        // the cashier can collect later instead of leaving an unpaid ghost
+        // order with no clear recovery path.
         if (paymentResult.requiresRollback) {
-          toast.error('Order created but payment failed. Please contact manager.');
+          try {
+            const offlineQueue = getOfflineQueueManager();
+            offlineQueue.addToQueue(
+              { ...orderData, __existingOrderId: orderId } as any,
+              { ...paymentData, retryForOrderId: orderId } as any
+            );
+            toast.error(
+              'Order saved but payment failed — added to retry queue. Open the order to collect payment when the gateway recovers.'
+            );
+          } catch (qErr) {
+            console.error('Failed to queue payment retry:', qErr);
+            toast.error('Order created but payment failed AND retry queue failed. Contact manager and quote order ID: ' + orderId);
+          }
         }
 
         setIsSubmitting(false);

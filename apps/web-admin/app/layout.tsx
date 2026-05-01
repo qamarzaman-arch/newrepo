@@ -90,11 +90,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" type="image/png" href="/logo.png" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('poslytic-theme');var d=t==='dark'||(t==='auto'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
-          }}
-        />
+        {/* QA C1: external script (not inline) so CSP can drop 'unsafe-inline' */}
+        <script src="/theme-bootstrap.js" />
+
       </head>
       <body style={{ fontFamily: "'Poppins', system-ui, sans-serif" }}>
         <AuthWrapper>

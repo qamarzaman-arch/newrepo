@@ -194,7 +194,10 @@ const CashierActiveOrders: React.FC = () => {
         discountPercent: discountPercent ? Number(discountPercent) : undefined,
       });
 
-      await orderService.updateStatus(selectedOrder.id, 'COMPLETED');
+      // Only update status if order is not already COMPLETED to avoid transition error
+      if (selectedOrder.status !== 'COMPLETED') {
+        await orderService.updateStatus(selectedOrder.id, 'COMPLETED');
+      }
     },
     onSuccess: () => {
       toast.success('Payment collected');

@@ -244,6 +244,9 @@ router.put('/layout', authenticate, async (req: AuthRequest, res: Response, next
 router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = updateStatusSchema.parse(req.body);
+    const expectedVersion = typeof (req.body as any)?.version === 'number'
+      ? (req.body as any).version
+      : undefined;
 
     const table = await prisma.table.findUnique({
       where: { id: req.params.id },
@@ -259,15 +262,21 @@ router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER
       throw new AppError('Table not found', 404);
     }
 
-    // Prevent marking as AVAILABLE if there's an active order
     if (data.status === 'AVAILABLE' && table.orders.length > 0) {
       throw new AppError('Cannot mark table as available while there is an active order', 400);
     }
 
-    const updatedTable = await prisma.table.update({
-      where: { id: req.params.id },
-      data: { status: data.status },
+    // QA B23: optimistic lock so two cashiers assigning the same table don't
+    // both succeed. We pin to the version the client last saw.
+    const v = expectedVersion ?? (table as any).version ?? 0;
+    const updateResult = await prisma.table.updateMany({
+      where: { id: req.params.id, version: v },
+      data: { status: data.status, version: v + 1 },
     });
+    if (updateResult.count !== 1) {
+      throw new AppError('Table was modified by another user. Refresh and retry.', 409);
+    }
+    const updatedTable = await prisma.table.findUnique({ where: { id: req.params.id } });
 
     logger.info(`Table status updated: ${sanitize(table.number)} to ${sanitize(data.status)} by ${sanitize(req.user!.username)}`);
 

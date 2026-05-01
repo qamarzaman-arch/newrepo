@@ -136,8 +136,15 @@ router.post('/:id/close', authenticate, async (req: AuthRequest, res: Response, 
     }
     
     // Ignoring the client-provided expectedBalance intentionally
-    const recalculatedExpectedBalance = drawer.openingBalance + cashSales - refunds;
-    const discrepancy = closingBalance - recalculatedExpectedBalance;
+    // QA A41: also flag a discrepancy that exceeds the configured threshold so
+    // ops can spot it without trawling logs. Default threshold = 5%.
+    const recalculatedExpectedBalance = Number(drawer.openingBalance) + cashSales - refunds;
+    const discrepancy = Number(closingBalance) - recalculatedExpectedBalance;
+    const threshold = Number(process.env.CASH_DRAWER_DISCREPANCY_PERCENT || 5);
+    const discrepancyPercent = recalculatedExpectedBalance > 0
+      ? (Math.abs(discrepancy) / recalculatedExpectedBalance) * 100
+      : 0;
+    const discrepancyFlagged = discrepancyPercent > threshold;
 
     const updatedDrawer = await prisma.cashDrawer.update({
       where: { id: req.params.id },
@@ -146,6 +153,8 @@ router.post('/:id/close', authenticate, async (req: AuthRequest, res: Response, 
         closingBalance,
         expectedBalance: recalculatedExpectedBalance,
         discrepancy,
+        discrepancyPercent: discrepancyPercent,
+        discrepancyFlagged,
         closedAt: new Date(),
         closingNotes: notes || '',
         status: 'closed',

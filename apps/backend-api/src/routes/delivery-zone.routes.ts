@@ -4,7 +4,7 @@ import { prisma } from '../config/database';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
-import { findZoneForPoint } from '../utils/geo';
+import { findZoneForPoint, validateDeliveryPolygon } from '../utils/geo';
 
 const router = Router();
 
@@ -20,9 +20,9 @@ const createZoneSchema = z.object({
   isActive: z.boolean().default(true),
   color: z.string().optional(),
   coordinates: z.array(z.object({
-    lat: z.number(),
-    lng: z.number(),
-  })).optional(),
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+  })).min(3).optional(),
 });
 
 const updateZoneSchema = createZoneSchema.partial();
@@ -69,6 +69,14 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
   try {
     const data = createZoneSchema.parse(req.body);
 
+    // QA A35: never persist a zone polygon that PIP cannot evaluate.
+    if (data.coordinates) {
+      const check = validateDeliveryPolygon(data.coordinates);
+      if (!check.ok) {
+        throw new AppError(`Invalid zone polygon: ${check.reason}`, 400);
+      }
+    }
+
     const zone = await (prisma as any).deliveryZone.create({
       data: {
         ...data,
@@ -91,6 +99,13 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
 router.put('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = updateZoneSchema.parse(req.body);
+
+    if (data.coordinates !== undefined && data.coordinates !== null) {
+      const check = validateDeliveryPolygon(data.coordinates);
+      if (!check.ok) {
+        throw new AppError(`Invalid zone polygon: ${check.reason}`, 400);
+      }
+    }
 
     const zone = await (prisma as any).deliveryZone.update({
       where: { id: req.params.id },
@@ -131,8 +146,16 @@ router.post('/calculate-fee', authenticate, async (req: AuthRequest, res: Respon
   try {
     const { latitude, longitude, orderAmount } = req.body;
 
+    // QA A39: bound the inputs to legal lat/lng ranges so callers can't pass
+    // junk that silently fails point-in-polygon.
     if (typeof latitude !== 'number' || typeof longitude !== 'number') {
       throw new AppError('Latitude and longitude are required as numbers', 400);
+    }
+    if (latitude < -90 || latitude > 90) {
+      throw new AppError('Latitude must be between -90 and 90', 400);
+    }
+    if (longitude < -180 || longitude > 180) {
+      throw new AppError('Longitude must be between -180 and 180', 400);
     }
 
     const zones = await (prisma as any).deliveryZone.findMany({

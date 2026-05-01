@@ -43,6 +43,60 @@ function section(title) {
 console.log(`${colors.cyan}Restaurant POS System - Verification Tool${colors.reset}\n`);
 console.log('Checking project structure and files...\n');
 
+/**
+ * QA D54, D55: real .env parser. The previous version of this script just
+ * tested for file existence — it never opened the file, so a typo'd or empty
+ * .env passed verification. parseEnv handles:
+ *   - blank lines and # comments
+ *   - KEY="quoted with spaces"  and  KEY='single-quoted'
+ *   - escaped \n inside double-quoted values
+ *   - inline comments after the value
+ * checkEnvKeys then asserts the listed keys are present and non-empty.
+ */
+function parseEnv(filePath) {
+  if (!fs.existsSync(filePath)) return null;
+  const out = {};
+  const raw = fs.readFileSync(filePath, 'utf8');
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const m = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!m) continue;
+    let value = m[2];
+    // Strip an inline #comment (only when not inside quotes)
+    if (!/^["']/.test(value)) {
+      const hash = value.indexOf(' #');
+      if (hash !== -1) value = value.slice(0, hash);
+      value = value.trim();
+    } else {
+      const q = value[0];
+      const end = value.indexOf(q, 1);
+      if (end !== -1) {
+        value = value.slice(1, end);
+        if (q === '"') value = value.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
+      } else {
+        value = value.slice(1);
+      }
+    }
+    out[m[1]] = value;
+  }
+  return out;
+}
+
+function checkEnvKeys(label, filePath, requiredKeys) {
+  const parsed = parseEnv(filePath);
+  if (!parsed) {
+    check(`${label}: ${path.basename(filePath)} parseable`, false, 'file missing');
+    return;
+  }
+  check(`${label}: ${path.basename(filePath)} parseable`, true, `${Object.keys(parsed).length} keys`);
+  for (const key of requiredKeys) {
+    const val = parsed[key];
+    check(`${label}: ${key} present`, val !== undefined && val.length > 0,
+      val === undefined ? 'missing' : (val.length === 0 ? 'empty' : 'set'));
+  }
+}
+
 // Section 1: Root Files
 section('1. Root Configuration Files');
 
@@ -323,6 +377,27 @@ check('Desktop has Framer Motion',
 
 check('Desktop has Zustand',
   desktopPackage.dependencies && desktopPackage.dependencies.zustand);
+
+// Section 11: .env validation (QA D54/D55)
+section('11. Environment Files');
+
+if (fs.existsSync('apps/backend-api/.env')) {
+  checkEnvKeys('backend', 'apps/backend-api/.env', [
+    'DATABASE_URL', 'JWT_SECRET', 'CORS_ORIGIN',
+  ]);
+} else {
+  check('backend .env exists', false, 'create it from .env.example before running the API');
+}
+
+if (fs.existsSync('apps/backend-api/.env.example')) {
+  checkEnvKeys('backend example', 'apps/backend-api/.env.example', [
+    'DATABASE_URL', 'JWT_SECRET',
+  ]);
+}
+
+if (fs.existsSync('apps/web-admin/.env.local')) {
+  checkEnvKeys('web-admin', 'apps/web-admin/.env.local', ['NEXT_PUBLIC_API_URL']);
+}
 
 // Final Summary
 section('VERIFICATION COMPLETE');

@@ -3,6 +3,17 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// QA D31: hard-fail seed on production regardless of flags. The previous gate
+// was env-flag-only, which means a misconfigured pipeline could re-seed prod
+// with demo credentials.
+if (process.env.NODE_ENV === 'production') {
+  console.error(
+    '[SECURITY FATAL] Refusing to run seed.ts when NODE_ENV=production. ' +
+    'Seed scripts may overwrite real data and create demo users with known passwords.'
+  );
+  process.exit(2);
+}
+
 const SEED_ADMIN_USERNAME = process.env.SEED_ADMIN_USERNAME || 'admin';
 const SEED_ADMIN_FULL_NAME = process.env.SEED_ADMIN_FULL_NAME || 'System Administrator';
 const SEED_ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || 'admin@restaurant.local';

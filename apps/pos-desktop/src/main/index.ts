@@ -29,15 +29,16 @@ function getSecureFilePath(key: string): string {
   return path.join(secureStoragePath, `${sanitizedKey}.enc`);
 }
 
-// Secure storage functions using safeStorage
+// Secure storage functions using safeStorage.
+// QA B5: write secrets with mode 0o600 so other users on the host can't read them.
 async function secureSetItem(key: string, value: string): Promise<void> {
   if (!safeStorage.isEncryptionAvailable()) {
     throw new Error('Encryption is not available on this system');
   }
-  
+
   const encrypted = safeStorage.encryptString(value);
   const filePath = getSecureFilePath(key);
-  fs.writeFileSync(filePath, encrypted);
+  fs.writeFileSync(filePath, encrypted, { mode: 0o600 });
 }
 
 async function secureGetItem(key: string): Promise<string | null> {
@@ -206,36 +207,85 @@ function createWindow() {
 }
 
 // App lifecycle
+// QA B3: caller-frame check. A renderer with an exploitable XSS or a malicious
+// embedded iframe can call ipcRenderer.invoke with the same channel name. Verify
+// the call came from the top-level frame of the main window before honoring
+// any privileged operation (DB query, secure-storage, hardware control). The
+// check is a no-op in dev so devtools / hot-reload still work.
+function isTrustedSender(event: Electron.IpcMainInvokeEvent): boolean {
+  if (!app.isPackaged) return true; // dev: trust all
+  if (!mainWindow) return false;
+  const mainContents = mainWindow.webContents;
+  if (event.sender !== mainContents) return false;
+  // senderFrame.parent === null means top frame (Electron API)
+  const sf: any = (event as any).senderFrame;
+  if (sf && sf.parent !== null && sf.parent !== undefined) {
+    log.warn(`IPC denied: sender came from a sub-frame (url=${sf.url})`);
+    return false;
+  }
+  return true;
+}
+
+function denyUntrusted(channel: string) {
+  log.warn(`IPC denied on ${channel}: untrusted sender`);
+  return { success: false, error: 'IPC sender not trusted' };
+}
+
 app.whenReady().then(() => {
   // Initialize offline database
   initializeDatabase();
   log.info('Offline database initialized successfully');
 
+  // Track in-flight queries so we can drain on quit (QA B4).
+  let inFlightQueries = 0;
+
   // Register IPC handlers after app is ready
   ipcMain.handle('db-query', (event, sql, params = []) => {
     try {
+      if (!isTrustedSender(event)) return denyUntrusted('db-query');
       if (!db) {
         return { success: false, error: 'Database not initialized' };
       }
 
+      // QA B1: bound the params payload so a malicious renderer can't DOS the
+      // main process with a 10MB array of bindings.
+      if (!Array.isArray(params)) {
+        return { success: false, error: 'params must be an array' };
+      }
+      if (params.length > 50) {
+        return { success: false, error: 'params length exceeds 50' };
+      }
+      for (const p of params) {
+        const t = typeof p;
+        if (p !== null && t !== 'string' && t !== 'number' && t !== 'boolean') {
+          return { success: false, error: `params item type ${t} not supported` };
+        }
+        if (t === 'string' && (p as string).length > 4096) {
+          return { success: false, error: 'param string too long' };
+        }
+      }
+
       const normalizedSql = sql.trim().toUpperCase();
 
-      // Only allow SELECT statements
       if (!normalizedSql.startsWith('SELECT')) {
         log.warn('db-query rejected non-SELECT statement');
         return { success: false, error: 'Only SELECT queries are permitted' };
       }
 
-      // Reject any dangerous keywords even inside SELECT (e.g. subqueries with side effects)
-      const forbidden = /\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|ATTACH)\b/i;
+      const forbidden = /\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|ATTACH|PRAGMA)\b/i;
       if (forbidden.test(sql)) {
         log.warn('db-query rejected SQL containing forbidden keywords');
         return { success: false, error: 'Query contains forbidden SQL keywords' };
       }
 
-      const stmt = db.prepare(sql);
-      const result = stmt.all(params);
-      return { success: true, data: result };
+      inFlightQueries++;
+      try {
+        const stmt = db.prepare(sql);
+        const result = stmt.all(params);
+        return { success: true, data: result };
+      } finally {
+        inFlightQueries--;
+      }
     } catch (error) {
       log.error('Database query error:', error);
       return {
@@ -244,6 +294,14 @@ app.whenReady().then(() => {
       };
     }
   });
+
+  // Expose drain helper for graceful shutdown.
+  (global as any).__drainDb = async () => {
+    const start = Date.now();
+    while (inFlightQueries > 0 && Date.now() - start < 5000) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  };
 
   ipcMain.handle('store-get', (event, key) => {
     return store.get(key);
@@ -265,6 +323,7 @@ app.whenReady().then(() => {
 
   // Secure storage IPC handlers
   ipcMain.handle('secure-set-item', async (event, key: string, value: string) => {
+    if (!isTrustedSender(event)) return denyUntrusted('secure-set-item');
     try {
       await secureSetItem(key, value);
       return { success: true };
@@ -275,6 +334,7 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('secure-get-item', async (event, key: string) => {
+    if (!isTrustedSender(event)) return denyUntrusted('secure-get-item');
     try {
       const value = await secureGetItem(key);
       return value;
@@ -285,6 +345,7 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('secure-remove-item', async (event, key: string) => {
+    if (!isTrustedSender(event)) return denyUntrusted('secure-remove-item');
     try {
       await secureRemoveItem(key);
       return { success: true };
@@ -301,20 +362,26 @@ app.whenReady().then(() => {
 
   createWindow();
 
-  // Only enforce CSP in production — dev needs 'unsafe-inline' for Vite HMR preamble
+  // QA B2: apply CSP in dev too. Dev uses Vite HMR which needs 'unsafe-inline'
+  // for the preamble; production locks that down.
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-  if (mainWindow && !isDev) {
+  if (mainWindow) {
+    const devCsp = "default-src 'self' http://localhost:* ws://localhost:*; " +
+      "script-src 'self' 'unsafe-inline' http://localhost:*; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: blob:; " +
+      "connect-src 'self' http://localhost:* ws://localhost:*";
+    const prodCsp = "default-src 'self'; " +
+      "script-src 'self'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data:; " +
+      "connect-src 'self' " + (process.env.API_BASE_URL || '');
+
     mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
       callback({
         responseHeaders: {
           ...details.responseHeaders,
-          'Content-Security-Policy': [
-            "default-src 'self'; " +
-            "script-src 'self'; " +
-            "style-src 'self' 'unsafe-inline'; " +
-            "img-src 'self' data:; " +
-            "connect-src 'self'"
-          ],
+          'Content-Security-Policy': [isDev ? devCsp : prodCsp],
         },
       });
     });
@@ -330,14 +397,17 @@ app.whenReady().then(() => {
   console.error('Failed to initialize app:', error);
 });
 
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
   if (process.platform !== 'darwin') {
+    // QA B4: drain in-flight queries before closing the connection.
+    await (global as any).__drainDb?.();
     db?.close();
     app.quit();
   }
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
+  await (global as any).__drainDb?.();
   db?.close();
 });
 

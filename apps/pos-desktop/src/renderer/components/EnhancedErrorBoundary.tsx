@@ -77,8 +77,21 @@ class EnhancedErrorBoundary extends Component<Props, State> {
       console.error('Failed to log error:', e);
     }
 
-    // TODO: Send to backend error tracking service
-    // await fetch('/api/errors', { method: 'POST', body: JSON.stringify(errorReport) });
+    // QA B43: forward to backend error endpoint when configured. Wrapped in
+    // try/catch so the boundary itself never throws while reporting an error.
+    try {
+      const apiBase = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001';
+      const reportUrl = `${apiBase.replace(/\/$/, '')}/api/v1/audit-logs/client-error`;
+      // Fire-and-forget; we already logged locally.
+      void fetch(reportUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(errorReport),
+        keepalive: true,
+      }).catch(() => undefined);
+    } catch {
+      /* never let the boundary itself throw */
+    }
   }
 
   private handleReset = () => {

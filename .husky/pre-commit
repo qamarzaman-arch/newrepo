@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+# QA D39: pre-commit hook. Runs the unsafe-query guard plus a backend
+# typecheck so we never land code that breaks `tsc --noEmit`.
+. "$(dirname -- "$0")/_/husky.sh" 2>/dev/null || true
+
+echo "[pre-commit] Checking for $queryRawUnsafe usage..."
+npm run --silent lint:queries || exit 1
+
+echo "[pre-commit] Type-checking backend..."
+npm run --silent typecheck:api || exit 1
+
+echo "[pre-commit] OK"

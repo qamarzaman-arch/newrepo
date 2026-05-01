@@ -2,6 +2,23 @@ import Stripe from 'stripe';
 import { AppError } from '../middleware/errorHandler';
 import { logger, sanitize } from '../utils/logger';
 
+// QA A22: keys that must never be forwarded to Stripe metadata.
+const PII_KEYS = new Set([
+  'username', 'email', 'phone', 'phonenumber', 'fullname', 'name',
+  'firstname', 'lastname', 'address', 'cardlastfour', 'cardnumber', 'pan',
+]);
+
+function scrubMetadata(metadata: Record<string, unknown> | undefined): Record<string, string> {
+  if (!metadata) return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(metadata)) {
+    if (v === undefined || v === null) continue;
+    if (PII_KEYS.has(k.toLowerCase())) continue;
+    out[k] = String(v);
+  }
+  return out;
+}
+
 // Initialize Stripe only if API key is available
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey 
@@ -32,14 +49,18 @@ export class PaymentGatewayService {
       throw new AppError('Stripe not configured. Please set STRIPE_SECRET_KEY environment variable.', 500);
     }
     try {
+      // QA A22: scrub PII from metadata. Only ids and non-identifying values
+      // are safe to put in Stripe metadata (visible in dashboard + logs).
+      const safeMetadata = scrubMetadata({
+        orderId: data.orderId,
+        ...data.metadata,
+      });
+
       const paymentIntent = await stripe.paymentIntents.create({
         amount: data.amount,
         currency: data.currency.toLowerCase(),
         automatic_payment_methods: { enabled: true },
-        metadata: {
-          orderId: data.orderId,
-          ...data.metadata,
-        },
+        metadata: safeMetadata,
         receipt_email: undefined, // Can be set if customer email available
       });
 

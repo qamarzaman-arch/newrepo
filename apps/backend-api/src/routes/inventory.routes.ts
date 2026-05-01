@@ -16,11 +16,12 @@ const createInventoryItemSchema = z.object({
   barcode: z.string().optional(),
   category: z.string().optional(),
   unit: z.string().min(1),
-  currentStock: z.number().default(0),
-  minStock: z.number().default(0),
-  maxStock: z.number().optional(),
-  costPerUnit: z.number().positive(),
-  sellingPrice: z.number().positive().optional(),
+  // QA A28: stock and price values must be non-negative.
+  currentStock: z.number().min(0).default(0),
+  minStock: z.number().min(0).default(0),
+  maxStock: z.number().min(0).optional(),
+  costPerUnit: z.number().min(0),
+  sellingPrice: z.number().min(0).optional(),
   supplierId: z.string().uuid().optional(),
   warehouseId: z.string().uuid().optional(),
 });
@@ -43,16 +44,17 @@ const updateInventoryItemSchema = z.object({
 
 const stockMovementSchema = z.object({
   type: z.enum(['PURCHASE', 'SALE', 'WASTE', 'RETURN', 'TRANSFER']),
-  quantity: z.number(),
-  reference: z.string().optional(),
-  notes: z.string().optional(),
+  // QA A28: quantity must be a positive magnitude. Direction is encoded by `type`.
+  quantity: z.number().positive(),
+  reference: z.string().max(200).optional(),
+  notes: z.string().max(1000).optional(),
 });
 
 const stockAdjustmentSchema = z.object({
   adjustmentType: z.enum(['ADD', 'REMOVE', 'CORRECTION']),
-  quantity: z.number(),
-  reason: z.string().min(1),
-  notes: z.string().optional(),
+  quantity: z.number().positive(),
+  reason: z.string().min(1).max(200),
+  notes: z.string().max(1000).optional(),
 });
 
 // Get all inventory items with filters
@@ -124,8 +126,9 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response, next:
       }),
     ]);
 
+    // QA A30: sum stock value via Number() to avoid mixed Decimal/number arithmetic.
     const totalValue = valuationResult.reduce(
-      (sum, item) => sum + item.currentStock * item.costPerUnit, 0
+      (sum, item) => sum + Number(item.currentStock) * Number(item.costPerUnit), 0
     );
 
     res.json({
@@ -229,7 +232,7 @@ router.get('/reports/valuation', authenticate, async (req: AuthRequest, res: Res
     });
 
     const totalValue = items.reduce((sum, item) => {
-      return sum + (item.currentStock * item.costPerUnit);
+      return sum + Number(item.currentStock) * Number(item.costPerUnit);
     }, 0);
 
     const byCategory = items.reduce((acc, item) => {
@@ -238,7 +241,7 @@ router.get('/reports/valuation', authenticate, async (req: AuthRequest, res: Res
         acc[category] = { count: 0, value: 0 };
       }
       acc[category].count++;
-      acc[category].value += item.currentStock * item.costPerUnit;
+      acc[category].value += Number(item.currentStock) * Number(item.costPerUnit);
       return acc;
     }, {} as Record<string, { count: number; value: number }>);
 
@@ -379,54 +382,69 @@ router.post('/:id/movement', authenticate, async (req: AuthRequest, res: Respons
       throw new AppError('Inventory item not found', 404);
     }
 
-    const previousStock = item.currentStock;
-    let newStock = previousStock;
-
-    // Calculate new stock based on movement type
-    switch (data.type) {
-      case 'PURCHASE':
-      case 'RETURN':
-        newStock = previousStock + data.quantity;
-        break;
-      case 'SALE':
-      case 'WASTE':
-      case 'TRANSFER':
-        newStock = previousStock - data.quantity;
-        if (newStock < 0) {
-          throw new AppError('Insufficient stock', 400);
-        }
-        break;
-    }
-
-    // Determine new status
-    let status = 'IN_STOCK';
-    if (newStock <= 0) {
-      status = 'OUT_OF_STOCK';
-    } else if (newStock <= item.minStock) {
-      status = 'LOW_STOCK';
-    }
+    // QA A10 / A28: do the stock change with a conditional updateMany so that
+    // two concurrent SALEs cannot both pass an in-memory check and oversell.
+    // For decrements we require `currentStock >= quantity`; for increments any
+    // current value is fine.
+    const isDecrement = data.type === 'SALE' || data.type === 'WASTE' || data.type === 'TRANSFER';
+    const previousStock = Number(item.currentStock);
 
     const movement = await prisma.$transaction(async (tx) => {
-      // Create movement record
+      let updateResult;
+      if (isDecrement) {
+        updateResult = await tx.inventoryItem.updateMany({
+          where: {
+            id: req.params.id,
+            currentStock: { gte: data.quantity },
+          },
+          data: {
+            currentStock: { decrement: data.quantity },
+          },
+        });
+      } else {
+        updateResult = await tx.inventoryItem.updateMany({
+          where: { id: req.params.id },
+          data: {
+            currentStock: { increment: data.quantity },
+          },
+        });
+      }
+
+      if (updateResult.count !== 1) {
+        // Either the row vanished, or the conditional decrement failed because
+        // someone else took the stock first. Hard-fail so the caller retries
+        // with fresh data instead of silently selling stock that isn't there.
+        throw new AppError('Insufficient stock for this movement', 409);
+      }
+
+      // Re-read to compute status from the post-mutation truth (avoids the
+      // status drifting if two concurrent updates landed at once).
+      const fresh = await tx.inventoryItem.findUnique({
+        where: { id: req.params.id },
+        select: { currentStock: true, minStock: true },
+      });
+      const liveStock = Number(fresh?.currentStock ?? 0);
+      const liveMin = Number(fresh?.minStock ?? 0);
+      const status =
+        liveStock <= 0 ? 'OUT_OF_STOCK'
+        : liveStock <= liveMin ? 'LOW_STOCK'
+        : 'IN_STOCK';
+
+      await tx.inventoryItem.update({
+        where: { id: req.params.id },
+        data: { status },
+      });
+
       const newMovement = await tx.stockMovement.create({
         data: {
           inventoryItemId: req.params.id,
           type: data.type,
           quantity: data.quantity,
           previousStock,
-          newStock,
+          newStock: liveStock,
           reference: data.reference,
           notes: data.notes,
           performedById: req.user!.userId,
-        },
-      });
-
-      // Update inventory item
-      await tx.inventoryItem.update({
-        where: { id: req.params.id },
-        data: {
-          currentStock: newStock,
-          status,
         },
       });
 
@@ -457,32 +475,47 @@ router.post('/:id/adjustment', authenticate, async (req: AuthRequest, res: Respo
       throw new AppError('Inventory item not found', 404);
     }
 
-    const previousStock = item.currentStock;
-    let newStock = previousStock;
-
-    switch (data.adjustmentType) {
-      case 'ADD':
-        newStock = previousStock + data.quantity;
-        break;
-      case 'REMOVE':
-      case 'CORRECTION':
-        newStock = previousStock - data.quantity;
-        if (newStock < 0) {
-          throw new AppError('Adjustment would result in negative stock', 400);
-        }
-        break;
-    }
-
-    // Determine new status
-    let status = 'IN_STOCK';
-    if (newStock <= 0) {
-      status = 'OUT_OF_STOCK';
-    } else if (newStock <= item.minStock) {
-      status = 'LOW_STOCK';
-    }
+    // QA A10 / A28: same atomic-conditional pattern as the movement endpoint.
+    const isDecrement = data.adjustmentType === 'REMOVE' || data.adjustmentType === 'CORRECTION';
+    const previousStock = Number(item.currentStock);
 
     const adjustment = await prisma.$transaction(async (tx) => {
-      // Create adjustment record
+      let updateResult;
+      if (isDecrement) {
+        updateResult = await tx.inventoryItem.updateMany({
+          where: {
+            id: req.params.id,
+            currentStock: { gte: data.quantity },
+          },
+          data: { currentStock: { decrement: data.quantity } },
+        });
+      } else {
+        updateResult = await tx.inventoryItem.updateMany({
+          where: { id: req.params.id },
+          data: { currentStock: { increment: data.quantity } },
+        });
+      }
+
+      if (updateResult.count !== 1) {
+        throw new AppError('Adjustment would result in negative stock or item not found', 409);
+      }
+
+      const fresh = await tx.inventoryItem.findUnique({
+        where: { id: req.params.id },
+        select: { currentStock: true, minStock: true },
+      });
+      const liveStock = Number(fresh?.currentStock ?? 0);
+      const liveMin = Number(fresh?.minStock ?? 0);
+      const status =
+        liveStock <= 0 ? 'OUT_OF_STOCK'
+        : liveStock <= liveMin ? 'LOW_STOCK'
+        : 'IN_STOCK';
+
+      await tx.inventoryItem.update({
+        where: { id: req.params.id },
+        data: { status },
+      });
+
       const newAdjustment = await tx.stockAdjustment.create({
         data: {
           inventoryItemId: req.params.id,
@@ -491,15 +524,6 @@ router.post('/:id/adjustment', authenticate, async (req: AuthRequest, res: Respo
           reason: data.reason,
           notes: data.notes,
           adjustedById: req.user!.userId,
-        },
-      });
-
-      // Update inventory item
-      await tx.inventoryItem.update({
-        where: { id: req.params.id },
-        data: {
-          currentStock: newStock,
-          status,
         },
       });
 

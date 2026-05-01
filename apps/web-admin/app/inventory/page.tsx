@@ -52,7 +52,12 @@ export default function InventoryPage() {
       setLowStock(lowRes.data?.data?.items || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load inventory');
-      console.error('Inventory fetch error:', err);
+      // QA C30: only log to console outside production. Production errors
+      // should bubble to the central error boundary.
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.error('Inventory fetch error:', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -64,10 +69,30 @@ export default function InventoryPage() {
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
+    // QA C29: client-side SKU/name uniqueness check before posting. The
+    // backend has the authoritative @unique, but giving the user the answer
+    // up front avoids a wasted round-trip.
+    const trimmedName = (formData.name || '').trim();
+    const trimmedSku = (formData.sku || '').trim();
+    if (!trimmedName) {
+      toast.error('Name is required');
+      return;
+    }
+    const conflict = items.find(
+      (it) =>
+        it.name?.toLowerCase() === trimmedName.toLowerCase() ||
+        (trimmedSku && it.sku?.toLowerCase() === trimmedSku.toLowerCase())
+    );
+    if (conflict) {
+      toast.error(`An item with this ${conflict.sku === trimmedSku ? 'SKU' : 'name'} already exists`);
+      return;
+    }
     setIsSubmitting(true);
     try {
       await apiClient.post('/inventory', {
         ...formData,
+        name: trimmedName,
+        sku: trimmedSku || undefined,
         currentStock: Number(formData.currentStock),
         minStock: Number(formData.minStock),
         costPerUnit: Number(formData.costPerUnit),

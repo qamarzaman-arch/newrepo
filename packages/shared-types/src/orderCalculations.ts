@@ -60,7 +60,13 @@ export interface CalculationParams {
 }
 
 /**
- * Calculate order totals with full breakdown
+ * Calculate order totals with full breakdown.
+ *
+ * QA D49 / B12 / A45: every accumulator passes through `roundToCents` at the
+ * boundaries to stop float drift compounding across many items. Tax base is
+ * documented and codified: taxable = max(0, subtotal - discount); tax applies
+ * to that base; surcharges and service charge ALSO apply to the same base so
+ * the formula is consistent across the codebase.
  */
 export function calculateOrderTotals(params: CalculationParams): OrderCalculationResult {
   const {
@@ -73,52 +79,33 @@ export function calculateOrderTotals(params: CalculationParams): OrderCalculatio
     tipAmount = 0,
   } = params;
 
-  // Calculate item totals
   const itemBreakdown = items.map(item => {
-    const itemTotal = item.price * item.quantity;
-    const itemDiscount = (item.discount || 0) * item.quantity;
-    return {
-      item,
-      itemTotal,
-      itemDiscount,
-    };
+    const itemTotal = roundToCents(item.price * item.quantity);
+    const itemDiscount = roundToCents((item.discount || 0) * item.quantity);
+    return { item, itemTotal, itemDiscount };
   });
 
-  // Subtotal before any discounts
-  const subtotal = itemBreakdown.reduce((sum, i) => sum + i.itemTotal, 0);
+  const subtotal = roundToCents(itemBreakdown.reduce((sum, i) => sum + i.itemTotal, 0));
   const itemsDiscount = itemBreakdown.reduce((sum, i) => sum + i.itemDiscount, 0);
 
-  // Calculate percentage discount
   const percentageDiscount = subtotal * (discountPercent / 100);
-  
-  // Total discount (percentage + fixed + item-level)
   const totalDiscount = percentageDiscount + fixedDiscount + itemsDiscount;
-  const discountAmount = Math.min(totalDiscount, subtotal); // Can't discount more than subtotal
+  // Cap discount at subtotal — never produce a negative taxable amount.
+  const discountAmount = roundToCents(Math.min(Math.max(totalDiscount, 0), subtotal));
+  const taxableAmount = roundToCents(Math.max(0, subtotal - discountAmount));
 
-  // Amount after discount (taxable amount)
-  const taxableAmount = Math.max(0, subtotal - discountAmount);
+  const taxAmount = roundToCents(taxableAmount * (taxRate / 100));
+  const serviceChargeAmount = roundToCents(taxableAmount * (serviceChargeRate / 100));
 
-  // Calculate tax
-  const taxAmount = taxableAmount * (taxRate / 100);
-
-  // Calculate service charge
-  const serviceChargeAmount = taxableAmount * (serviceChargeRate / 100);
-
-  // Calculate surcharges
   const surchargeBreakdown = surcharges.map(surcharge => {
-    let amount: number;
-    if (surcharge.type === 'PERCENTAGE') {
-      amount = taxableAmount * (surcharge.value / 100);
-    } else {
-      amount = surcharge.value;
-    }
+    const amount = surcharge.type === 'PERCENTAGE'
+      ? roundToCents(taxableAmount * (surcharge.value / 100))
+      : roundToCents(surcharge.value);
     return { surcharge, amount };
   });
 
-  const surchargesTotal = surchargeBreakdown.reduce((sum, s) => sum + s.amount, 0);
-
-  // Final total
-  const total = taxableAmount + taxAmount + serviceChargeAmount + surchargesTotal + tipAmount;
+  const surchargesTotal = roundToCents(surchargeBreakdown.reduce((sum, s) => sum + s.amount, 0));
+  const total = roundToCents(taxableAmount + taxAmount + serviceChargeAmount + surchargesTotal + Math.max(0, tipAmount));
 
   return {
     subtotal,
@@ -127,12 +114,9 @@ export function calculateOrderTotals(params: CalculationParams): OrderCalculatio
     taxAmount,
     serviceChargeAmount,
     surchargesTotal,
-    tipAmount,
+    tipAmount: roundToCents(Math.max(0, tipAmount)),
     total,
-    breakdown: {
-      items: itemBreakdown,
-      surcharges: surchargeBreakdown,
-    },
+    breakdown: { items: itemBreakdown, surcharges: surchargeBreakdown },
   };
 }
 
@@ -167,12 +151,22 @@ export function formatMoney(amount: number, currency: string = 'USD'): string {
 export function validateSplitPayment(
   payments: Array<{ method: string; amount: number }>,
   total: number,
-  tolerance: number = 0.01
+  tolerance?: number
 ): { valid: boolean; difference: number; message?: string } {
-  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+  // QA D50: reject negative amounts outright and scale tolerance with the
+  // number of splits — three-way splits accumulate more rounding error than two-way.
+  if (payments.some((p) => !Number.isFinite(p.amount) || p.amount < 0)) {
+    return {
+      valid: false,
+      difference: 0,
+      message: 'Split payment amounts must be non-negative numbers',
+    };
+  }
+  const effectiveTolerance = tolerance ?? Math.max(0.01, payments.length * 0.005);
+  const totalPaid = roundToCents(payments.reduce((sum, p) => sum + p.amount, 0));
   const difference = Math.abs(totalPaid - total);
 
-  if (difference <= tolerance) {
+  if (difference <= effectiveTolerance) {
     return { valid: true, difference: 0 };
   }
 

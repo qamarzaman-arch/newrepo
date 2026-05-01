@@ -11,6 +11,9 @@ import { orderLimiter } from '../middleware/rateLimiter';
 import { KITCHEN_PRIORITY_MAP, KITCHEN_STATION_MAP, DEFAULT_KITCHEN_STATION, DEFAULT_KITCHEN_PRIORITY } from '../config/kitchenConfig';
 import { parsePagination } from '../utils/parsePagination';
 import { postOrderJournalEntry } from '../services/accounting.service';
+import { paymentGatewayService } from '../services/paymentGateway.service';
+import { nextSequence, dailyScope, dateStampUTC } from '../utils/sequence';
+import { normalizePhone } from '../utils/phone';
 
 const router = Router();
 
@@ -22,11 +25,13 @@ const createOrderSchema = z.object({
   customerName: z.string().optional().nullable(),
   customerPhone: z.string().optional().nullable(),
   items: z.array(z.object({
-    menuItemId: z.string(),
-    quantity: z.number().min(1),
-    notes: z.string().optional().nullable(),
-    modifiers: z.string().optional().nullable(),
-  })).optional(),
+    menuItemId: z.string().min(1),
+    // QA A18: integer quantities only.
+    quantity: z.number().int().min(1).max(9999),
+    notes: z.string().max(500).optional().nullable(),
+    modifiers: z.string().max(2000).optional().nullable(),
+    // QA A72: enforce min(1) when items array is supplied.
+  })).min(1).optional(),
   discountCode: z.string().optional().nullable(),
   discountPercent: z.number().min(0).max(100).optional().nullable(),
   discountAmount: z.number().min(0).optional().nullable(),
@@ -37,9 +42,10 @@ const createOrderSchema = z.object({
 });
 
 // Valid order status transitions (enforce workflow integrity)
+// Note: PENDING can transition directly to READY for quick orders (cashier convenience)
 const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
-  PENDING:   ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['PREPARING', 'CANCELLED'],
+  PENDING:   ['CONFIRMED', 'READY', 'CANCELLED'],
+  CONFIRMED: ['PREPARING', 'READY', 'CANCELLED'],
   PREPARING: ['READY', 'CANCELLED'],
   READY:     ['SERVED', 'COMPLETED'],
   SERVED:    ['COMPLETED'],
@@ -217,15 +223,28 @@ router.post('/reservations', authenticate, authorize('ADMIN', 'MANAGER'), async 
       });
     }
 
+    // QA A9 / A47: use the atomic SequenceCounter instead of count()+create.
     const today = new Date();
-    const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
-    const count = await prisma.order.count({
-      where: {
-        orderType: 'RESERVATION',
-        createdAt: { gte: new Date(today.setHours(0, 0, 0, 0)) },
-      },
-    });
-    const orderNumber = `RES-${dateStr}-${String(count + 1).padStart(3, '0')}`;
+    const dateStr = dateStampUTC(today);
+    const seq = await nextSequence(dailyScope('RES', today));
+    const orderNumber = `RES-${dateStr}-${String(seq).padStart(3, '0')}`;
+
+    // QA A20: validate the table exists and is bookable before creating
+    // the reservation.
+    if (tableId) {
+      const table = await prisma.table.findUnique({ where: { id: tableId } });
+      if (!table) {
+        throw new AppError('Table not found', 404);
+      }
+      if (!table.isActive) {
+        throw new AppError('Table is not active', 409);
+      }
+      if (table.status === 'OCCUPIED' || table.status === 'RESERVED') {
+        throw new AppError(`Table ${table.number} is currently ${table.status}`, 409);
+      }
+    }
+
+    const normalizedReservationPhone = normalizePhone(customerPhone);
 
     const reservation = await prisma.order.create({
       data: {
@@ -233,7 +252,7 @@ router.post('/reservations', authenticate, authorize('ADMIN', 'MANAGER'), async 
         orderType: 'RESERVATION',
         status,
         customerName,
-        customerPhone,
+        customerPhone: normalizedReservationPhone ?? customerPhone,
         tableId,
         notes,
         cashierId: req.user!.userId,
@@ -331,12 +350,14 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
   try {
     const data = createOrderSchema.parse(req.body);
 
-    // Idempotency: if the same key has been seen, return the previously-created order instead of duplicating.
+    // Idempotency: if the same key has been seen AND not yet expired, return
+    // the previously-created order. QA A12: expired keys must be ignored,
+    // otherwise stale 7-day-old replies leak through.
     if (data.idempotencyKey) {
       const existing = await prisma.idempotencyKey.findUnique({
         where: { key: data.idempotencyKey },
       });
-      if (existing && existing.orderId) {
+      if (existing && existing.expiresAt > new Date() && existing.orderId) {
         const order = await prisma.order.findUnique({
           where: { id: existing.orderId },
           include: { items: true, payments: true, table: true, customer: true },
@@ -345,33 +366,35 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
           return res.json({ success: true, data: { order }, idempotent: true });
         }
       }
+      // Best-effort cleanup of expired key so the new write below doesn't conflict.
+      if (existing && existing.expiresAt <= new Date()) {
+        await prisma.idempotencyKey.delete({ where: { key: data.idempotencyKey } }).catch(() => undefined);
+      }
     }
 
-    // Generate unique order number
+    // QA A9: atomic per-day order number. Old code did count()+create which
+    // races at the millisecond boundary and produces duplicate ORD-...-0001s.
     const today = new Date();
-    const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+    const dateStr = dateStampUTC(today);
+    const seq = await nextSequence(dailyScope('ORD', today));
+    const orderNumber = `ORD-${dateStr}-${String(seq).padStart(4, '0')}`;
 
-    // Get today's order count
-    const count = await prisma.order.count({
-      where: {
-        createdAt: { gte: new Date(today.setHours(0, 0, 0, 0)) },
-      },
-    });
-
-    const orderNumber = `ORD-${dateStr}-${String(count + 1).padStart(4, '0')}`;
-
-    // Auto-create customer if customerName and customerPhone are provided but customerId is not
+    // QA A19, A74: normalize phone before lookup so the same number isn't
+    // saved as two different customers. Use findUnique (Customer.phone is now
+    // @unique in the schema) so we never silently pick up a "first match".
     let customerId = data.customerId;
-    if (!customerId && data.customerName && data.customerPhone) {
-      // Check if customer already exists with this phone number
-      const existingCustomer = await prisma.customer.findFirst({
-        where: { phone: data.customerPhone },
+    const normalizedPhone = normalizePhone(data.customerPhone);
+    if (data.customerPhone && !normalizedPhone) {
+      throw new AppError('customerPhone is not a valid phone number', 400);
+    }
+    if (!customerId && data.customerName && normalizedPhone) {
+      const existingCustomer = await prisma.customer.findUnique({
+        where: { phone: normalizedPhone },
       });
 
       if (existingCustomer) {
         customerId = existingCustomer.id;
       } else {
-        // Create new customer - split customerName into firstName and lastName
         const nameParts = data.customerName.split(' ');
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
@@ -379,12 +402,14 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
           data: {
             firstName,
             lastName,
-            phone: data.customerPhone,
+            phone: normalizedPhone,
           },
         });
         customerId = newCustomer.id;
       }
     }
+    // Replace caller-supplied phone with normalized form for downstream writes.
+    if (normalizedPhone) data.customerPhone = normalizedPhone;
 
     // Calculate totals
     let subtotal = 0;
@@ -425,23 +450,46 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
       });
 
       if (discount && discount.isActive) {
+        // QA A43: enforce usageLimit atomically. If we can't bump usedCount
+        // because the cap is already reached, treat the code as invalid.
+        if (discount.usageLimit != null) {
+          const bumped = await prisma.discount.updateMany({
+            where: { id: discount.id, usedCount: { lt: discount.usageLimit } },
+            data: { usedCount: { increment: 1 } },
+          });
+          if (bumped.count === 0) {
+            throw new AppError('Discount code has reached its usage limit', 409);
+          }
+        } else {
+          await prisma.discount.update({
+            where: { id: discount.id },
+            data: { usedCount: { increment: 1 } },
+          });
+        }
         if (discount.type === 'percentage') {
           discountPercent = Number(discount.value);
           discountAmount = (subtotal * discountPercent) / 100;
         } else {
           discountAmount = Number(discount.value);
         }
+        // QA A44: cap discount at maxValue when configured.
+        if (discount.maxValue != null) {
+          discountAmount = Math.min(discountAmount, Number(discount.maxValue));
+        }
+        // Stash discountId so it gets persisted on the order for audit.
+        (data as any).__discountId = discount.id;
       }
     }
 
-    // Calculate tax - get from settings
+    // Calculate tax — QA A45: round to 2dp.
     const taxSetting = await prisma.setting.findUnique({
       where: { key: 'tax_rate' },
     });
     const taxRate = taxSetting ? parseFloat(taxSetting.value) : 0;
-    const taxAmount = (subtotal - discountAmount) * (taxRate / 100);
+    const rawTax = (subtotal - discountAmount) * (taxRate / 100);
+    const taxAmount = Math.round(rawTax * 100) / 100;
 
-    // Calculate surcharge - get applicable surcharges
+    // Surcharges. QA A46: documented order — surcharge applies to (subtotal - discount).
     const surcharges = await prisma.surcharge.findMany({
       where: {
         isActive: true,
@@ -452,19 +500,20 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
       },
     });
 
+    const taxableBase = subtotal - discountAmount;
     let surchargeAmount = 0;
     for (const surcharge of surcharges) {
       if (surcharge.type === 'percentage') {
-        surchargeAmount += (subtotal * Number(surcharge.value)) / 100;
+        surchargeAmount += (taxableBase * Number(surcharge.value)) / 100;
       } else {
         surchargeAmount += Number(surcharge.value);
       }
     }
+    surchargeAmount = Math.round(surchargeAmount * 100) / 100;
 
-    // Get tip from frontend (cashier-entered tip)
     const tipAmount = data.tipAmount || 0;
-
-    const totalAmount = subtotal - discountAmount + taxAmount + surchargeAmount + tipAmount;
+    // QA A45: total rounded to currency precision.
+    const totalAmount = Math.round((subtotal - discountAmount + taxAmount + surchargeAmount + tipAmount) * 100) / 100;
 
     // Create order with transaction
     const order = await prisma.$transaction(async (tx) => {
@@ -480,6 +529,7 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
           subtotal,
           discountAmount,
           discountPercent,
+          discountId: (data as any).__discountId,
           taxAmount,
           surchargeAmount,
           tipAmount: tipAmount || undefined,
@@ -727,7 +777,10 @@ router.post('/', authenticate, orderLimiter, async (req: AuthRequest, res: Respo
     const ws = getWebSocketManager();
     ws.emitOrderCreated(order);
 
-    logger.info(`Order created: ${sanitize(orderNumber)} by ${sanitize(req.user!.username)}`);
+    // QA A77: include item summary in the audit log so compliance reviews
+    // don't have to join back to OrderItem.
+    const auditItems = (data.items || []).map(it => `${it.menuItemId}x${it.quantity}`).join(',');
+    logger.info(`Order created: ${sanitize(orderNumber)} by ${sanitize(req.user!.username)} items=[${sanitize(auditItems)}] total=${totalAmount}`);
 
     res.status(201).json({
       success: true,
@@ -755,6 +808,19 @@ router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER
       throw new AppError('Order not found', 404);
     }
 
+    // Idempotent check: if order already has target status, return success
+    if (order.status === status) {
+      const currentOrder = await prisma.order.findUnique({
+        where: { id: req.params.id },
+        include: {
+          items: { include: { menuItem: true } },
+          table: true,
+        },
+      });
+      res.json({ success: true, data: { order: currentOrder, idempotent: true } });
+      return;
+    }
+
     // Enforce valid status transition to prevent workflow bypassing
     const allowedTransitions = VALID_STATUS_TRANSITIONS[order.status] ?? [];
     if (!allowedTransitions.includes(status)) {
@@ -762,6 +828,24 @@ router.patch('/:id/status', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER
         `Cannot transition order from ${order.status} to ${status}. Allowed: ${allowedTransitions.join(', ') || 'none'}`,
         400
       );
+    }
+
+    // QA A14: refuse to complete an order while any KOT ticket is still in
+    // a non-terminal state. Otherwise food can be marked done before it leaves
+    // the kitchen.
+    if (status === 'COMPLETED' || status === 'SERVED') {
+      const openTickets = await prisma.kotTicket.count({
+        where: {
+          orderId: order.id,
+          status: { notIn: ['COMPLETED', 'DISPATCHED', 'CANCELLED'] },
+        },
+      });
+      if (openTickets > 0) {
+        throw new AppError(
+          `Cannot mark order ${status}: ${openTickets} kitchen ticket(s) still open`,
+          409
+        );
+      }
     }
 
     const updatedOrder = await prisma.order.update({
@@ -861,13 +945,13 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
         throw new AppError('Order not found', 404);
       }
 
-      // Handle discount if applied
-      let finalTotalAmount = Number(order.totalAmount);
-      let finalDiscountAmount = Number(order.discountAmount || 0);
-      
-      if (discountAmount && discountAmount > 0) {
-        finalDiscountAmount = discountAmount;
-        finalTotalAmount = Number(order.subtotal || order.totalAmount) - discountAmount + Number(order.taxAmount || 0);
+      // QA A13: discounts must be locked at order creation. Rejecting them
+      // here closes the fraud vector where a partial-pay → re-discount could
+      // shrink finalTotalAmount mid-collection.
+      const finalTotalAmount = Number(order.totalAmount);
+      const finalDiscountAmount = Number(order.discountAmount || 0);
+      if (discountAmount && discountAmount > 0 && discountAmount !== finalDiscountAmount) {
+        throw new AppError('Discounts cannot be changed at payment time. Modify the order instead.', 400);
       }
 
       const paidAmount = Number(order.paidAmount) + amount;
@@ -908,12 +992,8 @@ router.post('/:id/payment', authenticate, async (req: AuthRequest, res: Response
         paymentMethod: method,
       };
       
-      // Only update discount fields if new discount is applied
-      if (discountAmount && discountAmount > 0) {
-        updateData.discountAmount = finalDiscountAmount;
-        updateData.discountPercent = discountPercent || 0;
-        updateData.totalAmount = finalTotalAmount;
-      }
+      // QA A13: discount immutability at payment time — no discount field
+      // updates here. The earlier guard rejects any mismatch outright.
 
       let finalOrder = await tx.order.update({
         where: { id: order.id },
@@ -1114,32 +1194,87 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
       throw new AppError('Invalid manager PIN', 401);
     }
 
+    // Phase 1: validate, lock, and (if applicable) call the payment gateway BEFORE
+    // mutating the local DB. We do not want to mark a refund "done" locally while
+    // the customer never actually receives money (QA A16). If the gateway call
+    // fails the transaction below never starts, so order state stays consistent.
+    const preCheck = await prisma.order.findUnique({
+      where: { id: req.params.id },
+      include: { payments: true, items: { include: { menuItem: true } } },
+    });
+
+    if (!preCheck) {
+      throw new AppError('Order not found', 404);
+    }
+    if (preCheck.paymentStatus !== 'PAID' && preCheck.paymentStatus !== 'PARTIAL') {
+      throw new AppError('Cannot refund unpaid order', 400);
+    }
+
+    const positivePayments = preCheck.payments.filter(p => Number(p.amount) > 0);
+    const totalPaid = positivePayments.reduce((sum, p) => sum + Number(p.amount), 0);
+    const orderTotal = Number(preCheck.totalAmount);
+
+    // QA A15: cap at min(totalPaid, totalAmount). Overpaid orders must NOT
+    // allow refunding more than the order itself was worth.
+    const maxRefundableAmount = Math.max(0, Math.min(totalPaid, orderTotal));
+
+    const requestedRefundAmount = type === 'FULL'
+      ? maxRefundableAmount
+      : Number(amount);
+
+    if (!Number.isFinite(requestedRefundAmount) || requestedRefundAmount <= 0) {
+      throw new AppError('Refund amount must be greater than zero', 400);
+    }
+    if (requestedRefundAmount > maxRefundableAmount) {
+      throw new AppError(
+        `Refund amount ${requestedRefundAmount} exceeds refundable cap ${maxRefundableAmount}`,
+        400
+      );
+    }
+
+    // QA A16: actually call Stripe when the original payment was on Stripe.
+    // We refund newest-first up to the requested amount, splitting across
+    // intents if needed. CASH / OFFLINE refunds are recorded only in the DB.
+    const stripePayments = positivePayments
+      .filter(p => p.stripePaymentIntentId)
+      .sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime());
+
+    const stripeRefundResults: Array<{ paymentId: string; refundId: string; amount: number }> = [];
+    let remainingToRefund = requestedRefundAmount;
+
+    for (const payment of stripePayments) {
+      if (remainingToRefund <= 0) break;
+      const piId = payment.stripePaymentIntentId;
+      if (!piId) continue;
+      const refundFromThis = Math.min(remainingToRefund, Number(payment.amount));
+      const refundCents = Math.round(refundFromThis * 100);
+      try {
+        const result = await paymentGatewayService.processStripeRefund({
+          paymentIntentId: piId,
+          amount: refundCents,
+          reason,
+        });
+        stripeRefundResults.push({
+          paymentId: payment.id,
+          refundId: result.refundId,
+          amount: refundFromThis,
+        });
+        remainingToRefund -= refundFromThis;
+      } catch (err: any) {
+        // Hard stop: do not mutate the DB if Stripe rejected. Tell the user.
+        logger.error(`Stripe refund failed for order ${preCheck.orderNumber} payment ${payment.id}: ${err.message}`);
+        throw new AppError(`Refund failed at payment gateway: ${err.message}`, 502);
+      }
+    }
+
+    // Phase 2: persist refund records, update order, and reverse inventory atomically.
     const result = await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { id: req.params.id },
-        include: { payments: true },
+        include: { payments: true, items: true },
       });
-
       if (!order) {
         throw new AppError('Order not found', 404);
-      }
-
-      if (order.paymentStatus !== 'PAID' && order.paymentStatus !== 'PARTIAL') {
-        throw new AppError('Cannot refund unpaid order', 400);
-      }
-
-      const totalPaid = order.payments.reduce((sum, payment) => sum + Number(payment.amount), 0);
-      const maxRefundableAmount = Math.max(totalPaid, 0);
-      const requestedRefundAmount = type === 'FULL'
-        ? maxRefundableAmount
-        : Number(amount);
-
-      if (!Number.isFinite(requestedRefundAmount) || requestedRefundAmount <= 0) {
-        throw new AppError('Refund amount must be greater than zero', 400);
-      }
-
-      if (requestedRefundAmount > maxRefundableAmount) {
-        throw new AppError('Refund amount exceeds collected payments', 400);
       }
 
       const refundReference = `refund-${order.orderNumber}-${Date.now()}`;
@@ -1148,6 +1283,9 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
         approvedBy ? `Approved By: ${approvedBy}` : null,
         originalPaymentMethod ? `Original Method: ${originalPaymentMethod}` : null,
         items?.length ? `Items: ${JSON.stringify(items)}` : null,
+        stripeRefundResults.length
+          ? `Stripe refunds: ${stripeRefundResults.map(r => `${r.refundId}=${r.amount}`).join(', ')}`
+          : null,
       ].filter(Boolean).join(' | ');
 
       await tx.payment.create({
@@ -1158,8 +1296,18 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
           reference: refundReference,
           notes: refundNotes || undefined,
           status: 'REFUNDED',
+          stripeRefundId: stripeRefundResults[0]?.refundId,
         },
       });
+
+      // Stamp the gateway refund id back onto the original Payment rows that
+      // we refunded, so reconciliation tools can trace each refund.
+      for (const r of stripeRefundResults) {
+        await tx.payment.update({
+          where: { id: r.paymentId },
+          data: { stripeRefundId: r.refundId },
+        }).catch(() => undefined);
+      }
 
       const remainingPaidAmount = Math.max(Number(order.paidAmount) - requestedRefundAmount, 0);
       const refundStatus = type === 'FULL' || remainingPaidAmount === 0
@@ -1170,6 +1318,76 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
         : remainingPaidAmount < Number(order.totalAmount)
           ? 'PARTIAL'
           : 'PAID';
+
+      // QA A16 (inventory reversal): only reverse stock for FULL refunds. Partial
+      // refunds usually mean a discount/concession, not goods returned. Refund
+      // payload may also list specific items via `items`; if present, reverse
+      // only those quantities.
+      if (type === 'FULL' || (Array.isArray(items) && items.length > 0)) {
+        const itemsToReverse = Array.isArray(items) && items.length > 0
+          ? items.map((it: any) => ({
+              menuItemId: it.menuItemId,
+              quantity: Number(it.quantity) || 0,
+            }))
+          : order.items.map(oi => ({
+              menuItemId: oi.menuItemId,
+              quantity: oi.quantity,
+            }));
+
+        for (const it of itemsToReverse) {
+          if (!it.menuItemId || it.quantity <= 0) continue;
+          const recipes = await (tx as any).recipe.findMany({
+            where: { menuItemId: it.menuItemId },
+            include: { ingredients: true },
+          });
+          if (recipes.length > 0) {
+            for (const recipe of recipes) {
+              for (const ing of recipe.ingredients || []) {
+                if (!ing.inventoryItemId) continue;
+                const qty = Number(ing.quantity) * it.quantity;
+                await (tx as any).inventoryItem.update({
+                  where: { id: ing.inventoryItemId },
+                  data: { currentStock: { increment: qty } },
+                }).catch(() => undefined);
+                await (tx as any).stockMovement.create({
+                  data: {
+                    inventoryItemId: ing.inventoryItemId,
+                    type: 'REFUND',
+                    quantity: qty,
+                    previousStock: 0,
+                    newStock: 0,
+                    reference: `Refund ${order.orderNumber}`,
+                    notes: 'Inventory restored on refund',
+                    performedById: req.user!.userId,
+                  },
+                }).catch(() => undefined);
+              }
+            }
+          } else {
+            const invItems = await (tx as any).inventoryItem.findMany({
+              where: { menuItemId: it.menuItemId, isActive: true },
+            });
+            for (const inv of invItems) {
+              await (tx as any).inventoryItem.update({
+                where: { id: inv.id },
+                data: { currentStock: { increment: it.quantity } },
+              }).catch(() => undefined);
+              await (tx as any).stockMovement.create({
+                data: {
+                  inventoryItemId: inv.id,
+                  type: 'REFUND',
+                  quantity: it.quantity,
+                  previousStock: 0,
+                  newStock: 0,
+                  reference: `Refund ${order.orderNumber}`,
+                  notes: 'Inventory restored on refund',
+                  performedById: req.user!.userId,
+                },
+              }).catch(() => undefined);
+            }
+          }
+        }
+      }
 
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
@@ -1196,7 +1414,12 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
         }).catch(() => undefined);
       }
 
-      return { updatedOrder, refundAmount: requestedRefundAmount, refundType: type };
+      return {
+        updatedOrder,
+        refundAmount: requestedRefundAmount,
+        refundType: type,
+        stripeRefunds: stripeRefundResults,
+      };
     }, {
       isolationLevel: 'Serializable',
       maxWait: 5000,
@@ -1208,7 +1431,12 @@ router.post('/:id/refund', authenticate, async (req: AuthRequest, res: Response,
 
     res.json({
       success: true,
-      data: { order: result.updatedOrder, refundAmount: result.refundAmount, refundType: result.refundType },
+      data: {
+        order: result.updatedOrder,
+        refundAmount: result.refundAmount,
+        refundType: result.refundType,
+        stripeRefunds: result.stripeRefunds,
+      },
     });
   } catch (error) {
     next(error);
@@ -1282,7 +1510,7 @@ router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER'), async
 
         // Update order totals
         updateData.subtotal = subtotal;
-        updateData.totalAmount = subtotal - (order.discountAmount || 0) + (order.taxAmount || 0) + (order.surchargeAmount || 0);
+        updateData.totalAmount = subtotal - Number(order.discountAmount || 0) + Number(order.taxAmount || 0) + Number(order.surchargeAmount || 0);
       }
 
       updatedOrder = await tx.order.update({

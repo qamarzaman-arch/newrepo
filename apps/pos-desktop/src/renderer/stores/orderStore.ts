@@ -187,6 +187,15 @@ persist(
   },
 
   voidItem: (itemId, reason, voidedBy) => {
+    // QA B47: voids must be attributable. Reject the call with a clear error
+    // rather than silently storing an anonymous void.
+    if (!voidedBy) {
+      console.error('voidItem called without a voidedBy user — refusing.');
+      throw new Error('voidedBy is required to void an item');
+    }
+    if (!reason || !reason.trim()) {
+      throw new Error('reason is required to void an item');
+    }
     set((state) => {
       const item = state.currentOrder.items.find((i) => i.id === itemId);
       if (!item) return state;
@@ -196,7 +205,7 @@ persist(
         itemName: item.name,
         quantity: item.quantity,
         price: item.price,
-        reason,
+        reason: reason.trim(),
         voidedAt: new Date().toISOString(),
         voidedBy,
       };
@@ -212,7 +221,10 @@ persist(
   },
 
   updateQuantity: (itemId, quantity) => {
-    if (quantity <= 0) {
+    // QA B10: numeric keypads can produce NaN or negatives. Treat any
+    // non-positive integer as a removal.
+    const safe = Number.isFinite(quantity) ? Math.floor(quantity) : 0;
+    if (safe < 1) {
       get().removeItem(itemId);
       return;
     }
@@ -221,7 +233,7 @@ persist(
       currentOrder: {
         ...state.currentOrder,
         items: state.currentOrder.items.map((i) =>
-          i.id === itemId ? { ...i, quantity } : i
+          i.id === itemId ? { ...i, quantity: Math.min(safe, 9999) } : i
         ),
       },
     }));
@@ -290,16 +302,21 @@ persist(
   },
 
   applyDiscount: (percent, approvedBy) => {
+    // QA B11: clamp discount so two stacked applies can't push the order
+    // negative. Percent must be in [0, 100]; resulting amount can never
+    // exceed the current subtotal.
+    const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
     set((state) => {
       const subtotal = state.currentOrder.items.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0
       );
-      const discountAmount = subtotal * (percent / 100);
+      const rawDiscount = subtotal * (safePercent / 100);
+      const discountAmount = Math.min(rawDiscount, subtotal);
       return {
         currentOrder: {
           ...state.currentOrder,
-          discountPercent: percent,
+          discountPercent: safePercent,
           discountAmount,
           discountApprovedBy: approvedBy,
         },
@@ -347,10 +364,19 @@ persist(
       heldBy,
     };
 
-    set((state) => ({
-      heldOrders: [...state.heldOrders, heldOrder],
-      currentOrder: { ...EMPTY_ORDER },
-    }));
+    // QA B65: cap heldOrders at 50 so an inattentive shift doesn't grow the
+    // persisted store unbounded. Drop the oldest first.
+    const HELD_ORDER_CAP = 50;
+    set((state) => {
+      const next = [...state.heldOrders, heldOrder];
+      const trimmed = next.length > HELD_ORDER_CAP
+        ? next.slice(next.length - HELD_ORDER_CAP)
+        : next;
+      return {
+        heldOrders: trimmed,
+        currentOrder: { ...EMPTY_ORDER },
+      };
+    });
   },
 
   resumeOrder: (heldOrderId) => {
@@ -462,10 +488,22 @@ persist(
 }),
   {
     name: 'pos-order-draft',
+    // QA B18: held orders persisted to localStorage previously included
+    // unmasked customer phones + prices. Mask the phone digits before write
+    // so a casual host inspection (DevTools/disk) does not expose contact info.
     partialize: (state) => ({
       currentOrder: state.currentOrder,
-      heldOrders: state.heldOrders,
+      heldOrders: state.heldOrders.map((o) => ({
+        ...o,
+        customerPhone: o.customerPhone ? maskPhone(o.customerPhone) : o.customerPhone,
+      })),
       voidedItems: state.voidedItems,
     }),
   }
 ));
+
+function maskPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 4) return '*'.repeat(digits.length);
+  return phone.slice(0, 2) + '*'.repeat(Math.max(0, digits.length - 4)) + phone.slice(-2);
+}

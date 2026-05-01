@@ -123,7 +123,9 @@ function mapPromotion(discount: {
   name: string;
   code: string | null;
   type: string;
-  value: number;
+  // value is Prisma.Decimal post-migration; accept any so callers don't have
+  // to import Prisma here, then coerce to Number for the JSON response.
+  value: any;
   validFrom: Date | null;
   validUntil: Date | null;
   isActive: boolean;
@@ -136,7 +138,7 @@ function mapPromotion(discount: {
     name: discount.name || discount.code,
     code: discount.code,
     type: discount.type,
-    value: discount.value,
+    value: Number(discount.value),
     startDate: discount.validFrom,
     endDate: discount.validUntil,
     status: discount.isActive ? 'ACTIVE' : 'INACTIVE',
