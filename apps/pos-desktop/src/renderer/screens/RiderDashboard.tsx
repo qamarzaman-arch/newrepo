@@ -391,7 +391,7 @@ const RiderDashboard: React.FC = () => {
                 Active Delivery
               </span>
             </div>
-            <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-bold">
+            <span className="bg-primary-600/30 px-2 py-0.5 rounded-full text-xs font-bold">
               {myActive.status}
             </span>
           </div>
@@ -400,7 +400,7 @@ const RiderDashboard: React.FC = () => {
           {custPhone(myActive) && (
             <a
               href={`tel:${custPhone(myActive)}`}
-              className="inline-flex items-center gap-1 text-sm bg-white/20 hover:bg-white/30 rounded-md px-2 py-1 mb-2"
+              className="inline-flex items-center gap-1 text-sm bg-primary-600/30 hover:bg-primary-600/50 rounded-md px-2 py-1 mb-2"
             >
               <Phone className="w-3.5 h-3.5" /> {custPhone(myActive)}
             </a>
@@ -416,21 +416,21 @@ const RiderDashboard: React.FC = () => {
             <button
               disabled={updatingId === myActive.id}
               onClick={() => updateStatus(myActive.id, 'PICKED_UP')}
-              className="bg-white/20 hover:bg-white/30 disabled:opacity-50 py-2.5 rounded-lg font-bold text-sm"
+              className="bg-primary-600/30 hover:bg-primary-600/50 disabled:opacity-50 py-2.5 rounded-lg font-bold text-sm"
             >
               Picked Up
             </button>
             <button
               disabled={updatingId === myActive.id}
               onClick={() => updateStatus(myActive.id, 'IN_TRANSIT')}
-              className="bg-white/20 hover:bg-white/30 disabled:opacity-50 py-2.5 rounded-lg font-bold text-sm"
+              className="bg-primary-600/30 hover:bg-primary-600/50 disabled:opacity-50 py-2.5 rounded-lg font-bold text-sm"
             >
               En Route
             </button>
             <button
               disabled={updatingId === myActive.id}
               onClick={() => updateStatus(myActive.id, 'DELIVERED')}
-              className="bg-white text-red-700 hover:bg-gray-100 disabled:opacity-50 py-2.5 rounded-lg font-bold text-sm"
+              className="bg-white text-primary-700 hover:bg-gray-100 disabled:opacity-50 py-2.5 rounded-lg font-bold text-sm"
             >
               Delivered
             </button>

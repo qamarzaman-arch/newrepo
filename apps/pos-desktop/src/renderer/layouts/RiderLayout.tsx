@@ -17,11 +17,11 @@ const RiderLayout: React.FC<RiderLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
-      <header className="text-white shadow-md" style={{ background: '#E53935' }}>
+    <div className="flex flex-col h-screen bg-neutral-50 overflow-hidden">
+      <header className="text-white shadow-md bg-gradient-to-r from-primary to-primary-container">
         <div className="px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="bg-white/20 rounded-lg p-2">
+            <div className="bg-primary-600/30 rounded-lg p-2">
               <Bike className="w-5 h-5" />
             </div>
             <div>
@@ -31,7 +31,7 @@ const RiderLayout: React.FC<RiderLayoutProps> = ({ children }) => {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-1 bg-white/15 hover:bg-white/25 px-3 py-1.5 rounded-lg text-sm font-semibold"
+            className="flex items-center gap-1 bg-primary-600/30 hover:bg-primary-600/50 px-3 py-1.5 rounded-lg text-sm font-semibold"
           >
             <LogOut className="w-4 h-4" /> Logout
           </button>

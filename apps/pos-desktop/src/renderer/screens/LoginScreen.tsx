@@ -119,20 +119,20 @@ const LoginScreen: React.FC = () => {
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className="hidden lg:flex lg:w-2/5 flex-col relative overflow-hidden"
-        style={{ background: 'linear-gradient(160deg, #7f0000 0%, #b71c1c 45%, #D32F2F 100%)' }}
+        style={{ background: 'linear-gradient(160deg, #042F2E 0%, #0F766E 45%, #0D9488 100%)' }}
       >
         {/* Decorative circles */}
-        <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-white/5" />
-        <div className="absolute top-1/3 -right-20 w-64 h-64 rounded-full bg-white/5" />
-        <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-white/5" />
-        <div className="absolute bottom-1/4 right-8 w-32 h-32 rounded-full bg-white/5" />
+        <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-primary-900/20" />
+        <div className="absolute top-1/3 -right-20 w-64 h-64 rounded-full bg-primary-900/20" />
+        <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-primary-900/20" />
+        <div className="absolute bottom-1/4 right-8 w-32 h-32 rounded-full bg-primary-900/20" />
 
         {/* Diagonal stripe accent */}
         <div
           className="absolute inset-0 opacity-5"
           style={{
             backgroundImage:
-              'repeating-linear-gradient(-45deg, #fff 0px, #fff 1px, transparent 1px, transparent 20px)',
+              'repeating-linear-gradient(-45deg, #0D9488 0px, #0D9488 1px, transparent 1px, transparent 20px)',
           }}
         />
 
@@ -145,8 +145,8 @@ const LoginScreen: React.FC = () => {
             transition={{ delay: 0.3, duration: 0.5 }}
           >
             <div className="flex items-center gap-4 mb-3">
-              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-2xl">
-                <span className="text-white font-black text-3xl leading-none">P</span>
+              <div className="w-16 h-16 rounded-2xl bg-primary-600/30 backdrop-blur-sm border border-primary-500/30 flex items-center justify-center shadow-2xl p-2">
+                <img src="/assets/logo.png" alt="POSLytic" className="h-full w-auto" />
               </div>
               <span className="text-white font-black text-4xl tracking-tight">POSLytic</span>
             </div>
@@ -162,7 +162,7 @@ const LoginScreen: React.FC = () => {
             transition={{ delay: 0.5, duration: 0.6 }}
             className="space-y-6"
           >
-            <div className="w-12 h-1 bg-white/40 rounded-full" />
+            <div className="w-12 h-1 bg-primary-400 rounded-full" />
             <h2 className="text-white text-5xl font-black leading-tight">
               Smarter<br />Restaurant<br />Operations
             </h2>
@@ -172,7 +172,7 @@ const LoginScreen: React.FC = () => {
             <div className="flex flex-col gap-3 pt-2">
               {['Live kitchen dispatch', 'Multi-terminal sync', 'Offline-first architecture'].map((feat) => (
                 <div key={feat} className="flex items-center gap-3 text-white/80 text-sm font-medium">
-                  <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-5 h-5 rounded-full bg-primary-600/30 flex items-center justify-center flex-shrink-0">
                     <ChevronRight className="w-3 h-3 text-white" />
                   </div>
                   {feat}
@@ -204,8 +204,8 @@ const LoginScreen: React.FC = () => {
           {/* Mobile logo (shown when branding panel is hidden) */}
           <div className="lg:hidden mb-10 text-center">
             <div className="inline-flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center">
-                <span className="text-white font-black text-xl">P</span>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center p-1.5">
+                <img src="/assets/logo.png" alt="POSLytic" className="h-full w-auto" />
               </div>
               <span className="text-neutral-900 font-black text-3xl">POSLytic</span>
             </div>

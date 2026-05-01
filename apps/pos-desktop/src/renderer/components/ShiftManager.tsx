@@ -228,7 +228,7 @@ const ShiftManager: React.FC<ShiftManagerProps> = ({ children }) => {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs bg-white/20 px-2 py-1 rounded">
+            <span className="text-xs bg-primary-600/30 px-2 py-1 rounded">
               Sales: {formatCurrency(cashDrawer.totalSales)}
             </span>
             <button

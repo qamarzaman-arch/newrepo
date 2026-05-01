@@ -82,23 +82,23 @@ const Sidebar: React.FC = () => {
   return (
     <aside className="w-72 bg-gradient-to-b from-primary-600 via-primary-700 to-primary-800 text-white flex flex-col shadow-2xl">
       {/* Logo */}
-      <div className="p-6 border-b border-white/10">
+      <div className="p-6 border-b border-primary-500/10">
         <Link to={user?.role === 'CASHIER' ? '/cashier-pos' : '/dashboard'} className="flex items-center gap-3 group">
           <motion.div
             whileHover={{ scale: 1.1, rotate: 5 }}
             transition={{ type: "spring", stiffness: 300 }}
-            className="bg-white/10 backdrop-blur-sm rounded-2xl p-3 shadow-lg"
+            className="bg-primary-600/30 backdrop-blur-sm rounded-2xl p-3 shadow-lg"
           >
-            <img src="/assets/logo.svg" alt="POSLytic" className="h-10 w-auto" />
+            <img src="/assets/logo.png" alt="POSLytic" className="h-10 w-auto" />
           </motion.div>
           <div>
-            <motion.h1 
+            <motion.h1
               className="text-2xl font-bold font-display bg-gradient-to-r from-white to-primary-100 bg-clip-text text-transparent"
               whileHover={{ scale: 1.05 }}
             >
               POSLytic
             </motion.h1>
-            <motion.p 
+            <motion.p
               className="text-xs text-white/70 font-medium"
               animate={{ opacity: [0.7, 1, 0.7] }}
               transition={{ duration: 2, repeat: Infinity }}
@@ -110,14 +110,14 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* User Info */}
-      <div className="px-6 py-5 border-b border-white/10 bg-white/5">
-        <motion.div 
+      <div className="px-6 py-5 border-b border-primary-500/10 bg-primary-900/20">
+        <motion.div
           className="flex items-center gap-3"
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-primary-600/30 flex items-center justify-center">
             <User className="w-5 h-5" />
           </div>
           <div>
@@ -144,8 +144,8 @@ const Sidebar: React.FC = () => {
                 to={item.path}
                 className={`relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group overflow-hidden ${
                   isActive
-                    ? 'bg-white text-primary-700 font-semibold shadow-xl shadow-white/20'
-                    : 'text-white/80 hover:bg-white/15 hover:text-white hover:shadow-lg'
+                    ? 'bg-white text-primary-700 font-semibold shadow-xl shadow-primary-500/20'
+                    : 'text-white/80 hover:bg-primary-600/30 hover:text-white hover:shadow-lg'
                 }`}
               >
                 <motion.div
@@ -164,7 +164,7 @@ const Sidebar: React.FC = () => {
                   />
                 )}
                 <motion.div
-                  className={`absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent ${
+                  className={`absolute inset-0 bg-gradient-to-r from-transparent via-primary-500/10 to-transparent ${
                     isActive ? 'from-transparent via-primary-500/10 to-transparent' : ''
                   }`}
                   initial={{ x: '-100%' }}
@@ -179,12 +179,12 @@ const Sidebar: React.FC = () => {
       </nav>
 
       {/* Logout */}
-      <div className="p-4 border-t border-white/10 bg-white/5">
+      <div className="p-4 border-t border-primary-500/10 bg-primary-900/20">
         <motion.button
           onClick={logout}
           whileHover={{ scale: 1.02, backgroundColor: 'rgba(239, 68, 68, 0.8)' }}
           whileTap={{ scale: 0.98 }}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 backdrop-blur-sm rounded-xl transition-all font-semibold shadow-lg hover:shadow-xl"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-600/30 backdrop-blur-sm rounded-xl transition-all font-semibold shadow-lg hover:shadow-xl"
         >
           <motion.div
             whileHover={{ x: -3 }}

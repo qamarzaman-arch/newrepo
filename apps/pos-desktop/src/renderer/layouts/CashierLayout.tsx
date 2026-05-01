@@ -97,13 +97,13 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
             <motion.div
               whileHover={{ scale: 1.1, rotate: 5 }}
               transition={{ type: "spring", stiffness: 300 }}
-              className="rounded-xl p-2"
+              className="rounded-xl p-2 bg-primary-600/30"
             >
-              <span className="text-white font-black text-xl">P</span>
+              <img src="/assets/logo.png" alt="POSLytic" className="h-8 w-auto" />
             </motion.div>
             {!isSidebarCollapsed && (
               <div>
-                <motion.h1 
+                <motion.h1
                   className="text-lg font-bold text-white"
                   whileHover={{ scale: 1.05 }}
                 >
@@ -124,7 +124,7 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
         </button>
 
         {/* User Info */}
-        <div className={`px-6 py-4 border-b border-white/10 ${isSidebarCollapsed ? 'text-center' : ''}`}>
+        <div className={`px-6 py-4 border-b border-primary-500/10 ${isSidebarCollapsed ? 'text-center' : ''}`}>
           <p className={`text-sm font-semibold text-white ${isSidebarCollapsed ? 'hidden' : ''}`}>Hello, {user?.fullName || 'Cashier'}!</p>
           <p className={`text-xs text-white/70 mt-1 capitalize ${isSidebarCollapsed ? '' : ''}`}>{isSidebarCollapsed ? user?.fullName?.charAt(0) || 'C' : user?.role?.toLowerCase()}</p>
         </div>

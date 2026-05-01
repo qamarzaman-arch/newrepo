@@ -27,6 +27,7 @@ import KitchenLayout from './layouts/KitchenLayout';
 import RiderLayout from './layouts/RiderLayout';
 import RiderDashboard from './screens/RiderDashboard';
 import { useAuthStore } from './stores/authStore';
+import { useSettingsStore } from './stores/settingsStore';
 import toast from 'react-hot-toast';
 
 // Role-based route access control
@@ -359,6 +360,7 @@ function AnimatedRoutes() {
 
 function App() {
   const { initialize } = useAuthStore();
+  const { settings } = useSettingsStore();
 
   useEffect(() => {
     // Check for existing session on mount
@@ -368,6 +370,30 @@ function App() {
     const hardwareManager = getHardwareManager();
     hardwareManager.initialize().catch(console.error);
   }, [initialize]);
+
+  // Apply dark mode based on theme setting
+  useEffect(() => {
+    const applyTheme = () => {
+      const root = document.documentElement;
+      const isDark = settings.theme === 'dark' || (settings.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      
+      if (isDark) {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+    };
+
+    applyTheme();
+
+    // Listen for system theme changes if in auto mode
+    if (settings.theme === 'auto') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = () => applyTheme();
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+  }, [settings.theme]);
 
   return <AnimatedRoutes />;
 }

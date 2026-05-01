@@ -258,16 +258,16 @@ const TablesScreen: React.FC = () => {
       <div className="rounded-[32px] border border-red-100 bg-[linear-gradient(135deg,#fff5f5_0%,#ffffff_45%,#fff1f2_100%)] p-6 shadow-soft">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-red-500">Dining Floor</p>
-            <h1 className="mt-2 text-3xl font-black text-gray-900">Table Management</h1>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-primary">Dining Floor</p>
+            <h1 className="mt-2 text-3xl font-black text-neutral-900">Table Management</h1>
+            <p className="mt-2 text-sm text-neutral-600">
               Keep seating, reservations, and cleaning status visible in one place.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {floorSummary.map((item) => (
-              <div key={item.label} className="rounded-2xl border border-white/70 bg-white/90 px-4 py-3 shadow-sm">
-                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">{item.label}</p>
+              <div key={item.label} className="rounded-2xl border border-neutral-200 bg-neutral-0 px-4 py-3 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-neutral-400">{item.label}</p>
                 <p className={`mt-1 text-sm font-bold ${item.tone}`}>{item.value}</p>
               </div>
             ))}

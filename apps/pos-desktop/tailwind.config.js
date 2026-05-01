@@ -8,19 +8,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        // RED & WHITE DESIGN SYSTEM
+        // TEAL & BLUE DESIGN SYSTEM
         primary: {
-          DEFAULT: '#E53935',        // Vibrant Red
-          50: '#FFEBEE',
-          100: '#FFCDD2',
-          200: '#EF9A9A',
-          300: '#E57373',
-          400: '#EF5350',
-          500: '#E53935',        // Main Red
-          600: '#D32F2F',        // Dark Red
-          700: '#C62828',        // Secondary/Dark Red
-          800: '#B71C1C',        // Deep Red
-          900: '#8B0000',
+          DEFAULT: '#0D9488',        // Teal-500
+          50: '#F0FDFA',
+          100: '#CCFBF1',
+          200: '#99F6E4',
+          300: '#5EEAD4',
+          400: '#2DD4BF',
+          500: '#0D9488',        // Main Teal
+          600: '#0F766E',        // Dark Teal
+          700: '#115E59',        // Secondary/Dark Teal
+          800: '#134E4A',        // Deep Teal
+          900: '#042F2E',
           foreground: '#FFFFFF',
         },
         // Status Colors
@@ -77,14 +77,14 @@ export default {
         },
         // Accent colors
         accent: {
-          DEFAULT: '#E53935',
-          secondary: '#C62828',
+          DEFAULT: '#0D9488',
+          secondary: '#115E59',
           foreground: '#FFFFFF',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Manrope', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['Manrope', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       fontSize: {
@@ -139,13 +139,13 @@ export default {
         'xl': '0 20px 40px -5px rgba(0, 0, 0, 0.12), 0 10px 20px -5px rgba(0, 0, 0, 0.08)',
         '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
         // Special shadows
-        'glow': '0 0 20px rgba(229, 57, 53, 0.3)',
-        'glow-lg': '0 0 40px rgba(229, 57, 53, 0.4)',
+        'glow': '0 0 20px rgba(13, 148, 136, 0.3)',
+        'glow-lg': '0 0 40px rgba(13, 148, 136, 0.4)',
         'inner': 'inset 0 2px 4px rgba(0, 0, 0, 0.06)',
         'card': '0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)',
         'card-hover': '0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08)',
-        'button': '0 2px 4px rgba(229, 57, 53, 0.2)',
-        'button-hover': '0 4px 12px rgba(229, 57, 53, 0.35)',
+        'button': '0 2px 4px rgba(13, 148, 136, 0.2)',
+        'button-hover': '0 4px 12px rgba(13, 148, 136, 0.35)',
       },
       transitionTimingFunction: {
         'bounce-out': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -200,8 +200,8 @@ export default {
           '50%': { opacity: '0.7' },
         },
         'pulse-glow': {
-          '0%, 100%': { boxShadow: '0 0 20px rgba(229, 57, 53, 0.3)' },
-          '50%': { boxShadow: '0 0 40px rgba(229, 57, 53, 0.6)' },
+          '0%, 100%': { boxShadow: '0 0 20px rgba(13, 148, 136, 0.3)' },
+          '50%': { boxShadow: '0 0 40px rgba(13, 148, 136, 0.6)' },
         },
         'shake': {
           '0%, 100%': { transform: 'translateX(0)' },

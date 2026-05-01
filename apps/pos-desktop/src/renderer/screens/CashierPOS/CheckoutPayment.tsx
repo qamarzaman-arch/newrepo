@@ -511,7 +511,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                 className={`flex-1 py-3 flex items-center justify-center gap-2 rounded-xl font-bold text-sm uppercase tracking-wider transition-all ${
                   paymentMethod === method
                     ? 'bg-neutral-0 text-primary-600 shadow-lg'
-                    : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+                    : 'bg-primary-600/30 text-white/70 hover:bg-primary-600/50 hover:text-white'
                 }`}
               >
                 {icons[method]}
@@ -536,7 +536,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                 className="space-y-4"
               >
                 {/* Amount Display */}
-                <div className="bg-white/10 rounded-2xl px-5 py-4 border border-white/20">
+                <div className="bg-primary-600/30 rounded-2xl px-5 py-4 border border-primary-500/20">
                   <div className="flex items-baseline justify-between mb-1">
                     <span className="text-white/60 text-xs font-bold uppercase tracking-wider">Cash Received</span>
                     <span className="text-white/50 text-xs font-medium">or type on keyboard</span>
@@ -557,7 +557,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
                       showCashCounter
                         ? 'bg-white text-primary-600'
-                        : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+                        : 'bg-primary-600/30 text-white/70 hover:bg-primary-600/50 hover:text-white'
                     }`}
                   >
                     <Calculator className="w-3.5 h-3.5" />
@@ -574,7 +574,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                       exit={{ opacity: 0, height: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="bg-white/10 rounded-2xl p-4 border border-white/20">
+                      <div className="bg-primary-600/30 rounded-2xl p-4 border border-primary-500/20">
                         <CashCountingHelper
                           onTotalCalculated={(total) => setCashReceived(total.toFixed(2))}
                           currencyCode={currencyCode}
@@ -597,7 +597,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                       whileHover={{ scale: 1.04 }}
                       whileTap={{ scale: 0.96 }}
                       onClick={() => handleQuickAmount(action)}
-                      className="py-2 bg-white/10 text-white/80 rounded-xl text-xs font-bold hover:bg-white/20 hover:text-white transition-colors border border-white/10"
+                      className="py-2 bg-primary-600/30 text-white/80 rounded-xl text-xs font-bold hover:bg-primary-600/50 hover:text-white transition-colors border border-primary-500/10"
                     >
                       {label}
                     </motion.button>
@@ -612,7 +612,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.93 }}
                       onClick={() => handleKeypadPress(key)}
-                      className="py-4 bg-white/15 text-white rounded-xl text-xl font-bold hover:bg-white/25 transition-colors border border-white/10 active:bg-white/30"
+                      className="py-4 bg-primary-600/30 text-white rounded-xl text-xl font-bold hover:bg-primary-600/50 transition-colors border border-primary-500/10 active:bg-primary-600/60"
                     >
                       {key === 'BACKSPACE' ? '⌫' : key}
                     </motion.button>
@@ -621,7 +621,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.93 }}
                     onClick={() => handleKeypadPress('CLEAR')}
-                    className="col-span-3 py-3 bg-white/10 text-white/70 rounded-xl text-sm font-bold hover:bg-white/20 hover:text-white transition-colors border border-white/10"
+                    className="col-span-3 py-3 bg-primary-600/20 text-white/70 rounded-xl text-sm font-bold hover:bg-primary-600/40 hover:text-white transition-colors border border-primary-500/10"
                   >
                     CLEAR
                   </motion.button>
@@ -667,7 +667,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                 <motion.div
                   animate={{ y: [0, -8, 0] }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                  className="w-20 h-20 bg-white/15 rounded-full flex items-center justify-center border-2 border-white/30"
+                  className="w-20 h-20 bg-primary-600/30 rounded-full flex items-center justify-center border-2 border-primary-500/30"
                 >
                   <CreditCard className="w-10 h-10 text-white" />
                 </motion.div>
@@ -677,7 +677,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                   <p className="text-4xl font-black text-white tabular-nums">{formatCurrency(total, currencyCode)}</p>
                 </div>
 
-                <div className="w-full bg-white/10 rounded-2xl p-5 border border-white/20 text-left">
+                <div className="w-full bg-primary-600/30 rounded-2xl p-5 border border-primary-500/20 text-left">
                   <p className="text-white/70 text-sm font-medium mb-4">
                     Process payment on your terminal, then confirm below.
                   </p>
@@ -732,7 +732,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                       whileHover={{ scale: 1.04 }}
                       whileTap={{ scale: 0.96 }}
                       onClick={action}
-                      className="py-2.5 bg-white/10 text-white/80 rounded-xl text-xs font-bold hover:bg-white/20 hover:text-white transition-colors border border-white/10"
+                      className="py-2.5 bg-primary-600/30 text-white/80 rounded-xl text-xs font-bold hover:bg-primary-600/50 hover:text-white transition-colors border border-primary-500/10"
                     >
                       {label}
                     </motion.button>
@@ -740,7 +740,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                 </div>
 
                 {/* Cash Amount Input */}
-                <div className="bg-white/10 rounded-2xl p-4 border border-white/20">
+                <div className="bg-primary-600/30 rounded-2xl p-4 border border-primary-500/20">
                   <div className="flex items-center gap-2 mb-2">
                     <Banknote className="w-4 h-4 text-green-300" />
                     <span className="text-white/70 text-sm font-bold">Cash Amount</span>
@@ -759,13 +759,13 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                         card: Math.max(0, parseFloat((total - cash).toFixed(2))),
                       });
                     }}
-                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white font-bold text-base focus:border-white/50 focus:outline-none placeholder:text-white/30"
+                    className="w-full px-4 py-2.5 bg-primary-600/20 border border-primary-500/20 rounded-xl text-white font-bold text-base focus:border-primary-500/50 focus:outline-none placeholder:text-white/30"
                     placeholder="Enter cash amount"
                   />
                 </div>
 
                 {/* Card Amount Input */}
-                <div className="bg-white/10 rounded-2xl p-4 border border-white/20">
+                <div className="bg-primary-600/30 rounded-2xl p-4 border border-primary-500/20">
                   <div className="flex items-center gap-2 mb-2">
                     <CreditCard className="w-4 h-4 text-blue-300" />
                     <span className="text-white/70 text-sm font-bold">Card Amount</span>
@@ -784,7 +784,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                         card: Math.min(card, total),
                       });
                     }}
-                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white font-bold text-base focus:border-white/50 focus:outline-none placeholder:text-white/30"
+                    className="w-full px-4 py-2.5 bg-primary-600/20 border border-primary-500/20 rounded-xl text-white font-bold text-base focus:border-primary-500/50 focus:outline-none placeholder:text-white/30"
                     placeholder="Enter card amount"
                   />
                 </div>
@@ -817,7 +817,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                       step="0.01"
                       value={cashReceived}
                       onChange={(e) => setCashReceived(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-white/10 border border-green-400/40 rounded-xl text-white font-black text-lg focus:border-green-300 focus:outline-none placeholder:text-white/30"
+                      className="w-full px-4 py-2.5 bg-primary-600/20 border border-green-400/40 rounded-xl text-white font-black text-lg focus:border-green-300 focus:outline-none placeholder:text-white/30"
                       placeholder={splitPayment.cash.toFixed(2)}
                     />
                     {cashReceivedNum >= splitPayment.cash && (
@@ -834,7 +834,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
         </div>
 
         {/* ── Action Buttons ── */}
-        <div className="px-6 pb-6 pt-3 space-y-3 border-t border-white/10 bg-primary-800/60">
+        <div className="px-6 pb-6 pt-3 space-y-3 border-t border-primary-500/10 bg-primary-800/60">
           <motion.button
             whileHover={{ scale: isPlaceOrderDisabled ? 1 : 1.01, boxShadow: isPlaceOrderDisabled ? 'none' : '0 20px 40px rgba(0,0,0,0.35)' }}
             whileTap={{ scale: isPlaceOrderDisabled ? 1 : 0.99 }}
@@ -854,7 +854,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
             onClick={onBack}
-            className="w-full py-3.5 bg-white/10 text-white/80 rounded-2xl font-bold text-base hover:bg-white/20 hover:text-white transition-all flex items-center justify-center gap-2 border border-white/10"
+            className="w-full py-3.5 bg-primary-600/30 text-white/80 rounded-2xl font-bold text-base hover:bg-primary-600/50 hover:text-white transition-all flex items-center justify-center gap-2 border border-primary-500/10"
           >
             <ChevronLeft className="w-5 h-5" />
             Back to Menu
