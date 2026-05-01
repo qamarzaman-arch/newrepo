@@ -84,8 +84,13 @@ const Sidebar: React.FC = () => {
       {/* Logo */}
       <div className="p-6 border-b border-white/15">
         <Link to={user?.role === 'CASHIER' ? '/cashier-pos' : '/dashboard'} className="flex items-center gap-3 group">
-          <div className="bg-white rounded-2xl p-2">
-            <img src="/assets/logo.png" alt="POSLytic" className="h-10 w-auto" />
+          <div className="rounded-2xl p-1">
+            <img
+              src="/assets/logo.png"
+              alt="POSLytic"
+              className="h-12 w-auto"
+              style={{ filter: 'brightness(0) invert(1)' }}
+            />
           </div>
           <div>
             <h1 className="text-2xl font-bold font-display tracking-wide text-white">

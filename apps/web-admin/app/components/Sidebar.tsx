@@ -147,7 +147,12 @@ export default function Sidebar() {
       style={{ backgroundColor: '#AA0000', color: '#FBFBFB' }}
     >
       <div className="p-6 border-b border-white/15 flex items-center gap-3">
-        <img src="/logo.png" alt="POSLytic" className="h-12 w-auto bg-white rounded-lg p-1" />
+        <img
+          src="/logo.png"
+          alt="POSLytic"
+          className="h-12 w-auto"
+          style={{ filter: 'brightness(0) invert(1)' }}
+        />
         <div>
           <h1 className="text-xl font-bold tracking-wide" style={{ fontFamily: 'Poppins, system-ui, sans-serif' }}>POSLYTIC</h1>
           <p className="text-xs text-white/70">{user.fullName ?? user.username} · {user.role}</p>
