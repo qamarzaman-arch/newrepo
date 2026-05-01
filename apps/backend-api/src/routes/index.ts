@@ -73,7 +73,11 @@ export function setupRoutes(app: Application) {
   app.use(`${apiPrefix}/recipes`, gate('inventory'), recipeRoutes);
   app.use(`${apiPrefix}/purchase-orders`, gate('vendors'), purchaseOrderRoutes);
   app.use(`${apiPrefix}/payments`, gate('orders'), paymentRoutes);
-  app.use(`${apiPrefix}/cash-drawer`, gate('financial'), cashDrawerRoutes);
+  // Cash drawer is part of a cashier's shift workflow (open at start, close at
+  // end), not a finance-team feature. Gate under 'orders' so the same role
+  // that can take orders can manage their drawer. The cashier-vs-manager
+  // permission distinction is enforced inside the routes via authorize().
+  app.use(`${apiPrefix}/cash-drawer`, gate('orders'), cashDrawerRoutes);
   app.use(`${apiPrefix}/audit-logs`, gate('reports'), auditLogRoutes);
   app.use(`${apiPrefix}/order-modifications`, gate('orders'), orderModificationRoutes);
   app.use(`${apiPrefix}/delivery-zones`, gate('delivery'), deliveryZoneRoutes);

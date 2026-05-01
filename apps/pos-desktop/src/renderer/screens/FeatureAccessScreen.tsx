@@ -191,7 +191,7 @@ export const FeatureAccessScreen: React.FC = () => {
   // Guard against undefined constants (can happen during HMR)
   if (!ROLE_COLORS || !ROLES || !AVAILABLE_FEATURES) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+      <div className="p-6 bg-gray-50 dark:bg-neutral-900 min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-gray-600">Loading feature access...</p>
@@ -201,7 +201,7 @@ export const FeatureAccessScreen: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gray-50 dark:bg-neutral-900 min-h-screen">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -218,7 +218,7 @@ export const FeatureAccessScreen: React.FC = () => {
             <button
               onClick={handleReset}
               disabled={isLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-200 rounded-xl hover:border-primary hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl hover:border-primary hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               Reset to Defaults
@@ -236,7 +236,7 @@ export const FeatureAccessScreen: React.FC = () => {
       </div>
 
       {/* Role Legend */}
-      <div className="mb-6 p-4 bg-white rounded-xl border border-gray-200">
+      <div className="mb-6 p-4 bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700">
         <div className="flex items-center gap-2 mb-3">
           <Users className="w-5 h-5 text-gray-600" />
           <h3 className="font-semibold text-gray-700">Roles</h3>
@@ -254,9 +254,9 @@ export const FeatureAccessScreen: React.FC = () => {
       </div>
 
       {/* Feature Access Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 overflow-hidden">
         {/* Table Header */}
-        <div className="grid grid-cols-6 gap-4 p-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700">
+        <div className="grid grid-cols-6 gap-4 p-4 bg-gray-50 dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700 font-semibold text-gray-700">
           <div className="col-span-2">Feature</div>
           {ROLES.map((role) => (
             <div key={role} className="text-center">
@@ -275,7 +275,7 @@ export const FeatureAccessScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="grid grid-cols-6 gap-4 p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors items-center"
+              className="grid grid-cols-6 gap-4 p-4 border-b border-gray-100 dark:border-neutral-700 hover:bg-gray-50 transition-colors items-center"
             >
               {/* Feature Info */}
               <div className="col-span-2">
@@ -320,7 +320,7 @@ export const FeatureAccessScreen: React.FC = () => {
       </div>
 
       {/* Bulk Actions */}
-      <div className="mt-6 p-4 bg-white rounded-xl border border-gray-200">
+      <div className="mt-6 p-4 bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700">
         <h3 className="font-semibold text-gray-700 mb-3">Bulk Actions</h3>
         <div className="flex flex-wrap gap-3">
           {AVAILABLE_FEATURES.map((feature) => (

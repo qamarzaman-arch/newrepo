@@ -10,6 +10,7 @@ import { menuService } from '../services/menuService';
 import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
 import { RefreshCw } from 'lucide-react';
+import { toNum } from '@restaurant-pos/shared-types';
 
 const AdvancedMenuScreen: React.FC = () => {
   const { user } = useAuthStore();
@@ -568,7 +569,7 @@ const AdvancedMenuScreen: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-manrope">Menu Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-neutral-100 font-manrope">Menu Management</h1>
           <p className="text-gray-600 mt-1">Manage items, categories, modifiers, and combo meals</p>
         </div>
         <div className="flex gap-3">
@@ -576,7 +577,7 @@ const AdvancedMenuScreen: React.FC = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleImport}
-            className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
+            className="px-4 py-2 bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
           >
             <Upload className="w-5 h-5" />
             Import
@@ -585,7 +586,7 @@ const AdvancedMenuScreen: React.FC = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleExport}
-            className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
+            className="px-4 py-2 bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
           >
             <Download className="w-5 h-5" />
             Export
@@ -594,7 +595,7 @@ const AdvancedMenuScreen: React.FC = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleRefresh}
-            className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
+            className="px-4 py-2 bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
             title="Refresh"
           >
             <RefreshCw className="w-5 h-5" />
@@ -655,12 +656,12 @@ const AdvancedMenuScreen: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Total Items</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalItems}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-neutral-100 mt-1">{stats.totalItems}</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
               <Package className="w-6 h-6 text-blue-600" />
@@ -672,7 +673,7 @@ const AdvancedMenuScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -689,7 +690,7 @@ const AdvancedMenuScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -706,7 +707,7 @@ const AdvancedMenuScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -721,7 +722,7 @@ const AdvancedMenuScreen: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 inline-flex">
+      <div className="bg-white dark:bg-neutral-800 rounded-2xl p-2 shadow-sm border border-gray-100 dark:border-neutral-700 inline-flex">
         {[
           { id: 'items', label: 'Menu Items', icon: Package },
           { id: 'categories', label: 'Categories', icon: Tag },
@@ -757,14 +758,14 @@ const AdvancedMenuScreen: React.FC = () => {
             placeholder="Search menu items..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none"
+            className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none"
           />
         </div>
         
         <select
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
-          className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none bg-white"
+          className="px-4 py-3 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none bg-white dark:bg-neutral-800"
         >
           <option value="all">All Categories</option>
           {categories?.map((cat: any) => (
@@ -772,11 +773,11 @@ const AdvancedMenuScreen: React.FC = () => {
           ))}
         </select>
 
-        <button className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-primary transition-colors">
+        <button className="px-4 py-3 bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl hover:border-primary transition-colors">
           <Filter className="w-5 h-5 text-gray-600" />
         </button>
 
-        <div className="flex bg-white border-2 border-gray-200 rounded-xl overflow-hidden">
+        <div className="flex bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl overflow-hidden">
           <button
             onClick={() => setViewMode('grid')}
             className={`px-4 py-3 ${viewMode === 'grid' ? 'bg-primary text-white' : 'text-gray-600'}`}
@@ -807,13 +808,13 @@ const AdvancedMenuScreen: React.FC = () => {
             >
               {viewMode === 'grid' ? (
                 <>
-                  <div className="aspect-square rounded-xl bg-gray-100 mb-3 flex items-center justify-center text-4xl">
+                  <div className="aspect-square rounded-xl bg-gray-100 dark:bg-neutral-800 mb-3 flex items-center justify-center text-4xl">
                     {item.image || '🍽️'}
                   </div>
-                  <h3 className="font-bold text-gray-900 mb-1">{item.name}</h3>
+                  <h3 className="font-bold text-gray-900 dark:text-neutral-100 mb-1">{item.name}</h3>
                   <p className="text-xs text-gray-500 mb-2">{item.category?.name}</p>
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-lg font-bold text-primary">${item.price.toFixed(2)}</p>
+                    <p className="text-lg font-bold text-primary">${toNum(item.price).toFixed(2)}</p>
                     <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${
                       item.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                     }`}>
@@ -838,15 +839,15 @@ const AdvancedMenuScreen: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center text-2xl flex-shrink-0">
+                  <div className="w-16 h-16 rounded-xl bg-gray-100 dark:bg-neutral-800 flex items-center justify-center text-2xl flex-shrink-0">
                     {item.image || '🍽️'}
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-bold text-gray-900">{item.name}</h3>
+                    <h3 className="font-bold text-gray-900 dark:text-neutral-100">{item.name}</h3>
                     <p className="text-sm text-gray-500">{item.category?.name}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-primary">${item.price.toFixed(2)}</p>
+                    <p className="text-lg font-bold text-primary">${toNum(item.price).toFixed(2)}</p>
                     <span className={`text-xs font-semibold ${
                       item.isAvailable ? 'text-green-600' : 'text-gray-500'
                     }`}>
@@ -883,7 +884,7 @@ const AdvancedMenuScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary-container/20 flex items-center justify-center">
@@ -895,7 +896,7 @@ const AdvancedMenuScreen: React.FC = () => {
                   {category.isActive ? 'Active' : 'Inactive'}
                 </span>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{category.name}</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-neutral-100 mb-2">{category.name}</h3>
               <p className="text-sm text-gray-600 mb-4">{category.description || 'No description'}</p>
               <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
                 <span>Display Order: #{category.displayOrder}</span>
@@ -922,11 +923,11 @@ const AdvancedMenuScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
             >
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">{modifier.name}</h3>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100">{modifier.name}</h3>
                   <p className="text-sm text-gray-500 capitalize">{modifier.type.replace('_', ' ')}</p>
                 </div>
                 <div className="flex items-center gap-4">
@@ -942,7 +943,7 @@ const AdvancedMenuScreen: React.FC = () => {
                 <button onClick={() => handleEditModifier(modifier)} className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
                   Edit Options
                 </button>
-                <button className="px-4 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-100 transition-colors">
+                <button className="px-4 py-2 bg-gray-50 dark:bg-neutral-900 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-100 transition-colors">
                   Duplicate
                 </button>
                 <button onClick={() => handleDeleteModifier(modifier.id)} className="ml-auto p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors">
@@ -962,16 +963,16 @@ const AdvancedMenuScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">{combo.name}</h3>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-neutral-100">{combo.name}</h3>
                   <p className="text-sm text-gray-500">{combo.items} items included</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">${combo.price.toFixed(2)}</p>
-                  <p className="text-xs text-green-600 font-semibold">Save ${combo.savings.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-primary">${toNum(combo.price).toFixed(2)}</p>
+                  <p className="text-xs text-green-600 font-semibold">Save ${toNum(combo.savings).toFixed(2)}</p>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -989,27 +990,27 @@ const AdvancedMenuScreen: React.FC = () => {
 
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-2xl font-bold mb-4">{editingItem ? 'Edit Item' : 'Add New Item'}</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Name *</label>
-                <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Item name" />
+                <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Item name" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Price *</label>
-                <input type="number" step="0.01" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0.00" />
+                <input type="number" step="0.01" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="0.00" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Category *</label>
-                <select value={formData.categoryId} onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                <select value={formData.categoryId} onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl">
                   <option value="">Select category</option>
                   {categories?.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
-                <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={3} placeholder="Item description" />
+                <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" rows={3} placeholder="Item description" />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="isAvailable" checked={formData.isAvailable} onChange={(e) => setFormData({ ...formData, isAvailable: e.target.checked })} className="w-4 h-4" />
@@ -1027,7 +1028,7 @@ const AdvancedMenuScreen: React.FC = () => {
                   className="hidden"
                 />
                 {previewImage ? (
-                  <div className="relative w-32 h-32 rounded-xl overflow-hidden border-2 border-gray-200">
+                  <div className="relative w-32 h-32 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-neutral-700">
                     <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
                     <button
                       onClick={clearImage}
@@ -1048,7 +1049,7 @@ const AdvancedMenuScreen: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => { setShowAddModal(false); setEditingItem(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={() => { setShowAddModal(false); setEditingItem(null); }} className="flex-1 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={editingItem ? handleUpdateItem : handleAddItem} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{editingItem ? 'Update' : 'Add Item'}</button>
             </div>
           </div>
@@ -1058,24 +1059,24 @@ const AdvancedMenuScreen: React.FC = () => {
       {/* Category Modal */}
       {showCategoryModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-2xl font-bold mb-4">{editingCategory ? 'Edit Category' : 'Add New Category'}</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Name *</label>
-                <input type="text" value={categoryFormData.name} onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Category name" />
+                <input type="text" value={categoryFormData.name} onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Category name" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
-                <textarea value={categoryFormData.description} onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={3} placeholder="Category description" />
+                <textarea value={categoryFormData.description} onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" rows={3} placeholder="Category description" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Display Order</label>
-                <input type="number" value={categoryFormData.displayOrder} onChange={(e) => setCategoryFormData({ ...categoryFormData, displayOrder: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
+                <input type="number" value={categoryFormData.displayOrder} onChange={(e) => setCategoryFormData({ ...categoryFormData, displayOrder: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="0" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Image URL</label>
-                <input type="text" value={categoryFormData.image} onChange={(e) => setCategoryFormData({ ...categoryFormData, image: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="https://..." />
+                <input type="text" value={categoryFormData.image} onChange={(e) => setCategoryFormData({ ...categoryFormData, image: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="https://..." />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="categoryActive" checked={categoryFormData.isActive} onChange={(e) => setCategoryFormData({ ...categoryFormData, isActive: e.target.checked })} className="w-4 h-4" />
@@ -1083,7 +1084,7 @@ const AdvancedMenuScreen: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => { setShowCategoryModal(false); setEditingCategory(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={() => { setShowCategoryModal(false); setEditingCategory(null); }} className="flex-1 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={handleSaveCategory} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{editingCategory ? 'Update' : 'Create'}</button>
             </div>
           </div>
@@ -1093,30 +1094,30 @@ const AdvancedMenuScreen: React.FC = () => {
       {/* Modifier Modal */}
       {showModifierModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">{editingModifier ? 'Edit Modifier' : 'Add New Modifier'}</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Menu Item *</label>
-                <select value={modifierFormData.menuItemId} onChange={(e) => setModifierFormData({ ...modifierFormData, menuItemId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                <select value={modifierFormData.menuItemId} onChange={(e) => setModifierFormData({ ...modifierFormData, menuItemId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl">
                   <option value="">Select menu item</option>
                   {items?.map((item: any) => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Name *</label>
-                <input type="text" value={modifierFormData.name} onChange={(e) => setModifierFormData({ ...modifierFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Modifier name" />
+                <input type="text" value={modifierFormData.name} onChange={(e) => setModifierFormData({ ...modifierFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Modifier name" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Type *</label>
-                <select value={modifierFormData.type} onChange={(e) => setModifierFormData({ ...modifierFormData, type: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                <select value={modifierFormData.type} onChange={(e) => setModifierFormData({ ...modifierFormData, type: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl">
                   <option value="single">Single Selection</option>
                   <option value="multiple">Multiple Selection</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Display Order</label>
-                <input type="number" value={modifierFormData.displayOrder} onChange={(e) => setModifierFormData({ ...modifierFormData, displayOrder: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
+                <input type="number" value={modifierFormData.displayOrder} onChange={(e) => setModifierFormData({ ...modifierFormData, displayOrder: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="0" />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="modifierRequired" checked={modifierFormData.isRequired} onChange={(e) => setModifierFormData({ ...modifierFormData, isRequired: e.target.checked })} className="w-4 h-4" />
@@ -1130,13 +1131,13 @@ const AdvancedMenuScreen: React.FC = () => {
                   <button onClick={addModifierOption} className="text-sm text-blue-600 hover:text-blue-700 font-semibold">+ Add Option</button>
                 </div>
                 {modifierFormData.options.map((option, index) => (
-                  <div key={index} className="bg-gray-50 rounded-lg p-3 mb-2">
+                  <div key={index} className="bg-gray-50 dark:bg-neutral-900 rounded-lg p-3 mb-2">
                     <div className="flex gap-2 mb-2">
                       <input
                         type="text"
                         value={option.name}
                         onChange={(e) => updateModifierOption(index, 'name', e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                        className="flex-1 px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg text-sm"
                         placeholder="Option name"
                       />
                       {modifierFormData.options.length > 1 && (
@@ -1153,7 +1154,7 @@ const AdvancedMenuScreen: React.FC = () => {
                           step="0.01"
                           value={option.priceAdjustment}
                           onChange={(e) => updateModifierOption(index, 'priceAdjustment', parseFloat(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                          className="w-full px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg text-sm"
                           placeholder="0.00"
                         />
                       </div>
@@ -1163,7 +1164,7 @@ const AdvancedMenuScreen: React.FC = () => {
                           type="number"
                           value={option.displayOrder}
                           onChange={(e) => updateModifierOption(index, 'displayOrder', parseInt(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                          className="w-full px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg text-sm"
                           placeholder="0"
                         />
                       </div>
@@ -1182,7 +1183,7 @@ const AdvancedMenuScreen: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => { setShowModifierModal(false); setEditingModifier(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={() => { setShowModifierModal(false); setEditingModifier(null); }} className="flex-1 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={handleSaveModifier} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{editingModifier ? 'Update' : 'Create'}</button>
             </div>
           </div>
@@ -1192,28 +1193,28 @@ const AdvancedMenuScreen: React.FC = () => {
       {/* Combo Modal */}
       {showComboModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">{editingCombo ? 'Edit Combo' : 'Add New Combo'}</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Name *</label>
-                <input type="text" value={comboFormData.name} onChange={(e) => setComboFormData({ ...comboFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Combo name" />
+                <input type="text" value={comboFormData.name} onChange={(e) => setComboFormData({ ...comboFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Combo name" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
-                <textarea value={comboFormData.description} onChange={(e) => setComboFormData({ ...comboFormData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={3} placeholder="Combo description" />
+                <textarea value={comboFormData.description} onChange={(e) => setComboFormData({ ...comboFormData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" rows={3} placeholder="Combo description" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Price *</label>
-                <input type="number" step="0.01" value={comboFormData.price} onChange={(e) => setComboFormData({ ...comboFormData, price: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0.00" />
+                <input type="number" step="0.01" value={comboFormData.price} onChange={(e) => setComboFormData({ ...comboFormData, price: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="0.00" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Start Date</label>
-                <input type="datetime-local" value={comboFormData.startDate} onChange={(e) => setComboFormData({ ...comboFormData, startDate: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="datetime-local" value={comboFormData.startDate} onChange={(e) => setComboFormData({ ...comboFormData, startDate: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">End Date</label>
-                <input type="datetime-local" value={comboFormData.endDate} onChange={(e) => setComboFormData({ ...comboFormData, endDate: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="datetime-local" value={comboFormData.endDate} onChange={(e) => setComboFormData({ ...comboFormData, endDate: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="comboAvailable" checked={comboFormData.isAvailable} onChange={(e) => setComboFormData({ ...comboFormData, isAvailable: e.target.checked })} className="w-4 h-4" />
@@ -1231,12 +1232,12 @@ const AdvancedMenuScreen: React.FC = () => {
                   <button onClick={addComboItem} className="text-sm text-blue-600 hover:text-blue-700 font-semibold">+ Add Item</button>
                 </div>
                 {comboFormData.items.map((item, index) => (
-                  <div key={index} className="bg-gray-50 rounded-lg p-3 mb-2">
+                  <div key={index} className="bg-gray-50 dark:bg-neutral-900 rounded-lg p-3 mb-2">
                     <div className="flex gap-2 mb-2">
                       <select
                         value={item.menuItemId}
                         onChange={(e) => updateComboItem(index, 'menuItemId', e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                        className="flex-1 px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg text-sm"
                       >
                         <option value="">Select menu item</option>
                         {items?.map((menuItem: any) => <option key={menuItem.id} value={menuItem.id}>{menuItem.name}</option>)}
@@ -1254,7 +1255,7 @@ const AdvancedMenuScreen: React.FC = () => {
                           type="number"
                           value={item.quantity}
                           onChange={(e) => updateComboItem(index, 'quantity', parseInt(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                          className="w-full px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg text-sm"
                           placeholder="1"
                           min="1"
                         />
@@ -1266,7 +1267,7 @@ const AdvancedMenuScreen: React.FC = () => {
                           step="0.01"
                           value={item.price}
                           onChange={(e) => updateComboItem(index, 'price', parseFloat(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                          className="w-full px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg text-sm"
                           placeholder="0.00"
                         />
                       </div>
@@ -1276,7 +1277,7 @@ const AdvancedMenuScreen: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => { setShowComboModal(false); setEditingCombo(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={() => { setShowComboModal(false); setEditingCombo(null); }} className="flex-1 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={handleSaveCombo} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{editingCombo ? 'Update' : 'Create'}</button>
             </div>
           </div>

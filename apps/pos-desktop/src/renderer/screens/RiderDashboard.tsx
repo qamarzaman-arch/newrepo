@@ -16,6 +16,7 @@ import { riderService } from '../services/riderService';
 import { deliveryZoneService } from '../services/deliveryZoneService';
 import { useAuthStore } from '../stores/authStore';
 import DeliveryMap, { MapMarker, MapZone } from '../components/maps/DeliveryMap';
+import { toNum } from '@restaurant-pos/shared-types';
 
 interface DeliveryItem {
   id: string;
@@ -328,7 +329,7 @@ const RiderDashboard: React.FC = () => {
                 GPS Active
               </span>
             ) : (
-              <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-500 font-semibold">
+              <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 dark:bg-neutral-800 text-gray-500 font-semibold">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" /> GPS...
               </span>
             )}
@@ -430,7 +431,7 @@ const RiderDashboard: React.FC = () => {
             <button
               disabled={updatingId === myActive.id}
               onClick={() => updateStatus(myActive.id, 'DELIVERED')}
-              className="bg-white text-primary-700 hover:bg-gray-100 disabled:opacity-50 py-2.5 rounded-lg font-bold text-sm"
+              className="bg-white dark:bg-neutral-800 text-primary-700 hover:bg-gray-100 disabled:opacity-50 py-2.5 rounded-lg font-bold text-sm"
             >
               Delivered
             </button>
@@ -456,7 +457,7 @@ const RiderDashboard: React.FC = () => {
               return (
                 <div
                   key={d.id}
-                  className="bg-white rounded-xl border border-gray-200 p-3 flex items-center justify-between gap-3"
+                  className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-3 flex items-center justify-between gap-3"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="font-bold">#{orderNum(d)}</p>
@@ -471,7 +472,7 @@ const RiderDashboard: React.FC = () => {
                         {formatPKR(fee(d))}
                       </span>
                       {dist != null && (
-                        <span className="text-gray-500">{dist.toFixed(1)} km away</span>
+                        <span className="text-gray-500">{toNum(dist).toFixed(1)} km away</span>
                       )}
                     </div>
                   </div>
@@ -500,7 +501,7 @@ const RiderDashboard: React.FC = () => {
             {completedToday.map((d) => (
               <div
                 key={d.id}
-                className="bg-white rounded-xl border border-gray-200 p-3 flex items-center justify-between"
+                className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-3 flex items-center justify-between"
               >
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold">#{orderNum(d)}</p>
@@ -531,7 +532,7 @@ const StatCard: React.FC<{
   icon: React.ReactNode;
   small?: boolean;
 }> = ({ label, value, icon, small }) => (
-  <div className="bg-white rounded-xl border border-gray-200 p-3">
+  <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-3">
     <div className="flex items-center gap-1.5 text-gray-500 text-xs mb-1">
       {icon} {label}
     </div>
@@ -555,7 +556,7 @@ const Loading: React.FC = () => (
 );
 
 const Empty: React.FC<{ text: string }> = ({ text }) => (
-  <div className="bg-white rounded-xl border border-dashed border-gray-200 py-6 text-center text-sm text-gray-500">
+  <div className="bg-white dark:bg-neutral-800 rounded-xl border border-dashed border-gray-200 dark:border-neutral-700 py-6 text-center text-sm text-gray-500">
     {text}
   </div>
 );

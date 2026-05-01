@@ -236,7 +236,7 @@ const TablesScreen: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Table Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-neutral-100">Table Management</h1>
           <div className="animate-pulse w-32 h-10 bg-gray-200 rounded-lg" />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -259,14 +259,14 @@ const TablesScreen: React.FC = () => {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <p className="text-xs font-black uppercase tracking-[0.3em] text-primary">Dining Floor</p>
-            <h1 className="mt-2 text-3xl font-black text-neutral-900">Table Management</h1>
+            <h1 className="mt-2 text-3xl font-black text-neutral-900 dark:text-neutral-100">Table Management</h1>
             <p className="mt-2 text-sm text-neutral-600">
               Keep seating, reservations, and cleaning status visible in one place.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {floorSummary.map((item) => (
-              <div key={item.label} className="rounded-2xl border border-neutral-200 bg-neutral-0 px-4 py-3 shadow-sm">
+              <div key={item.label} className="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-neutral-0 dark:bg-neutral-800 px-4 py-3 shadow-sm">
                 <p className="text-[10px] font-black uppercase tracking-[0.25em] text-neutral-400">{item.label}</p>
                 <p className={`mt-1 text-sm font-bold ${item.tone}`}>{item.value}</p>
               </div>
@@ -278,7 +278,7 @@ const TablesScreen: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
+          <h2 className="text-xl font-black text-gray-900 dark:text-neutral-100 flex items-center gap-2">
             <LayoutGrid className="w-8 h-8 text-primary" />
             Floor Controls
           </h2>
@@ -336,7 +336,7 @@ const TablesScreen: React.FC = () => {
       </div>
 
       {/* Filters & Search */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-white dark:bg-neutral-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700">
         <div className="flex items-center gap-2 flex-1 max-w-md">
           <Search className="w-5 h-5 text-gray-400" />
           <input
@@ -360,7 +360,7 @@ const TablesScreen: React.FC = () => {
             <option value="NEEDS_CLEANING">Needs Cleaning</option>
             <option value="OUT_OF_ORDER">Out of Order</option>
           </select>
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center bg-gray-100 dark:bg-neutral-800 rounded-lg p-1">
             <button
               onClick={() => setViewMode('grid')}
               className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
@@ -392,7 +392,7 @@ const TablesScreen: React.FC = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ delay: index * 0.03 }}
-                  className={`bg-white rounded-2xl p-5 shadow-soft border-2 ${statusConfig.border} cursor-pointer hover:shadow-medium transition-all group relative overflow-hidden`}
+                  className={`bg-white dark:bg-neutral-800 rounded-2xl p-5 shadow-soft border-2 ${statusConfig.border} cursor-pointer hover:shadow-medium transition-all group relative overflow-hidden`}
                   onClick={() => setSelectedTable(table)}
                 >
                   <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-200 via-red-500 to-red-200 opacity-80" />
@@ -406,7 +406,7 @@ const TablesScreen: React.FC = () => {
                     <span className={`text-2xl font-bold ${statusConfig.color}`}>T{table.number}</span>
                   </div>
 
-                  <h3 className="text-lg font-bold text-center text-gray-900 mb-1">Table {table.number}</h3>
+                  <h3 className="text-lg font-bold text-center text-gray-900 dark:text-neutral-100 mb-1">Table {table.number}</h3>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-center text-gray-400 mb-2">
                     {table.shape || 'Round'} table
                   </p>
@@ -471,9 +471,9 @@ const TablesScreen: React.FC = () => {
         </div>
       ) : (
         /* List View */
-        <div className="bg-white rounded-xl shadow-soft border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-soft border border-gray-200 dark:border-neutral-700 overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Table</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
@@ -490,7 +490,7 @@ const TablesScreen: React.FC = () => {
                 return (
                   <tr key={table.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
-                      <span className="font-semibold text-gray-900">Table {table.number}</span>
+                      <span className="font-semibold text-gray-900 dark:text-neutral-100">Table {table.number}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.color}`}>
@@ -551,7 +551,7 @@ const TablesScreen: React.FC = () => {
       )}
 
       {filteredTables.length === 0 && !isLoading && (
-        <div className="text-center py-16 bg-white rounded-[28px] shadow-soft border border-red-100">
+        <div className="text-center py-16 bg-white dark:bg-neutral-800 rounded-[28px] shadow-soft border border-red-100 dark:border-neutral-700">
           <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <LayoutGrid className="w-12 h-12 text-red-300" />
           </div>
@@ -582,9 +582,9 @@ const TablesScreen: React.FC = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
             >
-              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
                 <Plus className="w-6 h-6 text-primary" />
                 {isEditing ? 'Edit Table' : 'Add New Table'}
               </h2>
@@ -740,7 +740,7 @@ const TablesScreen: React.FC = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl p-6 w-full max-w-md"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-md"
             >
               {(() => {
                 const statusConfig = getStatusConfig(selectedTable.status);
@@ -749,7 +749,7 @@ const TablesScreen: React.FC = () => {
                 return (
                   <>
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-xl font-bold text-gray-900">Table {selectedTable.number}</h2>
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-neutral-100">Table {selectedTable.number}</h2>
                       <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bg} ${statusConfig.color}`}>
                         <StatusIcon className="w-4 h-4" />
                         {statusConfig.label}

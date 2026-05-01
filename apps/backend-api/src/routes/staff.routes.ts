@@ -9,6 +9,17 @@ import { PIN_BCRYPT_ROUNDS } from '../config/constants';
 
 const router = Router();
 
+// QA-Report #13: shared password-complexity rule applied on BOTH create and
+// update so the update path can't sneak in a weak password.
+const PASSWORD_COMPLEXITY = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/[A-Z]/, 'Password must contain an uppercase letter')
+  .regex(/[a-z]/, 'Password must contain a lowercase letter')
+  .regex(/[0-9]/, 'Password must contain a number')
+  .regex(/[^A-Za-z0-9]/, 'Password must contain a special character');
+
+const PIN_FORMAT = z.string().regex(/^\d{4,6}$/, 'PIN must be 4–6 digits');
+
 // Validation schemas
 const createStaffSchema = z.object({
   username: z.string().min(3),
@@ -16,8 +27,8 @@ const createStaffSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
   role: z.enum(['STAFF', 'CASHIER', 'MANAGER', 'KITCHEN', 'RIDER', 'ADMIN']),
-  pin: z.string().optional(),
-  password: z.string().optional(),
+  pin: PIN_FORMAT.optional(),
+  password: PASSWORD_COMPLEXITY.optional(),
 });
 
 const updateStaffSchema = z.object({
@@ -26,15 +37,17 @@ const updateStaffSchema = z.object({
   email: z.string().email().optional().or(z.literal('')).optional(),
   phone: z.string().optional(),
   role: z.enum(['STAFF', 'CASHIER', 'MANAGER', 'KITCHEN', 'RIDER', 'ADMIN']).optional(),
-  pin: z.string().optional(),
-  password: z.string().optional(),
+  pin: PIN_FORMAT.optional(),
+  password: PASSWORD_COMPLEXITY.optional(),
   isActive: z.boolean().optional(),
 });
 
+// QA-Report #16: tighten shift schema — userId must be a UUID, dates ISO 8601,
+// startTime "HH:mm" 24-hr.
 const createShiftSchema = z.object({
-  userId: z.string(),
-  shiftDate: z.string(),
-  startTime: z.string(),
+  userId: z.string().uuid(),
+  shiftDate: z.string().regex(/^\d{4}-\d{2}-\d{2}/, 'shiftDate must be ISO YYYY-MM-DD'),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'startTime must be HH:mm'),
 });
 
 const updateShiftSchema = z.object({
@@ -271,18 +284,38 @@ router.post('/:id/shift', authenticate, async (req: AuthRequest, res: Response, 
 });
 
 // Get staff performance
+// QA-Report #8/#9: validate `days` (1–365) so days=999999 can't pin the DB,
+// and paginate so a heavy user with thousands of records doesn't OOM.
+const performanceQuerySchema = z.object({
+  days: z.coerce.number().int().min(1).max(365).default(30),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
 router.get('/:id/performance', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { days = 30 } = req.query;
+    const { days, page, limit } = performanceQuerySchema.parse(req.query);
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(days as string));
+    startDate.setDate(startDate.getDate() - days);
 
-    const performances = await prisma.staffPerformance.findMany({
-      where: { userId: req.params.id, date: { gte: startDate } },
-      orderBy: { date: 'desc' },
+    const [performances, total] = await Promise.all([
+      prisma.staffPerformance.findMany({
+        where: { userId: req.params.id, date: { gte: startDate } },
+        orderBy: { date: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.staffPerformance.count({
+        where: { userId: req.params.id, date: { gte: startDate } },
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        performances,
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      },
     });
-
-    res.json({ success: true, data: { performances } });
   } catch (error) {
     next(error);
   }

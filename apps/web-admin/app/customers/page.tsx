@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import apiClient from '../lib/api';
+import { toNum } from '@restaurant-pos/shared-types';
 
 interface Customer {
   id: string;
@@ -147,9 +148,9 @@ export default function CustomersPage() {
           { label: 'Total Customers', value: stats.total, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: 'Active', value: stats.active, icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
           { label: 'Loyalty Members', value: stats.loyaltyMembers, icon: Star, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-          { label: 'Avg. Spend', value: `$${stats.avgSpend.toFixed(2)}`, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Avg. Spend', value: `$${toNum(stats.avgSpend).toFixed(2)}`, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
         ].map((s, i) => (
-          <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div key={i} className="bg-white dark:bg-neutral-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-neutral-700">
             <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center ${s.color} mb-3`}><s.icon size={20} /></div>
             <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{s.label}</p>
             <p className="text-2xl font-extrabold text-gray-900 mt-1">{s.value}</p>
@@ -158,10 +159,10 @@ export default function CustomersPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 bg-gray-100 dark:bg-neutral-800 p-1 rounded-xl w-fit">
         {TABS.map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`px-5 py-2 rounded-lg text-sm font-bold transition-colors capitalize ${activeTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+            className={`px-5 py-2 rounded-lg text-sm font-bold transition-colors capitalize ${activeTab === tab ? 'bg-white dark:bg-neutral-700 text-gray-900 dark:text-neutral-100 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
             {tab === 'customers' ? 'Customers' : 'Loyalty Tiers'}
           </button>
         ))}
@@ -176,7 +177,7 @@ export default function CustomersPage() {
               className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-red-400" />
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center h-48">
                 <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
@@ -189,7 +190,7 @@ export default function CustomersPage() {
             ) : (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
+                  <tr className="bg-gray-50 dark:bg-neutral-900 border-b border-gray-100 dark:border-neutral-700">
                     {['Name', 'Contact', 'Loyalty Pts', 'Total Spent', 'Last Visit', 'Status', ''].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{h}</th>
                     ))}
@@ -231,7 +232,7 @@ export default function CustomersPage() {
             )}
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-neutral-700">
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 disabled:opacity-40 hover:bg-gray-100 rounded-lg transition-colors">
                   <ChevronLeft size={14} /> Prev
                 </button>
@@ -246,7 +247,7 @@ export default function CustomersPage() {
       )}
 
       {activeTab === 'loyalty' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden">
           {tiers.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-gray-400">
               <Star size={40} className="mb-3 text-gray-200" />
@@ -279,7 +280,7 @@ export default function CustomersPage() {
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl space-y-4">
+          <div className="bg-white dark:bg-neutral-800 rounded-3xl p-8 w-full max-w-md shadow-2xl space-y-4">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-xl font-extrabold text-gray-900">{editingCustomer ? 'Edit Customer' : 'Add Customer'}</h2>
               <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={18} /></button>

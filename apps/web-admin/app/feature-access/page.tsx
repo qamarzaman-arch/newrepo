@@ -168,11 +168,11 @@ export default function FeatureAccessPage() {
           <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
+                <tr className="bg-gray-50 dark:bg-neutral-900 border-b border-gray-100 dark:border-neutral-700">
                   <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-48">Feature</th>
                   {ROLES.map(role => (
                     <th key={role} className="px-4 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">

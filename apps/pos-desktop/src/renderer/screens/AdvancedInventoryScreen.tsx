@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { inventoryService, InventoryItem } from '../services/inventoryService';
 import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
+import { toNum } from '@restaurant-pos/shared-types';
 
 const AdvancedInventoryScreen: React.FC = () => {
   const queryClient = useQueryClient();
@@ -132,7 +133,7 @@ const AdvancedInventoryScreen: React.FC = () => {
     totalItems: items.length,
     lowStock: lowStockItems.length,
     outOfStock: items.filter((i: any) => i.status === 'OUT_OF_STOCK').length,
-    totalValue: items.reduce((sum: number, item: any) => sum + (item.currentStock * item.costPerUnit), 0),
+    totalValue: items.reduce((sum: number, item: any) => sum + (toNum(item.currentStock) * toNum(item.costPerUnit)), 0),
   };
 
   const getStatusColor = (status: string) => {
@@ -479,7 +480,7 @@ const AdvancedInventoryScreen: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-manrope">Inventory Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-neutral-100 font-manrope">Inventory Management</h1>
           <p className="text-gray-600 mt-1">Manage stock, purchase orders, recipes, and vendors</p>
         </div>
         <div className="flex gap-3">
@@ -487,7 +488,7 @@ const AdvancedInventoryScreen: React.FC = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleImport}
-            className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
+            className="px-4 py-2 bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
           >
             <Upload className="w-5 h-5" />
             Import
@@ -548,12 +549,12 @@ const AdvancedInventoryScreen: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Total Items</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalItems}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-neutral-100 mt-1">{stats.totalItems}</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
               <Package className="w-6 h-6 text-blue-600" />
@@ -565,7 +566,7 @@ const AdvancedInventoryScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -582,7 +583,7 @@ const AdvancedInventoryScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -599,12 +600,12 @@ const AdvancedInventoryScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Total Value</p>
-              <p className="text-3xl font-bold text-primary mt-1">${stats.totalValue.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-primary mt-1">${toNum(stats.totalValue).toFixed(2)}</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
               <DollarSign className="w-6 h-6 text-purple-600" />
@@ -614,7 +615,7 @@ const AdvancedInventoryScreen: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 inline-flex">
+      <div className="bg-white dark:bg-neutral-800 rounded-2xl p-2 shadow-sm border border-gray-100 dark:border-neutral-700 inline-flex">
         {[
           { id: 'inventory', label: 'Inventory', icon: Package },
           { id: 'purchase-orders', label: 'Purchase Orders', icon: ShoppingCart },
@@ -651,14 +652,14 @@ const AdvancedInventoryScreen: React.FC = () => {
               placeholder="Search inventory items..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none"
+              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none"
             />
           </div>
           
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none bg-white"
+            className="px-4 py-3 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none bg-white dark:bg-neutral-800"
           >
             <option value="all">All Categories</option>
             <option value="produce">Produce</option>
@@ -667,7 +668,7 @@ const AdvancedInventoryScreen: React.FC = () => {
             <option value="dry-goods">Dry Goods</option>
           </select>
 
-          <button className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-primary transition-colors">
+          <button className="px-4 py-3 bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl hover:border-primary transition-colors">
             <Filter className="w-5 h-5 text-gray-600" />
           </button>
         </div>
@@ -702,9 +703,9 @@ const AdvancedInventoryScreen: React.FC = () => {
 
       {/* INVENTORY TAB */}
       {activeTab === 'inventory' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-neutral-900">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Item Name</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">SKU</th>
@@ -719,7 +720,7 @@ const AdvancedInventoryScreen: React.FC = () => {
             <tbody className="divide-y divide-gray-200">
               {items.map((item: any) => (
                 <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 font-semibold text-gray-900">{item.name}</td>
+                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-neutral-100">{item.name}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{item.sku || '-'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{item.category || '-'}</td>
                   <td className="px-6 py-4">
@@ -735,7 +736,7 @@ const AdvancedInventoryScreen: React.FC = () => {
                       {item.status.replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">${item.costPerUnit.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">${toNum(item.costPerUnit).toFixed(2)}</td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
                       <button 
@@ -775,7 +776,7 @@ const AdvancedInventoryScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-start gap-4">
@@ -783,7 +784,7 @@ const AdvancedInventoryScreen: React.FC = () => {
                     <FileText className="w-8 h-8 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">{po.id}</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100">{po.id}</h3>
                     <p className="text-sm text-gray-500">{po.vendor}</p>
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
                       <span className="flex items-center gap-1">
@@ -802,7 +803,7 @@ const AdvancedInventoryScreen: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">${po.total.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-primary">${toNum(po.total).toFixed(2)}</p>
                   <span className={`inline-block mt-2 px-4 py-2 rounded-full text-sm font-semibold border ${getPOStatusColor(po.status)}`}>
                     {po.status}
                   </span>
@@ -822,11 +823,11 @@ const AdvancedInventoryScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">{recipe.name}</h3>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100">{recipe.name}</h3>
                   <p className="text-sm text-gray-500">{recipe.category}</p>
                 </div>
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -845,11 +846,11 @@ const AdvancedInventoryScreen: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Food Cost:</span>
-                  <span className="font-semibold">${recipe.cost.toFixed(2)}</span>
+                  <span className="font-semibold">${toNum(recipe.cost).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Menu Price:</span>
-                  <span className="font-bold text-primary">${recipe.menuPrice.toFixed(2)}</span>
+                  <span className="font-bold text-primary">${toNum(recipe.menuPrice).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -862,7 +863,7 @@ const AdvancedInventoryScreen: React.FC = () => {
                 </button>
                 <button 
                   onClick={() => handleViewRecipe(recipe)}
-                  className="p-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="p-2 bg-gray-50 dark:bg-neutral-900 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <Eye className="w-4 h-4" />
                 </button>
@@ -887,17 +888,17 @@ const AdvancedInventoryScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">{vendor.name}</h3>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100">{vendor.name}</h3>
                   <p className="text-sm text-gray-500">{vendor.category}</p>
                 </div>
                 <div className="text-right">
                   <div className="flex items-center gap-1">
                     <span className="text-yellow-500">★</span>
-                    <span className="font-bold text-gray-900">{vendor.rating}</span>
+                    <span className="font-bold text-gray-900 dark:text-neutral-100">{vendor.rating}</span>
                   </div>
                   <p className="text-xs text-gray-500">{vendor.activeOrders} active orders</p>
                 </div>
@@ -939,70 +940,70 @@ const AdvancedInventoryScreen: React.FC = () => {
 
       {showItemModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">{selectedItem ? 'Edit Item' : 'Add New Item'}</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Name *</label>
-                <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Item name" />
+                <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Item name" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">SKU</label>
-                <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="SKU" />
+                <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="SKU" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Barcode</label>
-                <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Barcode" />
+                <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Barcode" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Category</label>
-                <input type="text" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Category" />
+                <input type="text" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Category" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Unit</label>
-                <input type="text" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="pcs" />
+                <input type="text" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="pcs" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Current Stock</label>
-                  <input type="number" step="0.01" value={formData.currentStock} onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
+                  <input type="number" step="0.01" value={formData.currentStock} onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="0" />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Min Stock</label>
-                  <input type="number" step="0.01" value={formData.minStock} onChange={(e) => setFormData({ ...formData, minStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
+                  <input type="number" step="0.01" value={formData.minStock} onChange={(e) => setFormData({ ...formData, minStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="0" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Max Stock</label>
-                  <input type="number" step="0.01" value={formData.maxStock} onChange={(e) => setFormData({ ...formData, maxStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
+                  <input type="number" step="0.01" value={formData.maxStock} onChange={(e) => setFormData({ ...formData, maxStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="0" />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Reserved Stock</label>
-                  <input type="number" step="0.01" value={formData.reservedStock} onChange={(e) => setFormData({ ...formData, reservedStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0" />
+                  <input type="number" step="0.01" value={formData.reservedStock} onChange={(e) => setFormData({ ...formData, reservedStock: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="0" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Cost Per Unit</label>
-                  <input type="number" step="0.01" value={formData.costPerUnit} onChange={(e) => setFormData({ ...formData, costPerUnit: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0.00" />
+                  <input type="number" step="0.01" value={formData.costPerUnit} onChange={(e) => setFormData({ ...formData, costPerUnit: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="0.00" />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Selling Price</label>
-                  <input type="number" step="0.01" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="0.00" />
+                  <input type="number" step="0.01" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="0.00" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Supplier ID</label>
-                <input type="text" value={formData.supplierId} onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Supplier ID" />
+                <input type="text" value={formData.supplierId} onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Supplier ID" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Warehouse ID</label>
-                <input type="text" value={formData.warehouseId} onChange={(e) => setFormData({ ...formData, warehouseId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Warehouse ID" />
+                <input type="text" value={formData.warehouseId} onChange={(e) => setFormData({ ...formData, warehouseId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Warehouse ID" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
-                <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl">
                   <option value="IN_STOCK">In Stock</option>
                   <option value="LOW_STOCK">Low Stock</option>
                   <option value="OUT_OF_STOCK">Out of Stock</option>
@@ -1014,7 +1015,7 @@ const AdvancedInventoryScreen: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => { setShowItemModal(false); setSelectedItem(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={() => { setShowItemModal(false); setSelectedItem(null); }} className="flex-1 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={selectedItem ? handleUpdateItem : handleAddItem} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{selectedItem ? 'Update' : 'Add Item'}</button>
             </div>
           </div>
@@ -1024,19 +1025,19 @@ const AdvancedInventoryScreen: React.FC = () => {
       {/* PO Modal */}
       {showPOModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Purchase Order</h2>
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-neutral-100 mb-6">Create Purchase Order</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Vendor *</label>
-                <select value={poFormData.vendorId} onChange={(e) => setPOFormData({ ...poFormData, vendorId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required>
+                <select value={poFormData.vendorId} onChange={(e) => setPOFormData({ ...poFormData, vendorId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" required>
                   <option value="">Select Vendor</option>
                   {vendors.map((v: any) => <option key={v.id} value={v.id}>{v.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
-                <select value={poFormData.status} onChange={(e) => setPOFormData({ ...poFormData, status: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                <select value={poFormData.status} onChange={(e) => setPOFormData({ ...poFormData, status: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl">
                   <option value="PENDING">Pending</option>
                   <option value="SHIPPED">Shipped</option>
                   <option value="RECEIVED">Received</option>
@@ -1045,11 +1046,11 @@ const AdvancedInventoryScreen: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Expected Delivery</label>
-                <input type="date" value={poFormData.expectedDelivery} onChange={(e) => setPOFormData({ ...poFormData, expectedDelivery: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="date" value={poFormData.expectedDelivery} onChange={(e) => setPOFormData({ ...poFormData, expectedDelivery: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Notes</label>
-                <textarea value={poFormData.notes} onChange={(e) => setPOFormData({ ...poFormData, notes: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={3} placeholder="Notes" />
+                <textarea value={poFormData.notes} onChange={(e) => setPOFormData({ ...poFormData, notes: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" rows={3} placeholder="Notes" />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -1058,12 +1059,12 @@ const AdvancedInventoryScreen: React.FC = () => {
                 </div>
                 {poFormData.items.map((item, index) => (
                   <div key={index} className="grid grid-cols-4 gap-2 mb-2">
-                    <select value={item.inventoryItemId} onChange={(e) => updatePOItem(index, 'inventoryItemId', e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg">
+                    <select value={item.inventoryItemId} onChange={(e) => updatePOItem(index, 'inventoryItemId', e.target.value)} className="px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg">
                       <option value="">Select Item</option>
                       {items.map((i: any) => <option key={i.id} value={i.id}>{i.name}</option>)}
                     </select>
-                    <input type="number" placeholder="Qty" value={item.quantity} onChange={(e) => updatePOItem(index, 'quantity', parseFloat(e.target.value))} className="px-3 py-2 border border-gray-200 rounded-lg" />
-                    <input type="number" step="0.01" placeholder="Unit Cost" value={item.unitCost} onChange={(e) => updatePOItem(index, 'unitCost', parseFloat(e.target.value))} className="px-3 py-2 border border-gray-200 rounded-lg" />
+                    <input type="number" placeholder="Qty" value={item.quantity} onChange={(e) => updatePOItem(index, 'quantity', parseFloat(e.target.value))} className="px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg" />
+                    <input type="number" step="0.01" placeholder="Unit Cost" value={item.unitCost} onChange={(e) => updatePOItem(index, 'unitCost', parseFloat(e.target.value))} className="px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg" />
                     <button onClick={() => removePOItem(index)} className="px-3 py-2 bg-red-100 text-red-700 rounded-lg">Remove</button>
                   </div>
                 ))}
@@ -1074,7 +1075,7 @@ const AdvancedInventoryScreen: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowPOModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={() => setShowPOModal(false)} className="flex-1 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={handleAddPO} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Create PO</button>
             </div>
           </div>
@@ -1084,44 +1085,44 @@ const AdvancedInventoryScreen: React.FC = () => {
       {/* Recipe Modal */}
       {showRecipeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Recipe</h2>
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-neutral-100 mb-6">Add Recipe</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Recipe Name *</label>
-                <input type="text" value={recipeFormData.name} onChange={(e) => setRecipeFormData({ ...recipeFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required />
+                <input type="text" value={recipeFormData.name} onChange={(e) => setRecipeFormData({ ...recipeFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" required />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
-                <textarea value={recipeFormData.description} onChange={(e) => setRecipeFormData({ ...recipeFormData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={2} placeholder="Description" />
+                <textarea value={recipeFormData.description} onChange={(e) => setRecipeFormData({ ...recipeFormData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" rows={2} placeholder="Description" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Instructions</label>
-                <textarea value={recipeFormData.instructions} onChange={(e) => setRecipeFormData({ ...recipeFormData, instructions: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={4} placeholder="Cooking instructions" />
+                <textarea value={recipeFormData.instructions} onChange={(e) => setRecipeFormData({ ...recipeFormData, instructions: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" rows={4} placeholder="Cooking instructions" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Prep Time (min)</label>
-                  <input type="number" value={recipeFormData.prepTimeMinutes} onChange={(e) => setRecipeFormData({ ...recipeFormData, prepTimeMinutes: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                  <input type="number" value={recipeFormData.prepTimeMinutes} onChange={(e) => setRecipeFormData({ ...recipeFormData, prepTimeMinutes: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Cook Time (min)</label>
-                  <input type="number" value={recipeFormData.cookTimeMinutes} onChange={(e) => setRecipeFormData({ ...recipeFormData, cookTimeMinutes: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                  <input type="number" value={recipeFormData.cookTimeMinutes} onChange={(e) => setRecipeFormData({ ...recipeFormData, cookTimeMinutes: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Servings</label>
-                  <input type="number" value={recipeFormData.servings} onChange={(e) => setRecipeFormData({ ...recipeFormData, servings: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                  <input type="number" value={recipeFormData.servings} onChange={(e) => setRecipeFormData({ ...recipeFormData, servings: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Cost</label>
-                  <input type="number" step="0.01" value={recipeFormData.cost} onChange={(e) => setRecipeFormData({ ...recipeFormData, cost: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                  <input type="number" step="0.01" value={recipeFormData.cost} onChange={(e) => setRecipeFormData({ ...recipeFormData, cost: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Menu Item (Optional)</label>
-                <input type="text" value={recipeFormData.menuItemId} onChange={(e) => setRecipeFormData({ ...recipeFormData, menuItemId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Menu Item ID" />
+                <input type="text" value={recipeFormData.menuItemId} onChange={(e) => setRecipeFormData({ ...recipeFormData, menuItemId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Menu Item ID" />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -1130,12 +1131,12 @@ const AdvancedInventoryScreen: React.FC = () => {
                 </div>
                 {recipeFormData.ingredients.map((ing, index) => (
                   <div key={index} className="grid grid-cols-4 gap-2 mb-2">
-                    <select value={ing.inventoryItemId} onChange={(e) => updateRecipeIngredient(index, 'inventoryItemId', e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg">
+                    <select value={ing.inventoryItemId} onChange={(e) => updateRecipeIngredient(index, 'inventoryItemId', e.target.value)} className="px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg">
                       <option value="">Select Item</option>
                       {items.map((i: any) => <option key={i.id} value={i.id}>{i.name}</option>)}
                     </select>
-                    <input type="number" step="0.01" placeholder="Quantity" value={ing.quantity} onChange={(e) => updateRecipeIngredient(index, 'quantity', parseFloat(e.target.value))} className="px-3 py-2 border border-gray-200 rounded-lg" />
-                    <input type="text" placeholder="Unit" value={ing.unit} onChange={(e) => updateRecipeIngredient(index, 'unit', e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg" />
+                    <input type="number" step="0.01" placeholder="Quantity" value={ing.quantity} onChange={(e) => updateRecipeIngredient(index, 'quantity', parseFloat(e.target.value))} className="px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg" />
+                    <input type="text" placeholder="Unit" value={ing.unit} onChange={(e) => updateRecipeIngredient(index, 'unit', e.target.value)} className="px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg" />
                     <button onClick={() => removeRecipeIngredient(index)} className="px-3 py-2 bg-red-100 text-red-700 rounded-lg">Remove</button>
                   </div>
                 ))}
@@ -1146,7 +1147,7 @@ const AdvancedInventoryScreen: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowRecipeModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={() => setShowRecipeModal(false)} className="flex-1 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={handleAddRecipe} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Add Recipe</button>
             </div>
           </div>
@@ -1156,40 +1157,40 @@ const AdvancedInventoryScreen: React.FC = () => {
       {/* Vendor Modal */}
       {showVendorModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Add Vendor</h2>
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-neutral-100 mb-6">Add Vendor</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Vendor Name *</label>
-                <input type="text" value={vendorFormData.name} onChange={(e) => setVendorFormData({ ...vendorFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" required />
+                <input type="text" value={vendorFormData.name} onChange={(e) => setVendorFormData({ ...vendorFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" required />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Contact Name</label>
-                <input type="text" value={vendorFormData.contactName} onChange={(e) => setVendorFormData({ ...vendorFormData, contactName: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="text" value={vendorFormData.contactName} onChange={(e) => setVendorFormData({ ...vendorFormData, contactName: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-                <input type="email" value={vendorFormData.email} onChange={(e) => setVendorFormData({ ...vendorFormData, email: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="email" value={vendorFormData.email} onChange={(e) => setVendorFormData({ ...vendorFormData, email: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
-                <input type="tel" value={vendorFormData.phone} onChange={(e) => setVendorFormData({ ...vendorFormData, phone: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="tel" value={vendorFormData.phone} onChange={(e) => setVendorFormData({ ...vendorFormData, phone: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Address</label>
-                <input type="text" value={vendorFormData.address} onChange={(e) => setVendorFormData({ ...vendorFormData, address: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="text" value={vendorFormData.address} onChange={(e) => setVendorFormData({ ...vendorFormData, address: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
-                <input type="text" value={vendorFormData.city} onChange={(e) => setVendorFormData({ ...vendorFormData, city: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="text" value={vendorFormData.city} onChange={(e) => setVendorFormData({ ...vendorFormData, city: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Website</label>
-                <input type="url" value={vendorFormData.website} onChange={(e) => setVendorFormData({ ...vendorFormData, website: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="url" value={vendorFormData.website} onChange={(e) => setVendorFormData({ ...vendorFormData, website: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Notes</label>
-                <textarea value={vendorFormData.notes} onChange={(e) => setVendorFormData({ ...vendorFormData, notes: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={3} placeholder="Notes" />
+                <textarea value={vendorFormData.notes} onChange={(e) => setVendorFormData({ ...vendorFormData, notes: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" rows={3} placeholder="Notes" />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="vendorActive" checked={vendorFormData.isActive} onChange={(e) => setVendorFormData({ ...vendorFormData, isActive: e.target.checked })} className="w-4 h-4" />
@@ -1197,7 +1198,7 @@ const AdvancedInventoryScreen: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowVendorModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={() => setShowVendorModal(false)} className="flex-1 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={handleAddVendor} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Add Vendor</button>
             </div>
           </div>
@@ -1211,10 +1212,10 @@ const AdvancedInventoryScreen: React.FC = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">{selectedRecipe.name}</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{selectedRecipe.name}</h2>
               <button onClick={() => setShowViewRecipeModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
@@ -1237,35 +1238,35 @@ const AdvancedInventoryScreen: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-3 gap-4">
-                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                <div className="bg-gray-50 dark:bg-neutral-900 rounded-xl p-4 text-center">
                   <p className="text-2xl font-bold text-primary">{selectedRecipe.prepTimeMinutes || 0}</p>
                   <p className="text-sm text-gray-500">Prep Time (min)</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                <div className="bg-gray-50 dark:bg-neutral-900 rounded-xl p-4 text-center">
                   <p className="text-2xl font-bold text-orange-600">{selectedRecipe.cookTimeMinutes || 0}</p>
                   <p className="text-sm text-gray-500">Cook Time (min)</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                <div className="bg-gray-50 dark:bg-neutral-900 rounded-xl p-4 text-center">
                   <p className="text-2xl font-bold text-purple-600">{selectedRecipe.servings || 1}</p>
                   <p className="text-sm text-gray-500">Servings</p>
                 </div>
               </div>
 
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Description</h4>
+                <h4 className="font-semibold text-gray-900 dark:text-neutral-100 mb-2">Description</h4>
                 <p className="text-gray-600">{selectedRecipe.description || 'No description provided'}</p>
               </div>
 
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Instructions</h4>
+                <h4 className="font-semibold text-gray-900 dark:text-neutral-100 mb-2">Instructions</h4>
                 <p className="text-gray-600 whitespace-pre-wrap">{selectedRecipe.instructions || 'No instructions provided'}</p>
               </div>
 
-              <div className="bg-gray-50 rounded-xl p-4">
-                <h4 className="font-semibold text-gray-900 mb-3">Cost Breakdown</h4>
+              <div className="bg-gray-50 dark:bg-neutral-900 rounded-xl p-4">
+                <h4 className="font-semibold text-gray-900 dark:text-neutral-100 mb-3">Cost Breakdown</h4>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <p className="text-lg font-bold text-gray-900">${selectedRecipe.cost?.toFixed(2) || '0.00'}</p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-neutral-100">${selectedRecipe.cost?.toFixed(2) || '0.00'}</p>
                     <p className="text-sm text-gray-500">Food Cost</p>
                   </div>
                   <div>
@@ -1281,11 +1282,11 @@ const AdvancedInventoryScreen: React.FC = () => {
 
               {selectedRecipe.ingredients && selectedRecipe.ingredients.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Ingredients ({selectedRecipe.ingredients.length})</h4>
+                  <h4 className="font-semibold text-gray-900 dark:text-neutral-100 mb-3">Ingredients ({selectedRecipe.ingredients.length})</h4>
                   <div className="space-y-2">
                     {selectedRecipe.ingredients.map((ing: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="font-medium text-gray-900">{ing.name || 'Unknown Item'}</span>
+                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-neutral-900 rounded-lg">
+                        <span className="font-medium text-gray-900 dark:text-neutral-100">{ing.name || 'Unknown Item'}</span>
                         <span className="text-gray-600">{ing.quantity} {ing.unit}</span>
                       </div>
                     ))}
@@ -1304,10 +1305,10 @@ const AdvancedInventoryScreen: React.FC = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Edit Recipe</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Edit Recipe</h2>
               <button onClick={() => setShowEditRecipeModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
@@ -1315,39 +1316,39 @@ const AdvancedInventoryScreen: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Recipe Name *</label>
-                <input type="text" value={recipeFormData.name} onChange={(e) => setRecipeFormData({ ...recipeFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="text" value={recipeFormData.name} onChange={(e) => setRecipeFormData({ ...recipeFormData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
-                <textarea value={recipeFormData.description} onChange={(e) => setRecipeFormData({ ...recipeFormData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={2} />
+                <textarea value={recipeFormData.description} onChange={(e) => setRecipeFormData({ ...recipeFormData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" rows={2} />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Instructions</label>
-                <textarea value={recipeFormData.instructions} onChange={(e) => setRecipeFormData({ ...recipeFormData, instructions: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" rows={4} />
+                <textarea value={recipeFormData.instructions} onChange={(e) => setRecipeFormData({ ...recipeFormData, instructions: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" rows={4} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Prep Time (min)</label>
-                  <input type="number" value={recipeFormData.prepTimeMinutes} onChange={(e) => setRecipeFormData({ ...recipeFormData, prepTimeMinutes: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                  <input type="number" value={recipeFormData.prepTimeMinutes} onChange={(e) => setRecipeFormData({ ...recipeFormData, prepTimeMinutes: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Cook Time (min)</label>
-                  <input type="number" value={recipeFormData.cookTimeMinutes} onChange={(e) => setRecipeFormData({ ...recipeFormData, cookTimeMinutes: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                  <input type="number" value={recipeFormData.cookTimeMinutes} onChange={(e) => setRecipeFormData({ ...recipeFormData, cookTimeMinutes: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Servings</label>
-                  <input type="number" value={recipeFormData.servings} onChange={(e) => setRecipeFormData({ ...recipeFormData, servings: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                  <input type="number" value={recipeFormData.servings} onChange={(e) => setRecipeFormData({ ...recipeFormData, servings: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Cost</label>
-                  <input type="number" step="0.01" value={recipeFormData.cost} onChange={(e) => setRecipeFormData({ ...recipeFormData, cost: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                  <input type="number" step="0.01" value={recipeFormData.cost} onChange={(e) => setRecipeFormData({ ...recipeFormData, cost: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Menu Item (Optional)</label>
-                <input type="text" value={recipeFormData.menuItemId} onChange={(e) => setRecipeFormData({ ...recipeFormData, menuItemId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="text" value={recipeFormData.menuItemId} onChange={(e) => setRecipeFormData({ ...recipeFormData, menuItemId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -1356,12 +1357,12 @@ const AdvancedInventoryScreen: React.FC = () => {
                 </div>
                 {recipeFormData.ingredients.map((ing, index) => (
                   <div key={index} className="grid grid-cols-4 gap-2 mb-2">
-                    <select value={ing.inventoryItemId} onChange={(e) => updateRecipeIngredient(index, 'inventoryItemId', e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg">
+                    <select value={ing.inventoryItemId} onChange={(e) => updateRecipeIngredient(index, 'inventoryItemId', e.target.value)} className="px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg">
                       <option value="">Select Item</option>
                       {items.map((i: any) => <option key={i.id} value={i.id}>{i.name}</option>)}
                     </select>
-                    <input type="number" step="0.01" placeholder="Quantity" value={ing.quantity} onChange={(e) => updateRecipeIngredient(index, 'quantity', parseFloat(e.target.value))} className="px-3 py-2 border border-gray-200 rounded-lg" />
-                    <input type="text" placeholder="Unit" value={ing.unit} onChange={(e) => updateRecipeIngredient(index, 'unit', e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg" />
+                    <input type="number" step="0.01" placeholder="Quantity" value={ing.quantity} onChange={(e) => updateRecipeIngredient(index, 'quantity', parseFloat(e.target.value))} className="px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg" />
+                    <input type="text" placeholder="Unit" value={ing.unit} onChange={(e) => updateRecipeIngredient(index, 'unit', e.target.value)} className="px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg" />
                     <button onClick={() => removeRecipeIngredient(index)} className="px-3 py-2 bg-red-100 text-red-700 rounded-lg">Remove</button>
                   </div>
                 ))}
@@ -1372,7 +1373,7 @@ const AdvancedInventoryScreen: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowEditRecipeModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={() => setShowEditRecipeModal(false)} className="flex-1 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={handleUpdateRecipe} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Update Recipe</button>
             </div>
           </motion.div>
@@ -1386,10 +1387,10 @@ const AdvancedInventoryScreen: React.FC = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">{selectedVendor.name}</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{selectedVendor.name}</h2>
               <button onClick={() => setShowViewVendorModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
@@ -1403,49 +1404,49 @@ const AdvancedInventoryScreen: React.FC = () => {
                   <p className="text-gray-500">{selectedVendor.category}</p>
                   <div className="flex items-center gap-1 mt-1">
                     <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                    <span className="font-bold text-gray-900">{selectedVendor.rating || 'N/A'}</span>
+                    <span className="font-bold text-gray-900 dark:text-neutral-100">{selectedVendor.rating || 'N/A'}</span>
                     <span className="text-gray-400">({selectedVendor.activeOrders || 0} active orders)</span>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-neutral-900 rounded-lg">
                   <Users className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-sm text-gray-500">Contact</p>
-                    <p className="font-semibold text-gray-900">{selectedVendor.contactName || selectedVendor.contact || 'Not provided'}</p>
+                    <p className="font-semibold text-gray-900 dark:text-neutral-100">{selectedVendor.contactName || selectedVendor.contact || 'Not provided'}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-neutral-900 rounded-lg">
                   <Phone className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-sm text-gray-500">Phone</p>
-                    <p className="font-semibold text-gray-900">{selectedVendor.phone || 'Not provided'}</p>
+                    <p className="font-semibold text-gray-900 dark:text-neutral-100">{selectedVendor.phone || 'Not provided'}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-neutral-900 rounded-lg">
                   <Mail className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-sm text-gray-500">Email</p>
-                    <p className="font-semibold text-gray-900">{selectedVendor.email || 'Not provided'}</p>
+                    <p className="font-semibold text-gray-900 dark:text-neutral-100">{selectedVendor.email || 'Not provided'}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-neutral-900 rounded-lg">
                   <Globe className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-sm text-gray-500">Website</p>
-                    <p className="font-semibold text-gray-900">{selectedVendor.website || 'Not provided'}</p>
+                    <p className="font-semibold text-gray-900 dark:text-neutral-100">{selectedVendor.website || 'Not provided'}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 bg-gray-50 rounded-xl">
+              <div className="p-4 bg-gray-50 dark:bg-neutral-900 rounded-xl">
                 <div className="flex items-start gap-3">
                   <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>
                     <p className="text-sm text-gray-500">Address</p>
-                    <p className="font-semibold text-gray-900">{selectedVendor.address || 'Not provided'}</p>
+                    <p className="font-semibold text-gray-900 dark:text-neutral-100">{selectedVendor.address || 'Not provided'}</p>
                     {selectedVendor.city && <p className="text-gray-600">{selectedVendor.city}</p>}
                   </div>
                 </div>
@@ -1453,8 +1454,8 @@ const AdvancedInventoryScreen: React.FC = () => {
 
               {selectedVendor.notes && (
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Notes</h4>
-                  <p className="p-3 bg-gray-50 rounded-lg text-gray-700">{selectedVendor.notes}</p>
+                  <h4 className="font-semibold text-gray-900 dark:text-neutral-100 mb-2">Notes</h4>
+                  <p className="p-3 bg-gray-50 dark:bg-neutral-900 rounded-lg text-gray-700">{selectedVendor.notes}</p>
                 </div>
               )}
             </div>
@@ -1469,11 +1470,11 @@ const AdvancedInventoryScreen: React.FC = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Low Stock Items</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Low Stock Items</h2>
                 <p className="text-gray-500">{lowStockItems.length} items need attention</p>
               </div>
               <button onClick={() => setShowLowStockModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -1482,7 +1483,7 @@ const AdvancedInventoryScreen: React.FC = () => {
             </div>
             {lowStockItems.length > 0 ? (
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 dark:bg-neutral-900">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Item Name</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">SKU</th>
@@ -1494,7 +1495,7 @@ const AdvancedInventoryScreen: React.FC = () => {
                 <tbody className="divide-y divide-gray-200">
                   {lowStockItems.map((item: any) => (
                     <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-3 font-semibold text-gray-900">{item.name}</td>
+                      <td className="px-6 py-3 font-semibold text-gray-900 dark:text-neutral-100">{item.name}</td>
                       <td className="px-6 py-3 text-sm text-gray-600">{item.sku || '-'}</td>
                       <td className="px-6 py-3 text-red-600 font-bold">{item.currentStock} {item.unit}</td>
                       <td className="px-6 py-3 text-sm text-gray-600">{item.minStock} {item.unit}</td>

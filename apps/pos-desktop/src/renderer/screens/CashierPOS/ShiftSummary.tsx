@@ -151,13 +151,13 @@ Voided Orders: ${shiftData.voidedOrders}
             whileHover={{ scale: 1.05, x: -5 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate('/cashier-pos')}
-            className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-md border border-gray-200 hover:border-primary transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 rounded-xl shadow-md border border-gray-200 dark:border-neutral-700 hover:border-primary transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-700" />
             <span className="font-semibold text-gray-700">Back to POS</span>
           </motion.button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-neutral-100 flex items-center gap-3">
               <Clock className="w-8 h-8 text-primary" />
               Shift Summary
             </h1>
@@ -172,7 +172,7 @@ Voided Orders: ${shiftData.voidedOrders}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handlePrintReport}
-            className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
+            className="px-4 py-2 bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
           >
             <Printer className="w-5 h-5" />
             Print Report
@@ -206,13 +206,13 @@ Voided Orders: ${shiftData.voidedOrders}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-gray-500">Total Sales</p>
             <DollarSign className="w-5 h-5 text-green-600" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalSales)}</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-neutral-100">{formatCurrency(totalSales)}</p>
           <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
             <TrendingUp className="w-3 h-3" />
             {shiftData.totalOrders} orders
@@ -223,13 +223,13 @@ Voided Orders: ${shiftData.voidedOrders}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-gray-500">Cash Sales</p>
             <ShoppingCart className="w-5 h-5 text-blue-600" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">{formatCurrency(shiftData.cashSales)}</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-neutral-100">{formatCurrency(shiftData.cashSales)}</p>
           <p className="text-xs text-gray-500 mt-2">Cash transactions</p>
         </motion.div>
 
@@ -237,13 +237,13 @@ Voided Orders: ${shiftData.voidedOrders}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-gray-500">Card Sales</p>
             <CreditCard className="w-5 h-5 text-purple-600" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">{formatCurrency(shiftData.cardSales)}</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-neutral-100">{formatCurrency(shiftData.cardSales)}</p>
           <p className="text-xs text-gray-500 mt-2">Card transactions</p>
         </motion.div>
 
@@ -302,14 +302,14 @@ Voided Orders: ${shiftData.voidedOrders}
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-primary" />
             Cash Management
           </h3>
           <div className="space-y-3">
-            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+            <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-neutral-900 rounded-xl">
               <span className="text-gray-600">Opening Balance</span>
               {isEditingOpeningBalance ? (
                 <div className="flex items-center gap-2">
@@ -350,7 +350,7 @@ Voided Orders: ${shiftData.voidedOrders}
                     setOpeningBalanceInput(openingBalance.toString());
                     setIsEditingOpeningBalance(true);
                   }}
-                  className="font-bold text-gray-900 hover:text-primary flex items-center gap-1"
+                  className="font-bold text-gray-900 dark:text-neutral-100 hover:text-primary flex items-center gap-1"
                   title="Click to edit"
                 >
                   {formatCurrency(shiftData.openingBalance)}
@@ -366,8 +366,8 @@ Voided Orders: ${shiftData.voidedOrders}
               <span className="text-gray-600">- Refunds</span>
               <span className="font-bold text-red-700">-{formatCurrency(shiftData.refunds)}</span>
             </div>
-            <div className="border-t-2 border-gray-200 pt-3 flex justify-between items-center">
-              <span className="text-lg font-bold text-gray-900">Expected in Drawer</span>
+            <div className="border-t-2 border-gray-200 dark:border-neutral-700 pt-3 flex justify-between items-center">
+              <span className="text-lg font-bold text-gray-900 dark:text-neutral-100">Expected in Drawer</span>
               <span className="text-2xl font-black text-primary">{formatCurrency(expectedDrawer)}</span>
             </div>
           </div>
@@ -378,16 +378,16 @@ Voided Orders: ${shiftData.voidedOrders}
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.25 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-primary" />
             Order Statistics
           </h3>
           <div className="space-y-3">
-            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+            <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-neutral-900 rounded-xl">
               <span className="text-gray-600">Total Orders</span>
-              <span className="font-bold text-gray-900 text-xl">{shiftData.totalOrders}</span>
+              <span className="font-bold text-gray-900 dark:text-neutral-100 text-xl">{shiftData.totalOrders}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-blue-50 rounded-xl">
               <span className="text-gray-600">Average Order Value</span>
@@ -435,17 +435,17 @@ Voided Orders: ${shiftData.voidedOrders}
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl"
+            className="bg-white dark:bg-neutral-800 rounded-3xl p-8 max-w-md w-full shadow-2xl"
           >
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-neutral-100 mb-6 flex items-center gap-3">
               <DollarSign className="w-8 h-8 text-red-500" />
               Closing Balance
             </h3>
 
             <div className="space-y-4 mb-6">
-              <div className="bg-gray-50 p-4 rounded-xl">
+              <div className="bg-gray-50 dark:bg-neutral-900 p-4 rounded-xl">
                 <p className="text-sm text-gray-600">Expected Drawer Amount:</p>
-                <p className="text-2xl font-bold text-gray-900">{formatCurrency(expectedDrawer)}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{formatCurrency(expectedDrawer)}</p>
               </div>
 
               <div>
@@ -458,7 +458,7 @@ Voided Orders: ${shiftData.voidedOrders}
                   step="0.01"
                   value={closingBalanceInput}
                   onChange={(e) => setClosingBalanceInput(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-xl font-bold text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl text-xl font-bold text-gray-900 dark:text-neutral-100 focus:border-primary focus:ring-2 focus:ring-primary/20"
                   placeholder="0.00"
                   autoFocus
                 />
@@ -486,7 +486,7 @@ Voided Orders: ${shiftData.voidedOrders}
                   value={closingNotes}
                   onChange={(e) => setClosingNotes(e.target.value)}
                   placeholder="Any discrepancies or notes..."
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-sm resize-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full px-4 py-3 bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl text-sm resize-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   rows={2}
                 />
               </div>
@@ -537,7 +537,7 @@ Voided Orders: ${shiftData.voidedOrders}
                   setPinError('');
                   setShowPinInput(false);
                 }}
-                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                className="flex-1 py-3 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
               >
                 Cancel
               </button>

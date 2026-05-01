@@ -361,13 +361,13 @@ const CashierActiveOrders: React.FC = () => {
         <div className="px-5 pt-4 pb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-base font-black text-neutral-900">
+              <span className="text-base font-black text-neutral-900 dark:text-neutral-100">
                 #{order.orderNumber || order.id.slice(-6)}
               </span>
               <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${getStatusClasses(order.status)}`}>
                 {order.status}
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-100 text-neutral-600 border border-neutral-200">
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-100 text-neutral-600 border border-neutral-200 dark:border-neutral-700">
                 {getOrderTypeLabel(order.orderType)}
                 {tableNumber ? ` · T${tableNumber}` : ''}
               </span>
@@ -383,11 +383,11 @@ const CashierActiveOrders: React.FC = () => {
         </div>
 
         {/* Items list */}
-        <div className="mx-5 mb-3 rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-3 space-y-1.5">
+        <div className="mx-5 mb-3 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 px-4 py-3 space-y-1.5">
           {(order.items || []).slice(0, 4).map((item, index) => (
             <div key={`${order.id}-${index}`} className="flex items-center justify-between text-sm">
               <span className="text-neutral-700 font-medium">
-                <span className="font-bold text-neutral-900">{item.quantity}×</span>{' '}
+                <span className="font-bold text-neutral-900 dark:text-neutral-100">{item.quantity}×</span>{' '}
                 {item.menuItem?.name || item.name || 'Item'}
               </span>
               <span className="font-bold text-neutral-800 ml-2 flex-shrink-0">
@@ -468,18 +468,18 @@ const CashierActiveOrders: React.FC = () => {
   };
 
   return (
-    <div className="flex h-full flex-col bg-neutral-50">
+    <div className="flex h-full flex-col bg-neutral-50 dark:bg-neutral-900">
       {/* ── Header ── */}
       <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.35 }}
-        className="border-b border-neutral-200 bg-white px-6 py-4 shadow-sm flex-shrink-0"
+        className="border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-6 py-4 shadow-sm flex-shrink-0"
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary-600">Cashier Desk</p>
-            <h1 className="mt-0.5 text-2xl font-black text-neutral-900">Active Orders</h1>
+            <h1 className="mt-0.5 text-2xl font-black text-neutral-900 dark:text-neutral-100">Active Orders</h1>
           </div>
 
           {/* Stats pills + view toggle */}
@@ -529,7 +529,7 @@ const CashierActiveOrders: React.FC = () => {
           /* Skeleton loading */
           <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-2xl border border-neutral-200 bg-white p-5 animate-pulse">
+              <div key={i} className="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 animate-pulse">
                 <div className="flex justify-between mb-4">
                   <div className="space-y-2">
                     <div className="h-4 w-24 bg-neutral-200 rounded" />
@@ -555,12 +555,12 @@ const CashierActiveOrders: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="mx-auto flex max-w-sm flex-col items-center rounded-2xl border border-dashed border-neutral-300 bg-white p-12 text-center mt-8"
+            className="mx-auto flex max-w-sm flex-col items-center rounded-2xl border border-dashed border-neutral-300 bg-white dark:bg-neutral-800 p-12 text-center mt-8"
           >
-            <div className="w-16 h-16 rounded-full bg-primary-50 border-2 border-primary-100 flex items-center justify-center mb-5">
+            <div className="w-16 h-16 rounded-full bg-primary-50 border-2 border-primary-100 dark:border-neutral-700 flex items-center justify-center mb-5">
               <CheckCircle2 className="h-8 w-8 text-primary-400" />
             </div>
-            <h2 className="text-xl font-black text-neutral-900">All clear</h2>
+            <h2 className="text-xl font-black text-neutral-900 dark:text-neutral-100">All clear</h2>
             <p className="mt-2 text-sm text-neutral-500 font-medium">
               New kitchen and ready-to-pay orders will appear here automatically.
             </p>
@@ -588,11 +588,11 @@ const CashierActiveOrders: React.FC = () => {
           </div>
         ) : (
           // ── List view ──
-          <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-neutral-50 border-b border-neutral-200">
+                  <tr className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
                     {['Order #', 'Type', 'Customer / Table', 'Items', 'Total', 'Status', 'Elapsed', 'Actions'].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500 whitespace-nowrap">{h}</th>
                     ))}
@@ -604,7 +604,7 @@ const CashierActiveOrders: React.FC = () => {
                     const itemCount = (order.items || []).reduce((s, i) => s + i.quantity, 0);
                     return (
                       <tr key={order.id} className="hover:bg-neutral-50 transition-colors">
-                        <td className="px-4 py-3 font-bold text-neutral-900 whitespace-nowrap">#{order.orderNumber || order.id.slice(-6)}</td>
+                        <td className="px-4 py-3 font-bold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">#{order.orderNumber || order.id.slice(-6)}</td>
                         <td className="px-4 py-3 text-neutral-600 whitespace-nowrap">{getOrderTypeLabel(order.orderType)}</td>
                         <td className="px-4 py-3 text-neutral-700">
                           {order.customerName || (tableNumber ? `Table ${tableNumber}` : 'Walk-in')}
@@ -693,10 +693,10 @@ const CashierActiveOrders: React.FC = () => {
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.04 }}
-                  className="flex items-center justify-between rounded-xl bg-neutral-50 px-4 py-3 border border-neutral-200"
+                  className="flex items-center justify-between rounded-xl bg-neutral-50 dark:bg-neutral-900 px-4 py-3 border border-neutral-200 dark:border-neutral-700"
                 >
                   <div>
-                    <p className="font-bold text-neutral-900">
+                    <p className="font-bold text-neutral-900 dark:text-neutral-100">
                       {item.quantity}× {item.menuItem?.name || item.name}
                     </p>
                     {item.notes && (
@@ -729,7 +729,7 @@ const CashierActiveOrders: React.FC = () => {
           >
             <div className="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
               <div className="space-y-5">
-                <div className="rounded-2xl border border-primary-200 bg-primary-50 p-5">
+                <div className="rounded-2xl border border-primary-200 dark:border-neutral-700 bg-primary-50 p-5">
                   <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-primary-600">Current Items</p>
                   <div className="space-y-3">
                     {editableItems.map((item) => (
@@ -737,11 +737,11 @@ const CashierActiveOrders: React.FC = () => {
                         key={item.id}
                         initial={{ opacity: 0, x: -8 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="rounded-xl bg-white p-4 shadow-sm border border-neutral-200"
+                        className="rounded-xl bg-white dark:bg-neutral-800 p-4 shadow-sm border border-neutral-200 dark:border-neutral-700"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
-                            <p className="font-bold text-neutral-900">{item.name}</p>
+                            <p className="font-bold text-neutral-900 dark:text-neutral-100">{item.name}</p>
                             <p className="text-xs text-neutral-500">{formatCurrency(item.price)} each</p>
                             <input
                               value={item.notes || ''}
@@ -753,7 +753,7 @@ const CashierActiveOrders: React.FC = () => {
                                 )
                               }
                               placeholder="Item note"
-                              className="mt-2 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
+                              className="mt-2 w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                             />
                           </div>
                           <motion.button
@@ -768,7 +768,7 @@ const CashierActiveOrders: React.FC = () => {
                           </motion.button>
                         </div>
                         <div className="mt-3 flex items-center justify-between">
-                          <div className="flex items-center gap-1 rounded-lg bg-neutral-100 p-1 border border-neutral-200">
+                          <div className="flex items-center gap-1 rounded-lg bg-neutral-100 p-1 border border-neutral-200 dark:border-neutral-700">
                             <motion.button
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
@@ -781,11 +781,11 @@ const CashierActiveOrders: React.FC = () => {
                                   )
                                 )
                               }
-                              className="rounded-md bg-white px-3 py-1.5 text-sm font-bold text-neutral-700 hover:bg-neutral-50 shadow-sm"
+                              className="rounded-md bg-white dark:bg-neutral-800 px-3 py-1.5 text-sm font-bold text-neutral-700 hover:bg-neutral-50 shadow-sm"
                             >
                               −
                             </motion.button>
-                            <span className="min-w-[2.5rem] text-center font-bold text-neutral-900 text-sm">
+                            <span className="min-w-[2.5rem] text-center font-bold text-neutral-900 dark:text-neutral-100 text-sm">
                               {item.quantity}
                             </span>
                             <motion.button
@@ -798,7 +798,7 @@ const CashierActiveOrders: React.FC = () => {
                                   )
                                 )
                               }
-                              className="rounded-md bg-white px-3 py-1.5 text-sm font-bold text-neutral-700 hover:bg-neutral-50 shadow-sm"
+                              className="rounded-md bg-white dark:bg-neutral-800 px-3 py-1.5 text-sm font-bold text-neutral-700 hover:bg-neutral-50 shadow-sm"
                             >
                               +
                             </motion.button>
@@ -817,7 +817,7 @@ const CashierActiveOrders: React.FC = () => {
                   onChange={(event) => setEditNotes(event.target.value)}
                   rows={3}
                   placeholder="Kitchen note or order note"
-                  className="w-full rounded-xl border border-neutral-200 px-4 py-3 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
+                  className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 px-4 py-3 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                 />
 
                 <div className="flex gap-3">
@@ -840,7 +840,7 @@ const CashierActiveOrders: React.FC = () => {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowEditModal(false)}
-                    className="rounded-xl bg-neutral-100 px-5 py-3 font-bold text-neutral-700 hover:bg-neutral-200 border border-neutral-200"
+                    className="rounded-xl bg-neutral-100 px-5 py-3 font-bold text-neutral-700 hover:bg-neutral-200 border border-neutral-200 dark:border-neutral-700"
                   >
                     Close
                   </motion.button>
@@ -849,14 +849,14 @@ const CashierActiveOrders: React.FC = () => {
 
               {/* Menu search */}
               <div className="space-y-4">
-                <div className="rounded-2xl border border-primary-200 bg-white p-4">
-                  <div className="mb-3 flex items-center gap-2 border-b border-neutral-200 pb-3">
+                <div className="rounded-2xl border border-primary-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-4">
+                  <div className="mb-3 flex items-center gap-2 border-b border-neutral-200 dark:border-neutral-700 pb-3">
                     <Search className="h-4 w-4 text-neutral-400 flex-shrink-0" />
                     <input
                       value={menuSearch}
                       onChange={(event) => setMenuSearch(event.target.value)}
                       placeholder="Find menu item…"
-                      className="w-full border-none bg-transparent text-sm outline-none text-neutral-900 font-medium"
+                      className="w-full border-none bg-transparent text-sm outline-none text-neutral-900 dark:text-neutral-100 font-medium"
                     />
                   </div>
                   <div className="max-h-[380px] space-y-2 overflow-y-auto">
@@ -866,10 +866,10 @@ const CashierActiveOrders: React.FC = () => {
                         whileHover={{ scale: 1.01, backgroundColor: 'rgba(211,47,47,0.04)' }}
                         whileTap={{ scale: 0.99 }}
                         onClick={() => addMenuItemToEdit(item)}
-                        className="flex w-full items-center justify-between rounded-xl border border-neutral-200 px-4 py-3 text-left hover:border-primary-300 bg-neutral-50 transition-colors"
+                        className="flex w-full items-center justify-between rounded-xl border border-neutral-200 dark:border-neutral-700 px-4 py-3 text-left hover:border-primary-300 bg-neutral-50 dark:bg-neutral-900 transition-colors"
                       >
                         <div>
-                          <p className="font-bold text-neutral-900 text-sm">{item.name}</p>
+                          <p className="font-bold text-neutral-900 dark:text-neutral-100 text-sm">{item.name}</p>
                           <p className="text-xs text-neutral-500">{formatCurrency(item.price)}</p>
                         </div>
                         <span className="rounded-full bg-gradient-to-r from-primary-600 to-primary-500 p-2 text-white shadow-sm flex-shrink-0">
@@ -895,10 +895,10 @@ const CashierActiveOrders: React.FC = () => {
           >
             <div className="space-y-5">
               {/* Amount summary */}
-              <div className="rounded-2xl border border-primary-200 bg-primary-50 p-5">
+              <div className="rounded-2xl border border-primary-200 dark:border-neutral-700 bg-primary-50 p-5">
                 <div className="flex items-center justify-between text-sm text-neutral-600">
                   <span className="font-semibold">Order total</span>
-                  <span className="font-bold text-neutral-900">{formatCurrency(selectedOrder.totalAmount || 0)}</span>
+                  <span className="font-bold text-neutral-900 dark:text-neutral-100">{formatCurrency(selectedOrder.totalAmount || 0)}</span>
                 </div>
                 {discountAmount > 0 && (
                   <div className="mt-2 flex items-center justify-between text-sm text-emerald-700">
@@ -906,7 +906,7 @@ const CashierActiveOrders: React.FC = () => {
                     <span className="font-bold">−{formatCurrency(discountAmount)}</span>
                   </div>
                 )}
-                <div className="mt-3 border-t border-primary-200 pt-3">
+                <div className="mt-3 border-t border-primary-200 dark:border-neutral-700 pt-3">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-primary-600">Amount to Collect</p>
                   <p className="mt-1 text-4xl font-black text-primary-600">
                     {formatCurrency(Math.max((selectedOrder.totalAmount || 0) - discountAmount, 0))}
@@ -937,7 +937,7 @@ const CashierActiveOrders: React.FC = () => {
               </div>
 
               {/* Optional discount */}
-              <div className="rounded-xl border border-neutral-200 p-4">
+              <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 p-4">
                 <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-primary-600">Optional Discount</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <input
@@ -950,14 +950,14 @@ const CashierActiveOrders: React.FC = () => {
                       setDiscountAmount(((selectedOrder.totalAmount || 0) * numericPercent) / 100);
                     }}
                     placeholder="Discount %"
-                    className="rounded-lg border border-neutral-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
+                    className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                   />
                   <input
                     type="password"
                     value={managerPin}
                     onChange={(event) => setManagerPin(event.target.value)}
                     placeholder="Manager PIN"
-                    className="rounded-lg border border-neutral-200 px-3 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
+                    className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                   />
                 </div>
               </div>
@@ -968,7 +968,7 @@ const CashierActiveOrders: React.FC = () => {
                   value={cashReceived}
                   onChange={(event) => setCashReceived(event.target.value)}
                   placeholder="Cash received"
-                  className="w-full rounded-xl border border-neutral-200 px-5 py-3.5 text-lg font-bold focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
+                  className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 px-5 py-3.5 text-lg font-bold focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                 />
               )}
 
@@ -981,7 +981,7 @@ const CashierActiveOrders: React.FC = () => {
                     setCardLastFour(event.target.value.replace(/\D/g, '').slice(0, 4))
                   }
                   placeholder="Card last 4 digits"
-                  className="w-full rounded-xl border border-neutral-200 px-5 py-3.5 text-lg font-bold tracking-[0.3em] focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
+                  className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 px-5 py-3.5 text-lg font-bold tracking-[0.3em] focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                 />
               )}
 
@@ -991,7 +991,7 @@ const CashierActiveOrders: React.FC = () => {
                   value={transferReference}
                   onChange={(event) => setTransferReference(event.target.value.toUpperCase())}
                   placeholder="Transfer reference"
-                  className="w-full rounded-xl border border-neutral-200 px-5 py-3.5 text-lg font-bold focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
+                  className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 px-5 py-3.5 text-lg font-bold focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 focus:outline-none"
                 />
               )}
 
@@ -1134,13 +1134,13 @@ const ModalShell: React.FC<{
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wider text-primary-600">Live Action</p>
-          <h3 className="mt-0.5 text-xl font-black text-neutral-900">{title}</h3>
+          <h3 className="mt-0.5 text-xl font-black text-neutral-900 dark:text-neutral-100">{title}</h3>
         </div>
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={onClose}
-          className="rounded-xl bg-neutral-100 p-2 text-neutral-500 hover:bg-red-50 hover:text-red-600 border border-neutral-200 transition-colors flex-shrink-0"
+          className="rounded-xl bg-neutral-100 p-2 text-neutral-500 hover:bg-red-50 hover:text-red-600 border border-neutral-200 dark:border-neutral-700 transition-colors flex-shrink-0"
         >
           <X className="h-5 w-5" />
         </motion.button>

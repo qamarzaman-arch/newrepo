@@ -9,6 +9,7 @@ import 'leaflet/dist/leaflet.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import { toNum } from '@restaurant-pos/shared-types';
 
 // @ts-expect-error — Leaflet internal API
 delete L.Icon.Default.prototype._getIconUrl;
@@ -92,7 +93,7 @@ const ZoneMap: React.FC<ZoneMapProps> = ({ zones, editing, height = 460, center 
             <Popup>
               <div style={{ minWidth: 140 }}>
                 <div style={{ fontWeight: 700 }}>{z.name}</div>
-                {typeof z.baseFee === 'number' && <div style={{ fontSize: 12 }}>Base fee: ${z.baseFee.toFixed(2)}</div>}
+                {typeof z.baseFee === 'number' && <div style={{ fontSize: 12 }}>Base fee: ${toNum(z.baseFee).toFixed(2)}</div>}
                 {z.isActive === false && <div style={{ fontSize: 11, color: '#9ca3af' }}>Inactive</div>}
               </div>
             </Popup>

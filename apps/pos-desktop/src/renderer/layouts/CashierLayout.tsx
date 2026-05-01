@@ -7,6 +7,7 @@ import { useFeatureAccessStore } from '../stores/featureAccessStore';
 import { useCashierWebSocket } from '../hooks/useWebSocket';
 import ShiftManager from '../components/ShiftManager';
 import toast from 'react-hot-toast';
+import logoUrl from '../assets/logo.png';
 
 interface CashierLayoutProps {
   children: React.ReactNode;
@@ -99,7 +100,7 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
               transition={{ type: "spring", stiffness: 300 }}
               className="rounded-xl p-2 bg-primary-600/30"
             >
-              <img src="/assets/logo.png" alt="POSLytic" className="h-8 w-auto" />
+              <img src={logoUrl} alt="POSLytic" className="h-8 w-auto" />
             </motion.div>
             {!isSidebarCollapsed && (
               <div>
@@ -118,7 +119,7 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
         {/* Collapse Toggle Button */}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="absolute -right-3 top-20 bg-white text-primary rounded-full p-1.5 shadow-lg hover:shadow-xl transition-all z-50 border border-gray-200"
+          className="absolute -right-3 top-20 bg-white dark:bg-neutral-800 text-primary rounded-full p-1.5 shadow-lg hover:shadow-xl transition-all z-50 border border-gray-200 dark:border-neutral-700"
         >
           {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
@@ -223,11 +224,11 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl"
+              className="bg-white dark:bg-neutral-800 rounded-3xl p-8 max-w-lg w-full shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-neutral-100 flex items-center gap-3">
                   <HelpCircle className="w-8 h-8 text-primary" />
                   Help & Support
                 </h2>
@@ -246,18 +247,18 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
                     <Keyboard className="w-4 h-4" />
                     Keyboard Shortcuts
                   </h3>
-                  <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  <div className="bg-gray-50 dark:bg-neutral-900 rounded-xl p-4 space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-700">New Order</span>
-                      <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-sm font-mono">F1</kbd>
+                      <kbd className="px-2 py-1 bg-white dark:bg-neutral-800 border border-gray-300 rounded text-sm font-mono">F1</kbd>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-700">Hold Order</span>
-                      <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-sm font-mono">F2</kbd>
+                      <kbd className="px-2 py-1 bg-white dark:bg-neutral-800 border border-gray-300 rounded text-sm font-mono">F2</kbd>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-700">Toggle Held Orders</span>
-                      <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-sm font-mono">F3</kbd>
+                      <kbd className="px-2 py-1 bg-white dark:bg-neutral-800 border border-gray-300 rounded text-sm font-mono">F3</kbd>
                     </div>
                   </div>
                 </div>
@@ -268,7 +269,7 @@ const CashierLayout: React.FC<CashierLayoutProps> = ({ children }) => {
                     <Phone className="w-4 h-4" />
                     Contact Support
                   </h3>
-                  <div className="bg-gray-50 rounded-xl p-4">
+                  <div className="bg-gray-50 dark:bg-neutral-900 rounded-xl p-4">
                     <p className="text-gray-700">For technical assistance, contact your system administrator or call:</p>
                     <p className="text-primary font-bold text-lg mt-2">1-800-POS-HELP</p>
                   </div>

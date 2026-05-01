@@ -144,16 +144,16 @@ export default function ReviewsPage() {
 
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm flex flex-col items-center justify-center">
+          <div className="bg-white dark:bg-neutral-800 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm flex flex-col items-center justify-center">
             <div className="text-6xl font-black text-[#E53935]">{Number(summary.averageRating || 0).toFixed(1)}</div>
             {renderStars(Math.round(summary.averageRating || 0), 24)}
             <p className="text-sm text-gray-500 mt-2 font-medium">Average Rating</p>
           </div>
-          <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm flex flex-col items-center justify-center">
+          <div className="bg-white dark:bg-neutral-800 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm flex flex-col items-center justify-center">
             <div className="text-6xl font-black text-gray-900">{summary.totalReviews || 0}</div>
             <p className="text-sm text-gray-500 mt-2 font-medium">Total Reviews</p>
           </div>
-          <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
+          <div className="bg-white dark:bg-neutral-800 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-3">Rating Distribution</p>
             <div className="space-y-1.5">
               {[5, 4, 3, 2, 1].map(star => {
@@ -174,7 +174,7 @@ export default function ReviewsPage() {
         </div>
       )}
 
-      <div className="bg-white p-4 rounded-2xl border border-neutral-200 shadow-sm space-y-3">
+      <div className="bg-white dark:bg-neutral-800 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm space-y-3">
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setFilterRating(null)}
@@ -204,19 +204,19 @@ export default function ReviewsPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-2xl p-20 text-center border border-neutral-200 shadow-sm">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl p-20 text-center border border-neutral-200 dark:border-neutral-700 shadow-sm">
           <div className="w-12 h-12 border-4 border-[#E53935] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500 font-medium">Loading reviews...</p>
         </div>
       ) : reviews.length === 0 ? (
-        <div className="bg-white rounded-2xl p-16 text-center border border-neutral-200 shadow-sm">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl p-16 text-center border border-neutral-200 dark:border-neutral-700 shadow-sm">
           <MessageCircle size={48} className="mx-auto text-gray-300 mb-3" />
           <p className="text-gray-400 font-medium">No reviews found</p>
         </div>
       ) : (
         <div className="space-y-4">
           {reviews.map(r => (
-            <div key={r.id} className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6">
+            <div key={r.id} className="bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm p-6">
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div className="flex items-center gap-3">
                   {renderStars(r.rating)}

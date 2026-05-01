@@ -26,6 +26,7 @@ import { getOfflineQueueManager } from '../../services/offlineQueueManager';
 import { getPaymentValidationService } from '../../services/paymentValidationService';
 import toast from 'react-hot-toast';
 import SplitBilling from './SplitBilling';
+import { toNum } from '@restaurant-pos/shared-types';
 
 interface CheckoutPaymentProps {
   onBack: () => void;
@@ -146,7 +147,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
     } else if (key === 'Enter') {
       // Auto-fill exact amount on Enter if no amount entered
       if (!cashReceived) {
-        setCashReceived(total.toFixed(2));
+        setCashReceived(toNum(total).toFixed(2));
       }
     }
   }, [paymentMethod, cashReceived, total]);
@@ -159,13 +160,13 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
 
   const handleQuickAmount = (type: 'exact' | 'next10' | 'next20') => {
     if (type === 'exact') {
-      setCashReceived(total.toFixed(2));
+      setCashReceived(toNum(total).toFixed(2));
     } else if (type === 'next10') {
       const nextTen = Math.ceil(total / 10) * 10;
-      setCashReceived(nextTen.toFixed(2));
+      setCashReceived(toNum(nextTen).toFixed(2));
     } else if (type === 'next20') {
       const nextTwenty = Math.ceil(total / 20) * 20;
-      setCashReceived(nextTwenty.toFixed(2));
+      setCashReceived(toNum(nextTwenty).toFixed(2));
     }
   };
 
@@ -591,7 +592,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                     >
                       <div className="bg-primary-600/30 rounded-2xl p-4 border border-primary-500/20">
                         <CashCountingHelper
-                          onTotalCalculated={(total) => setCashReceived(total.toFixed(2))}
+                          onTotalCalculated={(total) => setCashReceived(toNum(total).toFixed(2))}
                           currencyCode={currencyCode}
                           expectedAmount={total}
                         />
@@ -833,7 +834,7 @@ const CheckoutPayment: React.FC<CheckoutPaymentProps> = ({ onBack, onComplete })
                       value={cashReceived}
                       onChange={(e) => setCashReceived(e.target.value)}
                       className="w-full px-4 py-2.5 bg-primary-600/20 border border-green-400/40 rounded-xl text-white font-black text-lg focus:border-green-300 focus:outline-none placeholder:text-white/30"
-                      placeholder={splitPayment.cash.toFixed(2)}
+                      placeholder={toNum(splitPayment.cash).toFixed(2)}
                     />
                     {cashReceivedNum >= splitPayment.cash && (
                       <p className="text-green-200 text-sm font-bold mt-2">

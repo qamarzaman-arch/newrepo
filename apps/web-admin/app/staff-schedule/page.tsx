@@ -261,7 +261,7 @@ export default function StaffSchedulePage() {
 
       {/* Calendar Grid */}
       {loading ? (
-        <div className="bg-white rounded-3xl p-20 text-center shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 rounded-3xl p-20 text-center shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500 font-medium">Loading schedules...</p>
         </div>
@@ -272,7 +272,7 @@ export default function StaffSchedulePage() {
             const isToday = day.toDateString() === new Date().toDateString();
             
             return (
-              <div key={idx} className={`bg-white rounded-2xl shadow-soft border ${isToday ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-gray-100'} overflow-hidden`}>
+              <div key={idx} className={`bg-white dark:bg-neutral-800 rounded-2xl shadow-soft border ${isToday ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-gray-100 dark:border-neutral-700'} overflow-hidden`}>
                 {/* Day Header */}
                 <div className={`p-4 border-b ${isToday ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-gray-100'}`}>
                   <p className="text-xs font-bold uppercase text-gray-500">
@@ -334,7 +334,7 @@ export default function StaffSchedulePage() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-blue-50 text-blue-600">
               <Users size={24} />
@@ -346,7 +346,7 @@ export default function StaffSchedulePage() {
           </div>
         </div>
         
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-green-50 text-green-600">
               <CheckCircle size={24} />
@@ -360,7 +360,7 @@ export default function StaffSchedulePage() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-orange-50 text-orange-600">
               <AlertCircle size={24} />
@@ -372,7 +372,7 @@ export default function StaffSchedulePage() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-purple-50 text-purple-600">
               <Clock size={24} />
@@ -392,7 +392,7 @@ export default function StaffSchedulePage() {
       </div>
 
       {/* Swap Requests */}
-      <div className="bg-white rounded-3xl shadow-soft border border-gray-100 p-6">
+      <div className="bg-white dark:bg-neutral-800 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
             <ArrowRightLeft size={20} /> Shift Swap Requests

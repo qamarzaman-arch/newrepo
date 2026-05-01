@@ -132,7 +132,7 @@ export default function ExternalOrdersPage() {
         </div>
       )}
 
-      <div className="bg-white p-4 rounded-2xl border border-neutral-200 shadow-sm space-y-3">
+      <div className="bg-white dark:bg-neutral-800 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm space-y-3">
         <div className="flex flex-wrap gap-2">
           <button onClick={() => setFilterPlatform(null)} className={`px-4 py-1.5 rounded-full text-sm font-bold border ${filterPlatform === null ? 'bg-[#E53935] text-white border-[#E53935]' : 'bg-white text-gray-600 border-neutral-200'}`}>All Platforms</button>
           {(['FOODPANDA', 'UBEREATS', 'CAREEM'] as Platform[]).map(p => (
@@ -148,18 +148,18 @@ export default function ExternalOrdersPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-2xl p-20 text-center border border-neutral-200 shadow-sm">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl p-20 text-center border border-neutral-200 dark:border-neutral-700 shadow-sm">
           <div className="w-12 h-12 border-4 border-[#E53935] border-t-transparent rounded-full animate-spin mx-auto" />
         </div>
       ) : orders.length === 0 ? (
-        <div className="bg-white rounded-2xl p-16 text-center border border-neutral-200 shadow-sm">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl p-16 text-center border border-neutral-200 dark:border-neutral-700 shadow-sm">
           <Globe size={48} className="mx-auto text-gray-300 mb-3" />
           <p className="text-gray-400 font-medium">No external orders</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {orders.map(o => (
-            <div key={o.id} className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 space-y-3">
+            <div key={o.id} className="bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm p-6 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${platformStyle(o.platform)}`}>

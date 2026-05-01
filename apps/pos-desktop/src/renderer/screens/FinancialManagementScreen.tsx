@@ -11,6 +11,7 @@ import { reportService } from '../services/reportService';
 import { expenseService } from '../services/expenseService';
 import { commissionService } from '../services/commissionService';
 import toast from 'react-hot-toast';
+import { toNum } from '@restaurant-pos/shared-types';
 
 const FinancialManagementScreen: React.FC = () => {
   const queryClient = useQueryClient();
@@ -124,7 +125,7 @@ const FinancialManagementScreen: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-manrope">Financial Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-neutral-100 font-manrope">Financial Management</h1>
           <p className="text-gray-600 mt-1">Track expenses, taxes, and manage budgets</p>
         </div>
         <div className="flex gap-3">
@@ -132,7 +133,7 @@ const FinancialManagementScreen: React.FC = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowExportModal(true)}
-            className="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
+            className="px-4 py-2 bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl font-semibold flex items-center gap-2 hover:border-primary transition-colors"
           >
             <Download className="w-5 h-5" />
             Export Report
@@ -154,26 +155,26 @@ const FinancialManagementScreen: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-gray-500">Total Revenue</p>
             <ArrowUpRight className="w-5 h-5 text-green-600" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">{formatCurrency(financialStats.totalRevenue)}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{formatCurrency(financialStats.totalRevenue)}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-gray-500">Total Expenses</p>
             <ArrowDownRight className="w-5 h-5 text-red-600" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">{formatCurrency(financialStats.totalExpenses)}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{formatCurrency(financialStats.totalExpenses)}</p>
         </motion.div>
 
         <motion.div
@@ -193,7 +194,7 @@ const FinancialManagementScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-gray-500">Profit Margin</p>
@@ -206,7 +207,7 @@ const FinancialManagementScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-gray-500">Tax Collected</p>
@@ -219,7 +220,7 @@ const FinancialManagementScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-gray-500">Pending Payments</p>
@@ -230,7 +231,7 @@ const FinancialManagementScreen: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 inline-flex">
+      <div className="bg-white dark:bg-neutral-800 rounded-2xl p-2 shadow-sm border border-gray-100 dark:border-neutral-700 inline-flex">
         {[
           { id: 'overview', label: 'Overview', icon: TrendingUp },
           { id: 'expenses', label: 'Expenses', icon: DollarSign },
@@ -268,14 +269,14 @@ const FinancialManagementScreen: React.FC = () => {
               placeholder="Search expenses..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none"
+              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none"
             />
           </div>
           
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none bg-white"
+            className="px-4 py-3 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none bg-white dark:bg-neutral-800"
           >
             <option value="all">All Categories</option>
             <option value="inventory">Inventory</option>
@@ -285,7 +286,7 @@ const FinancialManagementScreen: React.FC = () => {
             <option value="marketing">Marketing</option>
           </select>
 
-          <button onClick={() => setShowFilterModal(true)} className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-primary transition-colors">
+          <button onClick={() => setShowFilterModal(true)} className="px-4 py-3 bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl hover:border-primary transition-colors">
             <Filter className="w-5 h-5 text-gray-600" />
           </button>
         </div>
@@ -297,7 +298,7 @@ const FinancialManagementScreen: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
           >
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-green-600" />
@@ -340,7 +341,7 @@ const FinancialManagementScreen: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
           >
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-primary" />
@@ -357,7 +358,7 @@ const FinancialManagementScreen: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex justify-between mb-1">
                       <span className="text-sm font-semibold text-gray-700">{method}</span>
-                      <span className="text-sm font-bold text-gray-900">{formatCurrency(numericAmount)}</span>
+                      <span className="text-sm font-bold text-gray-900 dark:text-neutral-100">{formatCurrency(numericAmount)}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
@@ -366,7 +367,7 @@ const FinancialManagementScreen: React.FC = () => {
                       ></div>
                     </div>
                   </div>
-                  <span className="text-sm text-gray-500 w-12 text-right">{percentage.toFixed(1)}%</span>
+                  <span className="text-sm text-gray-500 w-12 text-right">{toNum(percentage).toFixed(1)}%</span>
                 </div>
               );
               }) : (
@@ -379,9 +380,9 @@ const FinancialManagementScreen: React.FC = () => {
 
       {/* EXPENSES TAB */}
       {activeTab === 'expenses' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-neutral-900">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Expense ID</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Category</th>
@@ -395,7 +396,7 @@ const FinancialManagementScreen: React.FC = () => {
             <tbody className="divide-y divide-gray-200">
               {expenses.map((expense) => (
                 <tr key={expense.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 font-semibold text-gray-900">{expense.id}</td>
+                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-neutral-100">{expense.id}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{expense.category}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{expense.description}</td>
                   <td className="px-6 py-4 font-bold text-red-600">-{formatCurrency(expense.amount)}</td>
@@ -424,7 +425,7 @@ const FinancialManagementScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-start gap-4">
@@ -436,7 +437,7 @@ const FinancialManagementScreen: React.FC = () => {
                     }`} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">{tax.period}</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100">{tax.period}</h3>
                     <p className="text-sm text-gray-500">{tax.type}</p>
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
                       <span>Due: {tax.dueDate}</span>
@@ -455,7 +456,7 @@ const FinancialManagementScreen: React.FC = () => {
               </div>
             </motion.div>
           )) : (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-gray-500">
+            <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 text-gray-500">
               No tax filings available from live data.
             </div>
           )}
@@ -471,10 +472,10 @@ const FinancialManagementScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900">{budget.category}</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100">{budget.category}</h3>
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                   budget.percentage >= 90 ? 'bg-red-100 text-red-700' :
                   budget.percentage >= 75 ? 'bg-yellow-100 text-yellow-700' :
@@ -515,7 +516,7 @@ const FinancialManagementScreen: React.FC = () => {
               </div>
             </motion.div>
           )) : (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-gray-500">
+            <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 text-gray-500">
               {expenses.length === 0 ? 'No expenses recorded yet. Add expenses to see budget tracking.' : 'Add more expense categories to enable budget tracking.'}
             </div>
           )}
@@ -525,14 +526,14 @@ const FinancialManagementScreen: React.FC = () => {
       {/* COMMISSIONS TAB */}
       {activeTab === 'commissions' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-wrap items-end gap-4">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 flex flex-wrap items-end gap-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Start Date</label>
               <input
                 type="date"
                 value={commissionStart}
                 onChange={(e) => setCommissionStart(e.target.value)}
-                className="border border-gray-200 rounded-lg px-3 py-2"
+                className="border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2"
               />
             </div>
             <div>
@@ -541,7 +542,7 @@ const FinancialManagementScreen: React.FC = () => {
                 type="date"
                 value={commissionEnd}
                 onChange={(e) => setCommissionEnd(e.target.value)}
-                className="border border-gray-200 rounded-lg px-3 py-2"
+                className="border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2"
               />
             </div>
             <button
@@ -562,9 +563,9 @@ const FinancialManagementScreen: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden">
             <table className="w-full">
-              <thead className="bg-gray-50 text-xs text-gray-600 uppercase">
+              <thead className="bg-gray-50 dark:bg-neutral-900 text-xs text-gray-600 uppercase">
                 <tr>
                   <th className="px-4 py-3 text-left">Staff</th>
                   <th className="px-4 py-3 text-left">Role</th>
@@ -576,8 +577,8 @@ const FinancialManagementScreen: React.FC = () => {
               </thead>
               <tbody>
                 {(commissionReport?.report || []).map((entry: any) => (
-                  <tr key={entry.userId} className="border-t border-gray-100">
-                    <td className="px-4 py-3 font-medium text-gray-900">{entry.userName}</td>
+                  <tr key={entry.userId} className="border-t border-gray-100 dark:border-neutral-700">
+                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-neutral-100">{entry.userName}</td>
                     <td className="px-4 py-3 text-gray-600">{entry.role}</td>
                     <td className="px-4 py-3 text-right">{entry.totalDeliveries}</td>
                     <td className="px-4 py-3 text-right">{formatCurrency(entry.totalOrderValue)}</td>
@@ -611,7 +612,7 @@ const FinancialManagementScreen: React.FC = () => {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-md"
             >
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold">Set Commission Rate</h2>
@@ -626,7 +627,7 @@ const FinancialManagementScreen: React.FC = () => {
                     type="text"
                     value={rateForm.userId}
                     onChange={(e) => setRateForm({ ...rateForm, userId: e.target.value })}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2"
                   />
                 </div>
                 <div>
@@ -638,7 +639,7 @@ const FinancialManagementScreen: React.FC = () => {
                     step="0.01"
                     value={rateForm.rate}
                     onChange={(e) => setRateForm({ ...rateForm, rate: e.target.value })}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2"
                   />
                 </div>
                 <div>
@@ -646,7 +647,7 @@ const FinancialManagementScreen: React.FC = () => {
                   <select
                     value={rateForm.type}
                     onChange={(e) => setRateForm({ ...rateForm, type: e.target.value as any })}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2"
                   >
                     <option value="DELIVERY">Delivery</option>
                     <option value="SALES">Sales</option>
@@ -659,13 +660,13 @@ const FinancialManagementScreen: React.FC = () => {
                     type="date"
                     value={rateForm.effectiveFrom}
                     onChange={(e) => setRateForm({ ...rateForm, effectiveFrom: e.target.value })}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2"
                   />
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button
                     onClick={() => setShowSetRateModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg font-medium"
+                    className="flex-1 px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-lg font-medium"
                   >
                     Cancel
                   </button>
@@ -695,10 +696,10 @@ const FinancialManagementScreen: React.FC = () => {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-lg"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-lg"
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Add New Expense</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Add New Expense</h2>
                 <button onClick={() => setShowAddExpenseModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                   <X className="w-5 h-5" />
                 </button>
@@ -709,7 +710,7 @@ const FinancialManagementScreen: React.FC = () => {
                   <select 
                     value={expenseForm.category} 
                     onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl"
+                    className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl"
                   >
                     <option value="inventory">Inventory</option>
                     <option value="utilities">Utilities</option>
@@ -727,7 +728,7 @@ const FinancialManagementScreen: React.FC = () => {
                     type="text" 
                     value={expenseForm.description} 
                     onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" 
+                    className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl" 
                     placeholder="Enter expense description"
                   />
                 </div>
@@ -739,7 +740,7 @@ const FinancialManagementScreen: React.FC = () => {
                       step="0.01"
                       value={expenseForm.amount} 
                       onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
-                      className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" 
+                      className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl" 
                       placeholder="0.00"
                     />
                   </div>
@@ -748,7 +749,7 @@ const FinancialManagementScreen: React.FC = () => {
                     <select 
                       value={expenseForm.paymentMethod} 
                       onChange={(e) => setExpenseForm({ ...expenseForm, paymentMethod: e.target.value })}
-                      className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl"
+                      className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl"
                     >
                       <option value="Cash">Cash</option>
                       <option value="Card">Card</option>
@@ -762,14 +763,14 @@ const FinancialManagementScreen: React.FC = () => {
                   <textarea 
                     value={expenseForm.notes} 
                     onChange={(e) => setExpenseForm({ ...expenseForm, notes: e.target.value })}
-                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl" 
+                    className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl" 
                     rows={3} 
                     placeholder="Additional notes..."
                   />
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
-                <button onClick={() => setShowAddExpenseModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">
+                <button onClick={() => setShowAddExpenseModal(false)} className="flex-1 py-3 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">
                   Cancel
                 </button>
                 <button 
@@ -817,10 +818,10 @@ const FinancialManagementScreen: React.FC = () => {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-md"
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Export Report</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Export Report</h2>
                 <button onClick={() => setShowExportModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                   <X className="w-5 h-5" />
                 </button>
@@ -849,7 +850,7 @@ const FinancialManagementScreen: React.FC = () => {
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
-                <button onClick={() => setShowExportModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">
+                <button onClick={() => setShowExportModal(false)} className="flex-1 py-3 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">
                   Cancel
                 </button>
                 <button 
@@ -890,10 +891,10 @@ const FinancialManagementScreen: React.FC = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-2xl p-6 w-full max-w-md"
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-md"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Filter Expenses</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-neutral-100">Filter Expenses</h2>
               <button onClick={() => setShowFilterModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
@@ -919,7 +920,7 @@ const FinancialManagementScreen: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Date Range</label>
-                <select className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                <select className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl">
                   <option value="today">Today</option>
                   <option value="week">This Week</option>
                   <option value="month">This Month</option>
@@ -929,7 +930,7 @@ const FinancialManagementScreen: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowFilterModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">
+              <button onClick={() => setShowFilterModal(false)} className="flex-1 py-3 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">
                 Cancel
               </button>
               <button 

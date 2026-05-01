@@ -280,7 +280,7 @@ class HardwareManager {
   async showTotal(amount: number): Promise<boolean> {
     return this.displayOnCustomerDisplay(
       'TOTAL:',
-      `$${amount.toFixed(2)}`
+      `$${toNum(amount).toFixed(2)}`
     );
   }
 
@@ -455,7 +455,7 @@ class HardwareManager {
     // Items
     data.items.forEach(item => {
       receipt += `${item.name}\n`;
-      receipt += `  ${item.quantity} x $${item.price.toFixed(2)} = $${(item.quantity * item.price).toFixed(2)}\n`;
+      receipt += `  ${item.quantity} x $${toNum(item.price).toFixed(2)} = $${(item.quantity * item.price).toFixed(2)}\n`;
       if (item.notes) {
         receipt += `  Note: ${item.notes}\n`;
       }
@@ -464,13 +464,13 @@ class HardwareManager {
     receipt += '-'.repeat(32) + '\n';
     
     // Totals
-    receipt += `Subtotal: $${data.subtotal.toFixed(2)}\n`;
-    receipt += `Tax (${data.taxRate}%): $${data.tax.toFixed(2)}\n`;
+    receipt += `Subtotal: $${toNum(data.subtotal).toFixed(2)}\n`;
+    receipt += `Tax (${data.taxRate}%): $${toNum(data.tax).toFixed(2)}\n`;
     if (data.discount > 0) {
-      receipt += `Discount: -$${data.discount.toFixed(2)}\n`;
+      receipt += `Discount: -$${toNum(data.discount).toFixed(2)}\n`;
     }
     receipt += ESC + 'E' + '\x01'; // Bold
-    receipt += `TOTAL: $${data.total.toFixed(2)}\n`;
+    receipt += `TOTAL: $${toNum(data.total).toFixed(2)}\n`;
     receipt += ESC + 'E' + '\x00'; // Normal
     
     receipt += '\n';
@@ -478,7 +478,7 @@ class HardwareManager {
     // Payment info
     receipt += `Payment: ${data.paymentMethod}\n`;
     if (data.change > 0) {
-      receipt += `Change: $${data.change.toFixed(2)}\n`;
+      receipt += `Change: $${toNum(data.change).toFixed(2)}\n`;
     }
     
     receipt += '\n';

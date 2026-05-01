@@ -5,6 +5,7 @@
 
 import { orderService } from './orderService';
 import toast from 'react-hot-toast';
+import { toNum } from '@restaurant-pos/shared-types';
 
 export interface PaymentRequest {
   orderId: string;
@@ -59,7 +60,7 @@ class PaymentValidationService {
       if (Math.abs(splitTotal - request.amount) > TOLERANCE) {
         return {
           valid: false,
-          error: `Split payment total (${splitTotal.toFixed(2)}) does not match order total (${request.amount.toFixed(2)})`,
+          error: `Split payment total (${toNum(splitTotal).toFixed(2)}) does not match order total (${toNum(request.amount).toFixed(2)})`,
         };
       }
 
@@ -77,7 +78,7 @@ class PaymentValidationService {
     if (Math.abs(request.amount - orderTotal) > TOLERANCE) {
       return {
         valid: false,
-        error: `Payment amount (${request.amount.toFixed(2)}) does not match order total (${orderTotal.toFixed(2)})`,
+        error: `Payment amount (${toNum(request.amount).toFixed(2)}) does not match order total (${toNum(orderTotal).toFixed(2)})`,
       };
     }
 

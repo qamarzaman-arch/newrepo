@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { MapPin, Plus, RefreshCw, AlertTriangle, Edit2, Trash2, X, Check } from 'lucide-react';
 import apiClient from '../lib/api';
 import toast from 'react-hot-toast';
+import { toNum } from '@restaurant-pos/shared-types';
 
 // Leaflet uses window at module load — must be client-only
 const ZoneMap = dynamic(() => import('../components/ZoneMap'), { ssr: false });
@@ -215,7 +216,7 @@ export default function DeliveryZonesPage() {
       )}
 
       {/* Fee Calculator */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <div className="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl p-6 shadow-sm">
         <h2 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2">
           <MapPin size={18} className="text-red-600" /> Test Delivery Fee
         </h2>
@@ -270,7 +271,7 @@ export default function DeliveryZonesPage() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div><span className="block text-xs uppercase font-bold opacity-70">Zone</span><span className="font-extrabold">{feeResult.zone?.name}</span></div>
-                <div><span className="block text-xs uppercase font-bold opacity-70">Fee</span><span className="font-extrabold">Rs. {feeResult.fee.toFixed(2)}</span></div>
+                <div><span className="block text-xs uppercase font-bold opacity-70">Fee</span><span className="font-extrabold">Rs. {toNum(feeResult.fee).toFixed(2)}</span></div>
                 <div><span className="block text-xs uppercase font-bold opacity-70">Min Order</span><span className="font-extrabold">Rs. {Number(feeResult.minimumOrder || 0).toFixed(2)}</span></div>
                 <div><span className="block text-xs uppercase font-bold opacity-70">ETA</span><span className="font-extrabold">{feeResult.estimatedTimeMin}-{feeResult.estimatedTimeMax} min</span></div>
               </div>
@@ -284,7 +285,7 @@ export default function DeliveryZonesPage() {
           <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : zones.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 border-2 border-dashed border-gray-200 text-center">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl p-12 border-2 border-dashed border-gray-200 dark:border-neutral-700 text-center">
           <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="font-bold text-gray-700">No delivery zones yet</p>
           <p className="text-sm text-gray-500 mt-1">Click "New Zone" to draw your first geo-fenced area.</p>
@@ -294,7 +295,7 @@ export default function DeliveryZonesPage() {
           {zones.map(zone => {
             const polygonValid = zone.coordinates.length >= 3;
             return (
-              <div key={zone.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <div key={zone.id} className="bg-white dark:bg-neutral-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: zone.color || '#dc2626' }} />
@@ -304,10 +305,10 @@ export default function DeliveryZonesPage() {
                 </div>
                 {zone.description && <p className="text-xs text-gray-500 mb-3 line-clamp-2">{zone.description}</p>}
                 <div className="space-y-1.5 text-sm mb-3">
-                  <div className="flex justify-between"><span className="text-gray-500">Base fee</span><span className="font-bold text-red-600">${zone.baseFee.toFixed(2)}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Min order</span><span className="font-semibold">${zone.minimumOrder.toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Base fee</span><span className="font-bold text-red-600">${toNum(zone.baseFee).toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Min order</span><span className="font-semibold">${toNum(zone.minimumOrder).toFixed(2)}</span></div>
                   {zone.freeDeliveryThreshold != null && (
-                    <div className="flex justify-between"><span className="text-gray-500">Free above</span><span className="font-semibold text-emerald-600">${zone.freeDeliveryThreshold.toFixed(2)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Free above</span><span className="font-semibold text-emerald-600">${toNum(zone.freeDeliveryThreshold).toFixed(2)}</span></div>
                   )}
                   <div className="flex justify-between"><span className="text-gray-500">ETA</span><span className="font-semibold">{zone.estimatedTimeMin}–{zone.estimatedTimeMax} min</span></div>
                   <div className="flex justify-between"><span className="text-gray-500">Polygon</span>
@@ -333,7 +334,7 @@ export default function DeliveryZonesPage() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-5xl my-8 max-h-[92vh] overflow-y-auto">
+          <div className="bg-white dark:bg-neutral-800 rounded-3xl p-6 w-full max-w-5xl my-8 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">{editingZone ? 'Edit Delivery Zone' : 'Create Delivery Zone'}</h2>

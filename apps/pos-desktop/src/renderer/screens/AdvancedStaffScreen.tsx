@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { staffService } from '../services/staffService';
 import { reportService } from '../services/reportService';
 import { useAuthStore } from '../stores/authStore';
+import { toNum } from '@restaurant-pos/shared-types';
 
 // Local date formatting functions
 const formatDate = (dateString: string, format: 'short' | 'time' = 'short') => {
@@ -269,7 +270,7 @@ const AdvancedStaffScreen: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-manrope">Staff Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-neutral-100 font-manrope">Staff Management</h1>
           <p className="text-gray-600 mt-1">Manage employees, schedules, and performance</p>
         </div>
         <div className="flex items-center gap-3">
@@ -277,7 +278,7 @@ const AdvancedStaffScreen: React.FC = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleRefresh}
-            className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold flex items-center gap-2 shadow-lg hover:bg-gray-50"
+            className="px-4 py-2 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 text-gray-700 rounded-xl font-semibold flex items-center gap-2 shadow-lg hover:bg-gray-50"
           >
             <RefreshCw className="w-5 h-5" />
             Refresh
@@ -327,12 +328,12 @@ const AdvancedStaffScreen: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Total Employees</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalEmployees}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-neutral-100 mt-1">{stats.totalEmployees}</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
               <Users className="w-6 h-6 text-blue-600" />
@@ -344,7 +345,7 @@ const AdvancedStaffScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -361,7 +362,7 @@ const AdvancedStaffScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -378,7 +379,7 @@ const AdvancedStaffScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -393,7 +394,7 @@ const AdvancedStaffScreen: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 inline-flex">
+      <div className="bg-white dark:bg-neutral-800 rounded-2xl p-2 shadow-sm border border-gray-100 dark:border-neutral-700 inline-flex">
         {[
           { id: 'employees', label: 'Employees', icon: Users },
           { id: 'schedule', label: 'Schedule', icon: Calendar },
@@ -430,14 +431,14 @@ const AdvancedStaffScreen: React.FC = () => {
               placeholder="Search employees..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none"
+              className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none"
             />
           </div>
           
           <select
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none bg-white"
+            className="px-4 py-3 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none bg-white dark:bg-neutral-800"
           >
             <option value="all">All Departments</option>
             <option value="management">Management</option>
@@ -445,7 +446,7 @@ const AdvancedStaffScreen: React.FC = () => {
             <option value="front-of-house">Front of House</option>
           </select>
 
-          <button className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-primary transition-colors">
+          <button className="px-4 py-3 bg-white dark:bg-neutral-800 border-2 border-gray-200 dark:border-neutral-700 rounded-xl hover:border-primary transition-colors">
             <Filter className="w-5 h-5 text-gray-600" />
           </button>
         </div>
@@ -453,9 +454,9 @@ const AdvancedStaffScreen: React.FC = () => {
 
       {/* EMPLOYEES TAB */}
       {activeTab === 'employees' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-neutral-900">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Employee</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Role</th>
@@ -476,7 +477,7 @@ const AdvancedStaffScreen: React.FC = () => {
                         <Users className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900">{employee.name}</p>
+                        <p className="font-semibold text-gray-900 dark:text-neutral-100">{employee.name}</p>
                         <p className="text-xs text-gray-500">Since {employee.hireDate}</p>
                       </div>
                     </div>
@@ -512,10 +513,10 @@ const AdvancedStaffScreen: React.FC = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      <span className="font-semibold text-gray-900">{employee.rating}</span>
+                      <span className="font-semibold text-gray-900 dark:text-neutral-100">{employee.rating}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">{employee.hoursThisWeek}h</td>
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">{employee.hoursThisWeek}h</td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
                       <button 
@@ -543,7 +544,7 @@ const AdvancedStaffScreen: React.FC = () => {
       {activeTab === 'schedule' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-bold text-gray-900">Today's Schedule - {new Date().toLocaleDateString()}</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100">Today's Schedule - {new Date().toLocaleDateString()}</h3>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -559,7 +560,7 @@ const AdvancedStaffScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -571,12 +572,12 @@ const AdvancedStaffScreen: React.FC = () => {
                     }`} />
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900">{entry.employee}</h4>
+                    <h4 className="font-bold text-gray-900 dark:text-neutral-100">{entry.employee}</h4>
                     <p className="text-sm text-gray-500">{entry.role}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold text-gray-900">{entry.shift}</p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-neutral-100">{entry.shift}</p>
                   <p className="text-xs text-gray-500">Break: {entry.breakTime}</p>
                 </div>
                 <span className={`px-4 py-2 rounded-full text-sm font-semibold ${
@@ -592,9 +593,9 @@ const AdvancedStaffScreen: React.FC = () => {
 
       {/* TIME TRACKING TAB */}
       {activeTab === 'time-tracking' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-neutral-900">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Employee</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
@@ -609,13 +610,13 @@ const AdvancedStaffScreen: React.FC = () => {
             <tbody className="divide-y divide-gray-200">
               {timeEntries.map((entry: any) => (
                 <tr key={entry.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 font-semibold text-gray-900">{entry.employee}</td>
+                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-neutral-100">{entry.employee}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{entry.date}</td>
                   <td className="px-6 py-4 text-sm text-green-600 font-semibold">{entry.clockIn}</td>
                   <td className="px-6 py-4 text-sm text-red-600 font-semibold">{entry.clockOut}</td>
-                  <td className="px-6 py-4 font-bold text-gray-900">{entry.hours.toFixed(2)}h</td>
+                  <td className="px-6 py-4 font-bold text-gray-900 dark:text-neutral-100">{toNum(entry.hours).toFixed(2)}h</td>
                   <td className="px-6 py-4 text-sm text-orange-600 font-semibold">
-                    {entry.overtime > 0 ? `+${entry.overtime.toFixed(2)}h` : '-'}
+                    {entry.overtime > 0 ? `+${toNum(entry.overtime).toFixed(2)}h` : '-'}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -652,16 +653,16 @@ const AdvancedStaffScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">{perf.employee}</h3>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100">{perf.employee}</h3>
                   <p className="text-sm text-gray-500">{perf.role}</p>
                 </div>
                 <div className="flex items-center gap-1">
                   <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                  <span className="text-xl font-bold text-gray-900">{perf.rating}</span>
+                  <span className="text-xl font-bold text-gray-900 dark:text-neutral-100">{perf.rating}</span>
                 </div>
               </div>
               
@@ -684,7 +685,7 @@ const AdvancedStaffScreen: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-neutral-700">
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-gradient-to-r from-primary to-primary-container h-2 rounded-full"
@@ -699,28 +700,28 @@ const AdvancedStaffScreen: React.FC = () => {
 
       {showEmployeeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-2xl font-bold mb-4">{selectedEmployee ? 'View/Edit Employee' : 'Add New Employee'}</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Username *</label>
-                <input type="text" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Username" />
+                <input type="text" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Username" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name *</label>
-                <input type="text" value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Full Name" />
+                <input type="text" value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Full Name" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-                <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="email@example.com" />
+                <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="email@example.com" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
-                <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="+1 234 567 8900" />
+                <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="+1 234 567 8900" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Role</label>
-                <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl">
                   <option value="STAFF">Staff</option>
                   <option value="CASHIER">Cashier</option>
                   <option value="KITCHEN">Kitchen</option>
@@ -733,12 +734,12 @@ const AdvancedStaffScreen: React.FC = () => {
                 <>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">PIN {['CASHIER', 'MANAGER', 'RIDER', 'KITCHEN'].includes(formData.role) ? '*' : '(optional)'}</label>
-                    <input type="password" maxLength={4} value={formData.pin} onChange={(e) => setFormData({ ...formData, pin: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="4-digit PIN" />
+                    <input type="password" maxLength={4} value={formData.pin} onChange={(e) => setFormData({ ...formData, pin: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="4-digit PIN" />
                   </div>
                   {['CASHIER', 'MANAGER', 'RIDER', 'KITCHEN'].includes(formData.role) && !selectedEmployee && (
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1">Password *</label>
-                      <input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Password" />
+                      <input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Password" />
                     </div>
                   )}
                 </>
@@ -746,12 +747,12 @@ const AdvancedStaffScreen: React.FC = () => {
               {selectedEmployee && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">New Password (optional)</label>
-                  <input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" placeholder="Leave blank to keep current" />
+                  <input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" placeholder="Leave blank to keep current" />
                 </div>
               )}
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => { setShowEmployeeModal(false); setSelectedEmployee(null); }} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={() => { setShowEmployeeModal(false); setSelectedEmployee(null); }} className="flex-1 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={selectedEmployee ? handleEditEmployee : handleAddEmployee} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">{selectedEmployee ? 'Update' : 'Add Employee'}</button>
             </div>
           </div>
@@ -761,31 +762,31 @@ const AdvancedStaffScreen: React.FC = () => {
       {/* Shift Modal */}
       {showShiftModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-2xl font-bold mb-4">Add Shift</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Employee *</label>
-                <select value={shiftFormData.userId} onChange={(e) => setShiftFormData({ ...shiftFormData, userId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                <select value={shiftFormData.userId} onChange={(e) => setShiftFormData({ ...shiftFormData, userId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl">
                   <option value="">Select Employee</option>
                   {employees.map((emp: any) => <option key={emp.id} value={emp.id}>{emp.fullName || emp.username}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Shift Date *</label>
-                <input type="date" value={shiftFormData.shiftDate} onChange={(e) => setShiftFormData({ ...shiftFormData, shiftDate: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="date" value={shiftFormData.shiftDate} onChange={(e) => setShiftFormData({ ...shiftFormData, shiftDate: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Start Time *</label>
-                <input type="time" value={shiftFormData.startTime} onChange={(e) => setShiftFormData({ ...shiftFormData, startTime: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="time" value={shiftFormData.startTime} onChange={(e) => setShiftFormData({ ...shiftFormData, startTime: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">End Time</label>
-                <input type="time" value={shiftFormData.endTime} onChange={(e) => setShiftFormData({ ...shiftFormData, endTime: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="time" value={shiftFormData.endTime} onChange={(e) => setShiftFormData({ ...shiftFormData, endTime: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowShiftModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={() => setShowShiftModal(false)} className="flex-1 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={handleAddShift} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Add Shift</button>
             </div>
           </div>
@@ -795,27 +796,27 @@ const AdvancedStaffScreen: React.FC = () => {
       {/* Time Entry Modal */}
       {showTimeEntryModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-2xl font-bold mb-4">Add Time Entry</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Employee *</label>
-                <select value={timeEntryFormData.userId} onChange={(e) => setTimeEntryFormData({ ...timeEntryFormData, userId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                <select value={timeEntryFormData.userId} onChange={(e) => setTimeEntryFormData({ ...timeEntryFormData, userId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl">
                   <option value="">Select Employee</option>
                   {employees.map((emp: any) => <option key={emp.id} value={emp.id}>{emp.fullName || emp.username}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Clock In *</label>
-                <input type="datetime-local" value={timeEntryFormData.clockIn} onChange={(e) => setTimeEntryFormData({ ...timeEntryFormData, clockIn: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="datetime-local" value={timeEntryFormData.clockIn} onChange={(e) => setTimeEntryFormData({ ...timeEntryFormData, clockIn: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Clock Out</label>
-                <input type="datetime-local" value={timeEntryFormData.clockOut} onChange={(e) => setTimeEntryFormData({ ...timeEntryFormData, clockOut: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+                <input type="datetime-local" value={timeEntryFormData.clockOut} onChange={(e) => setTimeEntryFormData({ ...timeEntryFormData, clockOut: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl" />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowTimeEntryModal(false)} className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+              <button onClick={() => setShowTimeEntryModal(false)} className="flex-1 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
               <button onClick={handleAddTimeEntry} className="flex-1 py-2 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold">Add Entry</button>
             </div>
           </div>

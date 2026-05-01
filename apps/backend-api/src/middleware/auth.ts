@@ -104,6 +104,29 @@ type FeatureAccessCache = { value: boolean; expiresAt: number };
 const featureAccessCache = new Map<string, FeatureAccessCache>();
 const FEATURE_CACHE_TTL_MS = 30_000;
 
+// Per-role bypass list for endpoints that nominally live under a feature the
+// role doesn't own, but are part of a workflow the role legitimately performs.
+// Example: a cashier doesn't have the 'reports' feature, but they need
+// `/reports/sales/daily` for their till summary and `/reports/shift-summary`
+// for their own shift breakdown. The path is matched against `req.path`
+// AFTER the express prefix has been stripped (i.e. the path within the
+// mounted router).
+const FEATURE_BYPASS_PATHS: Record<string, Partial<Record<string, string[]>>> = {
+  reports: {
+    CASHIER: ['/sales/daily', '/shift-summary', '/daily', '/top-items'],
+    STAFF:   ['/sales/daily', '/shift-summary'],
+    MANAGER: ['/sales/daily', '/shift-summary', '/daily', '/top-items'],
+  },
+};
+
+function bypassMatches(bypass: string[] | undefined, path: string): boolean {
+  if (!bypass) return false;
+  for (const p of bypass) {
+    if (path === p || path.startsWith(p + '/') || path.startsWith(p + '?')) return true;
+  }
+  return false;
+}
+
 export function invalidateFeatureAccessCache() {
   featureAccessCache.clear();
 }
@@ -113,6 +136,12 @@ export function requireFeature(feature: string) {
     try {
       if (!req.user) throw new AppError('Not authenticated', 401);
       if (req.user.role === 'ADMIN') return next();
+
+      // Per-role allowlist — lets a cashier hit a couple of /reports endpoints
+      // that are intrinsic to their shift workflow without granting them the
+      // entire 'reports' feature.
+      const bypass = FEATURE_BYPASS_PATHS[feature]?.[req.user.role];
+      if (bypassMatches(bypass, req.path)) return next();
 
       const cacheKey = `${feature}:${req.user.role}`;
       const now = Date.now();

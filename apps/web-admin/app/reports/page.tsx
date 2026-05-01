@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package, Calendar, Download } from 'lucide-react';
 import apiClient from '../lib/api';
 import toast from 'react-hot-toast';
+import { toNum } from '@restaurant-pos/shared-types';
 
 interface SalesReport {
   date: string;
@@ -115,7 +116,7 @@ export default function ReportsPage() {
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}
-            className="px-4 py-2 border-2 border-gray-200 rounded-xl font-semibold bg-white"
+            className="px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl font-semibold bg-white dark:bg-neutral-800"
           >
             <option value="7d">Last 7 Days</option>
             <option value="30d">Last 30 Days</option>
@@ -132,7 +133,7 @@ export default function ReportsPage() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-50">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-50 dark:border-neutral-700">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 rounded-2xl bg-green-50">
               <DollarSign className="w-6 h-6 text-green-600" />
@@ -143,7 +144,7 @@ export default function ReportsPage() {
           <p className="text-3xl font-black text-gray-900 mt-1">${(summary.totalRevenue || 0).toFixed(2)}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-50">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-50 dark:border-neutral-700">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 rounded-2xl bg-blue-50">
               <ShoppingCart className="w-6 h-6 text-blue-600" />
@@ -153,7 +154,7 @@ export default function ReportsPage() {
           <p className="text-3xl font-black text-gray-900 mt-1">{summary.totalOrders}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-50">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-50 dark:border-neutral-700">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 rounded-2xl bg-purple-50">
               <BarChart3 className="w-6 h-6 text-purple-600" />
@@ -163,7 +164,7 @@ export default function ReportsPage() {
           <p className="text-3xl font-black text-gray-900 mt-1">${(summary.avgOrderValue || 0).toFixed(2)}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-50">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-50 dark:border-neutral-700">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 rounded-2xl bg-orange-50">
               <Package className="w-6 h-6 text-orange-600" />
@@ -175,7 +176,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-8 rounded-3xl shadow-soft border border-gray-50">
+        <div className="bg-white dark:bg-neutral-800 p-8 rounded-3xl shadow-soft border border-gray-50 dark:border-neutral-700">
           <h2 className="text-2xl font-extrabold flex items-center gap-3 text-gray-900 mb-6">
             <TrendingUp className="text-indigo-600" />
             Daily Sales
@@ -193,7 +194,7 @@ export default function ReportsPage() {
                     <span className="font-semibold text-gray-700">{day.date}</span>
                   </div>
                   <div className="text-right">
-                    <span className="font-bold text-gray-900">${day.revenue.toFixed(2)}</span>
+                    <span className="font-bold text-gray-900">${toNum(day.revenue).toFixed(2)}</span>
                     <span className="text-gray-500 text-sm ml-2">({day.orders} orders)</span>
                   </div>
                 </div>
@@ -202,7 +203,7 @@ export default function ReportsPage() {
           )}
         </div>
 
-        <div className="bg-white p-8 rounded-3xl shadow-soft border border-gray-50">
+        <div className="bg-white dark:bg-neutral-800 p-8 rounded-3xl shadow-soft border border-gray-50 dark:border-neutral-700">
           <h2 className="text-2xl font-extrabold flex items-center gap-3 text-gray-900 mb-6">
             <Package className="text-indigo-600" />
             Top Selling Items
@@ -230,7 +231,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="bg-white p-8 rounded-3xl shadow-soft border border-gray-50">
+      <div className="bg-white dark:bg-neutral-800 p-8 rounded-3xl shadow-soft border border-gray-50 dark:border-neutral-700">
         <h2 className="text-2xl font-extrabold flex items-center gap-3 text-gray-900 mb-6">
           <Users className="text-indigo-600" />
           Staff Performance

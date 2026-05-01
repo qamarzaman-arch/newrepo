@@ -217,8 +217,8 @@ export default function FinancePage() {
   };
 
   const renderSection = (title: string, items: any[] = [], total?: number, color = 'text-gray-900') => (
-    <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden">
-      <div className="bg-gray-50 px-6 py-3 border-b border-neutral-200">
+    <div className="bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden">
+      <div className="bg-gray-50 dark:bg-neutral-900 px-6 py-3 border-b border-neutral-200 dark:border-neutral-700">
         <h3 className="font-extrabold text-gray-900">{title}</h3>
       </div>
       <div className="p-6 space-y-2">
@@ -249,7 +249,7 @@ export default function FinancePage() {
         <p className="text-gray-500 mt-2 font-medium">Reports and journal entries</p>
       </header>
 
-      <div className="bg-white p-2 rounded-2xl border border-neutral-200 shadow-sm flex gap-2 w-fit">
+      <div className="bg-white dark:bg-neutral-800 p-2 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm flex gap-2 w-fit">
         <button
           onClick={() => setTab('pl')}
           className={`px-5 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all ${tab === 'pl' ? 'bg-[#E53935] text-white' : 'text-gray-600 hover:bg-gray-50'}`}
@@ -266,7 +266,7 @@ export default function FinancePage() {
 
       {tab === 'pl' && (
         <div className="space-y-6">
-          <div className="bg-white p-4 rounded-2xl border border-neutral-200 shadow-sm flex flex-wrap gap-3 items-end">
+          <div className="bg-white dark:bg-neutral-800 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm flex flex-wrap gap-3 items-end">
             <div>
               <label className="text-xs font-bold text-gray-600">From</label>
               <input type="date" value={plFrom} onChange={(e) => setPlFrom(e.target.value)} className="block mt-1 px-3 py-2 bg-gray-50 border border-neutral-200 rounded-lg" />
@@ -286,14 +286,14 @@ export default function FinancePage() {
           </div>
 
           {plLoading ? (
-            <div className="bg-white rounded-2xl p-20 text-center border border-neutral-200 shadow-sm">
+            <div className="bg-white dark:bg-neutral-800 rounded-2xl p-20 text-center border border-neutral-200 dark:border-neutral-700 shadow-sm">
               <div className="w-12 h-12 border-4 border-[#E53935] border-t-transparent rounded-full animate-spin mx-auto" />
             </div>
           ) : plData ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {renderSection('Revenue', plData.revenue?.accounts || plData.revenueAccounts || [], plData.totalRevenue || plData.revenue?.total || 0, 'text-green-600')}
               {renderSection('Expenses', plData.expenses?.accounts || plData.expenseAccounts || [], plData.totalExpenses || plData.expenses?.total || 0, 'text-red-600')}
-              <div className="md:col-span-2 bg-white rounded-2xl border border-neutral-200 shadow-sm p-8 text-center">
+              <div className="md:col-span-2 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm p-8 text-center">
                 <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">Net Profit</p>
                 <h2 className={`text-5xl font-black mt-2 ${(plData.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {fmt(plData.netProfit || 0)}
@@ -306,7 +306,7 @@ export default function FinancePage() {
 
       {tab === 'bs' && (
         <div className="space-y-6">
-          <div className="bg-white p-4 rounded-2xl border border-neutral-200 shadow-sm flex flex-wrap gap-3 items-end">
+          <div className="bg-white dark:bg-neutral-800 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm flex flex-wrap gap-3 items-end">
             <div>
               <label className="text-xs font-bold text-gray-600">As Of</label>
               <input type="date" value={bsAsOf} onChange={(e) => setBsAsOf(e.target.value)} className="block mt-1 px-3 py-2 bg-gray-50 border border-neutral-200 rounded-lg" />
@@ -322,7 +322,7 @@ export default function FinancePage() {
           </div>
 
           {bsLoading ? (
-            <div className="bg-white rounded-2xl p-20 text-center border border-neutral-200 shadow-sm">
+            <div className="bg-white dark:bg-neutral-800 rounded-2xl p-20 text-center border border-neutral-200 dark:border-neutral-700 shadow-sm">
               <div className="w-12 h-12 border-4 border-[#E53935] border-t-transparent rounded-full animate-spin mx-auto" />
             </div>
           ) : bsData ? (
@@ -358,13 +358,13 @@ export default function FinancePage() {
           </div>
 
           {jeLoading ? (
-            <div className="bg-white rounded-2xl p-20 text-center border border-neutral-200 shadow-sm">
+            <div className="bg-white dark:bg-neutral-800 rounded-2xl p-20 text-center border border-neutral-200 dark:border-neutral-700 shadow-sm">
               <div className="w-12 h-12 border-4 border-[#E53935] border-t-transparent rounded-full animate-spin mx-auto" />
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-neutral-200">
+                <thead className="bg-gray-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
                   <tr className="text-xs font-bold text-gray-600 uppercase">
                     <th className="px-4 py-3 text-left">Entry #</th>
                     <th className="px-4 py-3 text-left">Date</th>

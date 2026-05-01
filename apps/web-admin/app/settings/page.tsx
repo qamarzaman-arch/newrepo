@@ -215,10 +215,10 @@ export default function SettingsPage() {
       )}
 
       {/* Category tabs */}
-      <div className="flex gap-1 flex-wrap bg-gray-100 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 flex-wrap bg-gray-100 dark:bg-neutral-800 p-1 rounded-xl w-fit">
         {categories.map(cat => (
           <button key={cat} onClick={() => setActiveCategory(cat)}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeCategory === cat ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeCategory === cat ? 'bg-white dark:bg-neutral-700 text-gray-900 dark:text-neutral-100 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
             {CATEGORY_LABELS[cat] || cat}
           </button>
         ))}
@@ -229,8 +229,8 @@ export default function SettingsPage() {
           <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-neutral-700 flex items-center justify-between">
             <h2 className="font-extrabold text-gray-900">{CATEGORY_LABELS[activeCategory] || activeCategory}</h2>
             <button onClick={addCustomSetting} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold text-gray-700 transition-colors">
               <Plus size={14} /> Add Setting

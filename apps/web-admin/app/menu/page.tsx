@@ -193,12 +193,12 @@ export default function MenuPage() {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-4 rounded-3xl shadow-soft border border-gray-100">
-        <div className="flex p-2 bg-gray-100 rounded-2xl w-fit">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white dark:bg-neutral-800 p-4 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
+        <div className="flex p-2 bg-gray-100 dark:bg-neutral-900 rounded-2xl w-fit">
           <button 
             onClick={() => setActiveTab('items')}
             className={`px-6 py-2.5 rounded-xl font-bold transition-all ${
-              activeTab === 'items' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              activeTab === 'items' ? 'bg-white dark:bg-neutral-700 text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             Menu Items ({menuItems.length})
@@ -206,7 +206,7 @@ export default function MenuPage() {
           <button 
             onClick={() => setActiveTab('categories')}
             className={`px-6 py-2.5 rounded-xl font-bold transition-all ${
-              activeTab === 'categories' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              activeTab === 'categories' ? 'bg-white dark:bg-neutral-700 text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             Categories ({categories.length})
@@ -226,7 +226,7 @@ export default function MenuPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-3xl p-20 text-center shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 rounded-3xl p-20 text-center shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500 font-medium">Loading menu data...</p>
         </div>
@@ -283,7 +283,7 @@ export default function MenuPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
           {filteredCategories.map((cat) => (
-            <div key={cat.id} className="bg-white p-8 rounded-3xl shadow-soft border border-gray-50 hover:shadow-medium hover:-translate-y-1 transition-all group flex items-start justify-between">
+            <div key={cat.id} className="bg-white dark:bg-neutral-800 p-8 rounded-3xl shadow-soft border border-gray-50 dark:border-neutral-700 hover:shadow-medium hover:-translate-y-1 transition-all group flex items-start justify-between">
               <div className="flex gap-6">
                 <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
                   <Utensils size={32} />

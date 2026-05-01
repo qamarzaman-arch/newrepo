@@ -251,14 +251,14 @@ const AdvancedCashierPOS: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <div className="h-screen flex flex-col bg-neutral-50 overflow-hidden">
+      <div className="h-screen flex flex-col bg-neutral-50 dark:bg-neutral-900 overflow-hidden">
 
         {/* ── Top Bar (h-14 compact) ── */}
         <motion.header
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.35 }}
-          className="h-14 bg-white border-b border-neutral-200 px-5 flex items-center justify-between shadow-sm z-40 flex-shrink-0"
+          className="h-14 bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-5 flex items-center justify-between shadow-sm z-40 flex-shrink-0"
         >
           {/* Logo */}
           <div className="flex items-center gap-3">
@@ -266,7 +266,7 @@ const AdvancedCashierPOS: React.FC = () => {
               <span className="text-white font-black text-sm leading-none">P</span>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="font-black text-neutral-900 text-base leading-none">POSLytic</span>
+              <span className="font-black text-neutral-900 dark:text-neutral-100 text-base leading-none">POSLytic</span>
               <span className="text-xs font-semibold text-neutral-400 leading-none hidden sm:inline">Cashier</span>
             </div>
           </div>
@@ -274,9 +274,9 @@ const AdvancedCashierPOS: React.FC = () => {
           {/* Compact daily stats pill */}
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-neutral-50 border border-neutral-200 rounded-full text-xs font-semibold text-neutral-600"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-full text-xs font-semibold text-neutral-600"
           >
-            <span className="font-black text-neutral-900">{todayStats.ordersCompleted}</span>
+            <span className="font-black text-neutral-900 dark:text-neutral-100">{todayStats.ordersCompleted}</span>
             <span className="text-neutral-400">orders</span>
             <span className="text-neutral-300 mx-0.5">·</span>
             <span className="font-black text-emerald-600">{formatCurrency(todayStats.revenue)}</span>
@@ -305,7 +305,7 @@ const AdvancedCashierPOS: React.FC = () => {
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
               onClick={() => setShowKeyboardShortcuts(true)}
-              className="p-2 bg-neutral-100 hover:bg-primary-50 rounded-lg transition-colors border border-neutral-200"
+              className="p-2 bg-neutral-100 hover:bg-primary-50 rounded-lg transition-colors border border-neutral-200 dark:border-neutral-700"
               title="Keyboard Shortcuts (?)"
             >
               <Keyboard className="w-4 h-4 text-primary-600" />
@@ -317,7 +317,7 @@ const AdvancedCashierPOS: React.FC = () => {
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.92 }}
                 onClick={() => setShowQuickActions(!showQuickActions)}
-                className="p-2 bg-neutral-100 hover:bg-primary-50 rounded-lg transition-colors border border-neutral-200"
+                className="p-2 bg-neutral-100 hover:bg-primary-50 rounded-lg transition-colors border border-neutral-200 dark:border-neutral-700"
                 title="Quick Actions"
               >
                 <Settings className="w-4 h-4 text-primary-600" />
@@ -328,7 +328,7 @@ const AdvancedCashierPOS: React.FC = () => {
                     initial={{ opacity: 0, y: -6, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -6, scale: 0.96 }}
-                    className="absolute top-11 right-0 bg-white rounded-xl shadow-2xl border border-neutral-200 p-1.5 z-50 min-w-[200px]"
+                    className="absolute top-11 right-0 bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 p-1.5 z-50 min-w-[200px]"
                   >
                     {quickActions.map(({ icon: Icon, label, action }) => (
                       <motion.button
@@ -348,12 +348,12 @@ const AdvancedCashierPOS: React.FC = () => {
             </div>
 
             {/* User + Logout */}
-            <div className="flex items-center gap-2 pl-2 border-l border-neutral-200 ml-1">
-              <div className="w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-black text-xs border border-primary-200 flex-shrink-0">
+            <div className="flex items-center gap-2 pl-2 border-l border-neutral-200 dark:border-neutral-700 ml-1">
+              <div className="w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-black text-xs border border-primary-200 dark:border-neutral-700 flex-shrink-0">
                 {user?.fullName?.charAt(0) || 'C'}
               </div>
               <div className="hidden sm:block text-right leading-none">
-                <p className="text-xs font-bold text-neutral-900">{user?.fullName || 'Cashier'}</p>
+                <p className="text-xs font-bold text-neutral-900 dark:text-neutral-100">{user?.fullName || 'Cashier'}</p>
                 <p className="text-[11px] text-neutral-400 font-medium capitalize">{user?.role?.toLowerCase()}</p>
               </div>
               <motion.button
@@ -374,7 +374,7 @@ const AdvancedCashierPOS: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.15 }}
-          className="h-10 bg-white border-b border-neutral-200 px-5 flex items-center gap-1.5 flex-shrink-0"
+          className="h-10 bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-5 flex items-center gap-1.5 flex-shrink-0"
         >
           {(
             ['ORDER_TYPE', 'TABLE_CUSTOMER', 'RESERVATION_DETAILS', 'MENU_ORDERING', 'CHECKOUT', 'SUCCESS'] as POSStep[]
@@ -520,11 +520,11 @@ const AdvancedCashierPOS: React.FC = () => {
                 initial={{ scale: 0.93, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.93, opacity: 0 }}
-                className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-neutral-200"
+                className="bg-white dark:bg-neutral-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-neutral-200 dark:border-neutral-700"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-xl font-black text-neutral-900 flex items-center gap-2.5">
+                  <h2 className="text-xl font-black text-neutral-900 dark:text-neutral-100 flex items-center gap-2.5">
                     <Keyboard className="w-6 h-6 text-primary-600" />
                     Keyboard Shortcuts
                   </h2>
@@ -532,12 +532,12 @@ const AdvancedCashierPOS: React.FC = () => {
                     whileHover={{ scale: 1.08 }}
                     whileTap={{ scale: 0.92 }}
                     onClick={() => setShowKeyboardShortcuts(false)}
-                    className="p-1.5 hover:bg-neutral-100 rounded-lg border border-neutral-200 transition-colors"
+                    className="p-1.5 hover:bg-neutral-100 rounded-lg border border-neutral-200 dark:border-neutral-700 transition-colors"
                   >
                     <X className="w-4 h-4 text-neutral-500" />
                   </motion.button>
                 </div>
-                <div className="bg-neutral-50 rounded-xl divide-y divide-neutral-100 border border-neutral-200 overflow-hidden">
+                <div className="bg-neutral-50 dark:bg-neutral-900 rounded-xl divide-y divide-neutral-100 border border-neutral-200 dark:border-neutral-700 overflow-hidden">
                   {[
                     { key: 'F1', label: 'New Order' },
                     { key: 'F2', label: 'Hold Current Order' },
@@ -547,7 +547,7 @@ const AdvancedCashierPOS: React.FC = () => {
                   ].map(({ key, label }) => (
                     <div key={key} className="flex justify-between items-center px-4 py-3">
                       <span className="text-neutral-700 text-sm font-semibold">{label}</span>
-                      <kbd className="px-3 py-1 bg-white border border-neutral-300 rounded-lg text-xs font-mono font-bold shadow-sm text-neutral-800">
+                      <kbd className="px-3 py-1 bg-white dark:bg-neutral-800 border border-neutral-300 rounded-lg text-xs font-mono font-bold shadow-sm text-neutral-800">
                         {key}
                       </kbd>
                     </div>

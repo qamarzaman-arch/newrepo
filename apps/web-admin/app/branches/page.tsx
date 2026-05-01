@@ -157,7 +157,7 @@ export default function BranchesPage() {
         </div>
       )}
 
-      <div className="bg-white p-4 rounded-2xl border border-neutral-200 shadow-sm">
+      <div className="bg-white dark:bg-neutral-800 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input
@@ -171,7 +171,7 @@ export default function BranchesPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-2xl p-20 text-center border border-neutral-200 shadow-sm">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl p-20 text-center border border-neutral-200 dark:border-neutral-700 shadow-sm">
           <div className="w-12 h-12 border-4 border-[#E53935] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500 font-medium">Loading branches...</p>
         </div>

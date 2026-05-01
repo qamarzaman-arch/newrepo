@@ -1476,6 +1476,15 @@ router.put('/:id', authenticate, authorize('ADMIN', 'MANAGER', 'CASHIER'), async
         let subtotal = 0;
         const orderItems = [];
 
+        // QA A17: when item lines are replaced, any KOT tickets the kitchen
+        // is currently working on reference items that no longer exist. Mark
+        // them VOIDED so the line cook isn't preparing food for a deleted
+        // line. The new KOT (if notifyKitchen) is created below.
+        await tx.kotTicket.updateMany({
+          where: { orderId: order.id, status: { in: ['NEW', 'PREPARING'] } },
+          data: { status: 'VOIDED' },
+        });
+
         // Delete existing items
         await tx.orderItem.deleteMany({
           where: { orderId: order.id },

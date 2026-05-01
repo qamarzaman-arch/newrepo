@@ -532,8 +532,13 @@
 .dark .bg-slate-50 { background-color: #111827 !important; }
 .dark .bg-slate-100 { background-color: #1F2937 !important; }
 .dark .bg-slate-200 { background-color: #374151 !important; }
+/* Brand neutral-0 is pure white (per tailwind config). The Admin Dashboard
+   chart cards use it and were the cards that stayed white in dark mode. */
+.dark .bg-neutral-0 { background-color: #1F2937 !important; }
 .dark .bg-neutral-50 { background-color: #111827 !important; }
 .dark .bg-neutral-100 { background-color: #1F2937 !important; }
+.dark .bg-stone-50 { background-color: #111827 !important; }
+.dark .bg-zinc-50 { background-color: #111827 !important; }
 
 .dark .text-gray-900 { color: #FBFBFB !important; }
 .dark .text-gray-800 { color: #F3F4F6 !important; }
@@ -663,3 +668,114 @@ button:disabled,
 .btn-success:disabled {
   opacity: 1 !important;
 }
+
+/* ============================================
+   Dark-mode coverage extensions — match parity with web-admin globals.css
+   so the Admin Dashboard / Tables screen / etc. don't keep light cards.
+   ============================================ */
+
+/* Inline style="background-color: white" used on recharts tooltips and a
+   handful of dashboard stat tiles. CSS attribute selector catches the
+   common renderings (`white`, `#fff`, `rgb(255, 255, 255)`). */
+.dark [style*="background-color: white"],
+.dark [style*="background-color:white"],
+.dark [style*="background-color: #fff"],
+.dark [style*="background-color:#fff"],
+.dark [style*="background-color: #FFF"],
+.dark [style*="background-color: rgb(255, 255, 255)"],
+.dark [style*="background-color: rgb(255,255,255)"],
+.dark [style*="background: white"],
+.dark [style*="background:#fff"],
+.dark [style*="background: #fff"] {
+  background-color: #1F2937 !important;
+}
+.dark [style*="color: rgb(31, 31, 31)"],
+.dark [style*="color: #1F1F1F"],
+.dark [style*="color: black"],
+.dark [style*="color:#000"] {
+  color: var(--color-text) !important;
+}
+
+/* Header / nav surfaces that use bare bg-white. Already covered by
+   `.dark .bg-white` but stating it explicitly so anyone scanning sees the
+   coverage and we win against any !important utilities Tailwind ships. */
+.dark header.bg-white,
+.dark header[class*="bg-white"],
+.dark nav.bg-white,
+.dark nav[class*="bg-white"],
+.dark header.bg-neutral-0,
+.dark nav.bg-neutral-0 {
+  background-color: #1F2937 !important;
+}
+
+/* Recharts chart text + grid lines (default dark grays disappear on a
+   dark surface). */
+.dark .recharts-text,
+.dark .recharts-cartesian-axis-tick-value,
+.dark .recharts-legend-item-text { fill: #E5E7EB !important; color: #E5E7EB !important; }
+.dark .recharts-cartesian-grid line,
+.dark .recharts-cartesian-axis line { stroke: #374151 !important; }
+/* Recharts tooltip wrapper still needs a light surface so the inline-style
+   override above gives us a dark surface; this rule covers the inner text
+   color. */
+.dark .recharts-tooltip-wrapper,
+.dark .recharts-default-tooltip {
+  background-color: #1F2937 !important;
+  color: #FBFBFB !important;
+  border-color: #374151 !important;
+}
+.dark .recharts-tooltip-item,
+.dark .recharts-tooltip-label,
+.dark .recharts-default-tooltip * { color: #FBFBFB !important; }
+
+/* Native select dropdown options + pre/code blocks */
+.dark select option { background-color: #1F2937; color: #FBFBFB; }
+.dark pre, .dark code { background-color: #111827; color: #E5E7EB; }
+
+/* Tables in dark mode — alternating rows + headers should not stay light. */
+.dark table thead { background-color: #1F2937; }
+.dark table tbody tr { background-color: transparent; }
+.dark table tbody tr:nth-child(even) { background-color: rgba(255,255,255,0.02); }
+.dark table th, .dark table td { color: #E5E7EB; border-color: #374151; }
+
+/* Modal overlays */
+.dark .bg-black\/40 { background-color: rgba(0,0,0,0.65) !important; }
+.dark .bg-black\/30 { background-color: rgba(0,0,0,0.55) !important; }
+.dark .bg-black\/20 { background-color: rgba(0,0,0,0.45) !important; }
+
+/* Tinted hover surfaces from the indigo/blue/green/yellow/orange families */
+.dark .hover\:bg-indigo-50:hover,
+.dark .hover\:bg-blue-50:hover,
+.dark .hover\:bg-green-50:hover,
+.dark .hover\:bg-yellow-50:hover,
+.dark .hover\:bg-orange-50:hover,
+.dark .hover\:bg-purple-50:hover,
+.dark .hover\:bg-pink-50:hover,
+.dark .hover\:bg-red-50:hover,
+.dark .hover\:bg-amber-50:hover,
+.dark .hover\:bg-neutral-50:hover {
+  background-color: rgba(255,255,255,0.06) !important;
+}
+
+/* Status pill backgrounds in the 200 range */
+.dark .bg-red-200    { background-color: rgba(220,38,38,0.20) !important; }
+.dark .bg-orange-200 { background-color: rgba(249,115,22,0.20) !important; }
+.dark .bg-amber-200  { background-color: rgba(245,158,11,0.20) !important; }
+.dark .bg-yellow-200 { background-color: rgba(234,179,8,0.20) !important; }
+.dark .bg-green-200  { background-color: rgba(34,197,94,0.20) !important; }
+.dark .bg-emerald-200{ background-color: rgba(16,185,129,0.20) !important; }
+.dark .bg-teal-200   { background-color: rgba(20,184,166,0.20) !important; }
+.dark .bg-blue-200   { background-color: rgba(59,130,246,0.20) !important; }
+.dark .bg-indigo-200 { background-color: rgba(99,102,241,0.20) !important; }
+.dark .bg-purple-200 { background-color: rgba(168,85,247,0.20) !important; }
+.dark .bg-pink-200   { background-color: rgba(236,72,153,0.20) !important; }
+
+/* Brand pinks/reds the POS uses heavily — primary-50/100 are near-white tints */
+.dark .bg-primary-50,
+.dark .bg-primary-100 { background-color: #1F2937 !important; }
+.dark .border-primary-50,
+.dark .border-primary-100,
+.dark .border-primary-200 { border-color: #374151 !important; }
+
+/* Skeletons */
+.dark .animate-pulse { background-color: #1F2937; }

@@ -169,28 +169,28 @@ export default function InventoryPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-2">Total Items</p>
           <h3 className="text-3xl font-black text-gray-900">{items.length}</h3>
           <p className="text-xs text-gray-500 font-medium mt-2 flex items-center gap-1">
             <Package size={12} /> In database
           </p>
         </div>
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-2">Total Valuation</p>
           <h3 className="text-3xl font-black text-gray-900">{formatCurrency(totalValue)}</h3>
           <p className="text-xs text-gray-500 font-medium mt-2 flex items-center gap-1">
             <DollarSign size={12} /> Stock value
           </p>
         </div>
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-2">Low Stock Alerts</p>
           <h3 className="text-3xl font-black text-orange-500">{lowStock.length}</h3>
           <p className="text-xs text-orange-600 font-bold mt-2 flex items-center gap-1">
             <AlertTriangle size={12} /> {lowStock.length > 0 ? 'Requires attention' : 'All good'}
           </p>
         </div>
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-2">Out of Stock</p>
           <h3 className="text-3xl font-black text-red-600">{outOfStock}</h3>
           <p className="text-xs text-red-600 font-bold mt-2 flex items-center gap-1">
@@ -199,7 +199,7 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-3xl shadow-soft border border-gray-100">
+      <div className="bg-white dark:bg-neutral-800 p-4 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input 
@@ -213,7 +213,7 @@ export default function InventoryPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-3xl p-20 text-center shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 rounded-3xl p-20 text-center shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500 font-medium">Loading inventory...</p>
         </div>

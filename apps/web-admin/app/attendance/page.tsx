@@ -142,7 +142,7 @@ export default function AttendancePage() {
           { label: 'On Shift', value: stats.onShift, icon: UserCheck, color: 'text-green-600', bg: 'bg-green-50' },
           { label: 'Not Clocked In', value: stats.notOnShift, icon: UserX, color: 'text-gray-600', bg: 'bg-gray-50' },
         ].map((s, i) => (
-          <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div key={i} className="bg-white dark:bg-neutral-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-neutral-700">
             <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center ${s.color} mb-3`}><s.icon size={20} /></div>
             <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{s.label}</p>
             <p className="text-2xl font-extrabold text-gray-900 mt-1">{s.value}</p>
@@ -157,8 +157,8 @@ export default function AttendancePage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Active Shifts */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-neutral-700 flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               <h2 className="font-extrabold text-gray-900">Currently On Shift ({activeShifts.length})</h2>
             </div>
@@ -197,8 +197,8 @@ export default function AttendancePage() {
           </div>
 
           {/* Not On Shift */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-neutral-700">
               <h2 className="font-extrabold text-gray-900">Not Clocked In ({stats.notOnShift})</h2>
             </div>
             {stats.notOnShift === 0 ? (
@@ -229,7 +229,7 @@ export default function AttendancePage() {
       {/* Clock In Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl space-y-4">
+          <div className="bg-white dark:bg-neutral-800 rounded-3xl p-8 w-full max-w-md shadow-2xl space-y-4">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-xl font-extrabold text-gray-900">Clock In Employee</h2>
               <button onClick={() => { setShowModal(false); setSelectedEmployee(''); setStartTime(''); }} className="p-2 hover:bg-gray-100 rounded-lg"><X size={18} /></button>

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../lib/api';
 import toast from 'react-hot-toast';
+import { toNum } from '@restaurant-pos/shared-types';
 
 const STATUS_OPTIONS = ['', 'PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'SERVED', 'COMPLETED', 'CANCELLED'];
 
@@ -142,11 +143,11 @@ export default function OrdersPage() {
           { label: 'Total Orders', value: stats.total, icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: 'Active', value: stats.active, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
           { label: 'Completed Today', value: stats.completed, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-          { label: 'Revenue', value: `$${stats.revenue.toFixed(2)}`, icon: DollarSign, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Revenue', value: `$${toNum(stats.revenue).toFixed(2)}`, icon: DollarSign, color: 'text-purple-600', bg: 'bg-purple-50' },
         ].map((s) => (
           // QA C25: stable key. Index would shift if the labels are ever
           // re-ordered or filtered.
-          <div key={s.label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div key={s.label} className="bg-white dark:bg-neutral-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-neutral-700">
             <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center ${s.color} mb-3`}>
               <s.icon size={20} />
             </div>
@@ -183,7 +184,7 @@ export default function OrdersPage() {
 
       <div className="flex gap-6">
         {/* Orders Table */}
-        <div className={`${selectedOrder ? 'flex-1' : 'w-full'} bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden`}>
+        <div className={`${selectedOrder ? 'flex-1' : 'w-full'} bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden`}>
           {loading ? (
             <div className="flex items-center justify-center h-48">
               <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
@@ -197,7 +198,7 @@ export default function OrdersPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
+                  <tr className="bg-gray-50 dark:bg-neutral-900 border-b border-gray-100 dark:border-neutral-700">
                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Order #</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
@@ -243,7 +244,7 @@ export default function OrdersPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-neutral-700">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 disabled:opacity-40 hover:bg-gray-100 rounded-lg transition-colors">
                 <ChevronLeft size={14} /> Prev
               </button>
@@ -257,7 +258,7 @@ export default function OrdersPage() {
 
         {/* Order Detail Panel */}
         {selectedOrder && (
-          <div className="w-80 bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4 self-start">
+          <div className="w-80 bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 p-5 space-y-4 self-start">
             <div className="flex items-center justify-between">
               <h3 className="font-extrabold text-gray-900">#{selectedOrder.orderNumber}</h3>
               <button onClick={() => setSelectedOrder(null)} className="text-gray-400 hover:text-gray-600">

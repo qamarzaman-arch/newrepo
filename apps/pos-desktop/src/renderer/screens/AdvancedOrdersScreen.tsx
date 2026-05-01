@@ -12,6 +12,7 @@ import { tableService } from '../services/tableService';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/authStore';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
+import { toNum } from '@restaurant-pos/shared-types';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -139,7 +140,7 @@ const AdvancedOrdersScreen: React.FC = () => {
     totalOrders: orders.length,
     activeOrders: orders.filter((o: any) => ['PENDING', 'CONFIRMED', 'PREPARING'].includes(o.status)).length,
     completedToday: orders.filter((o: any) => o.status === 'COMPLETED').length,
-    totalRevenue: orders.reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0),
+    totalRevenue: orders.reduce((sum: number, o: any) => sum + toNum(o.totalAmount), 0),
   };
 
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
@@ -286,7 +287,7 @@ const AdvancedOrdersScreen: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-manrope">Order Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-neutral-100 font-manrope">Order Management</h1>
           <p className="text-gray-600 mt-1">Manage orders, tables, and reservations</p>
         </div>
         <div className="flex gap-3 self-start">
@@ -353,7 +354,7 @@ const AdvancedOrdersScreen: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -370,7 +371,7 @@ const AdvancedOrdersScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -387,7 +388,7 @@ const AdvancedOrdersScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -404,12 +405,12 @@ const AdvancedOrdersScreen: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+          className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Total Revenue</p>
-              <p className="text-3xl font-bold text-primary mt-1">${stats.totalRevenue.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-primary mt-1">${toNum(stats.totalRevenue).toFixed(2)}</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
               <DollarSign className="w-6 h-6 text-purple-600" />
@@ -419,7 +420,7 @@ const AdvancedOrdersScreen: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 inline-flex">
+      <div className="bg-white dark:bg-neutral-800 rounded-2xl p-2 shadow-sm border border-gray-100 dark:border-neutral-700 inline-flex">
         {[
           { id: 'orders', label: 'Orders', icon: Utensils },
           { id: 'tables', label: 'Tables', icon: Users },
@@ -449,7 +450,7 @@ const AdvancedOrdersScreen: React.FC = () => {
       {activeTab === 'orders' && (
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Orders</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-neutral-100">Orders</h2>
             <button
               onClick={() => setShowOrderModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
@@ -512,7 +513,7 @@ const AdvancedOrdersScreen: React.FC = () => {
 
       {/* ORDERS TAB */}
       {activeTab === 'orders' && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px]">
               <thead className="bg-gray-50">
@@ -684,7 +685,7 @@ const AdvancedOrdersScreen: React.FC = () => {
       {activeTab === 'tables' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Tables</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-neutral-100">Tables</h2>
             {isAdminOrManager && (
               <button
                 onClick={() => setShowTableModal(true)}
@@ -775,7 +776,7 @@ const AdvancedOrdersScreen: React.FC = () => {
       {activeTab === 'reservations' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">Reservations</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-neutral-100">Reservations</h2>
             {isAdminOrManager && (
               <button
                 onClick={() => setShowReservationModal(true)}
@@ -792,7 +793,7 @@ const AdvancedOrdersScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-neutral-700 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-start gap-4">
@@ -872,7 +873,7 @@ const AdvancedOrdersScreen: React.FC = () => {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold">Order {selectedOrder.orderNumber}</h3>
@@ -926,7 +927,7 @@ const AdvancedOrdersScreen: React.FC = () => {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-2xl p-6 max-w-md w-full"
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 max-w-md w-full"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold">Add New Table</h3>
@@ -1015,7 +1016,7 @@ const AdvancedOrdersScreen: React.FC = () => {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-2xl p-6 max-w-md w-full"
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 max-w-md w-full"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold">Create Reservation</h3>
@@ -1104,7 +1105,7 @@ const AdvancedOrdersScreen: React.FC = () => {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold">Merge Tables</h2>
@@ -1171,7 +1172,7 @@ const AdvancedOrdersScreen: React.FC = () => {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold">Split Table</h2>
@@ -1257,7 +1258,7 @@ const AdvancedOrdersScreen: React.FC = () => {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-2xl p-6 max-w-md w-full"
+            className="bg-white dark:bg-neutral-800 rounded-2xl p-6 max-w-md w-full"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold">Process Refund</h3>

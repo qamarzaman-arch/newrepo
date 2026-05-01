@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Polygon, Marker, Popup, useMap } from 'react-leaflet';
 import { L } from './LeafletSetup';
+import { toNum } from '@restaurant-pos/shared-types';
 
 export interface MapZone {
   id: string;
@@ -124,7 +125,7 @@ const DeliveryMap: React.FC<DeliveryMapProps> = ({
               <div style={{ minWidth: 160 }}>
                 <div style={{ fontWeight: 700, marginBottom: 4 }}>{zone.name}</div>
                 {typeof zone.baseFee === 'number' && (
-                  <div style={{ fontSize: 12, color: '#555' }}>Base fee: ${zone.baseFee.toFixed(2)}</div>
+                  <div style={{ fontSize: 12, color: '#555' }}>Base fee: ${toNum(zone.baseFee).toFixed(2)}</div>
                 )}
                 {zone.isActive === false && (
                   <div style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic' }}>Inactive</div>

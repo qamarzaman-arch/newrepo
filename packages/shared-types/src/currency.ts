@@ -67,7 +67,21 @@ export function getCurrency(code: string): CurrencyConfig {
  * so callers don't have to pre-convert. Internal arithmetic uses string ops to
  * avoid float drift (no `* 100 / 100` rounding errors).
  */
-type DecimalLike = number | string | { toString(): string } | null | undefined;
+export type DecimalLike = number | string | { toString(): string } | null | undefined;
+
+/**
+ * Coerce a value-from-API (which may be a Prisma Decimal serialized as string,
+ * a number, null, or undefined) to a finite number. Use everywhere the UI
+ * does arithmetic or `.toFixed()` on a money/quantity field — the Phase 0
+ * Float→Decimal migration changed those JSON payloads from `number` to
+ * `string`, so naive `value.toFixed()` now throws.
+ */
+export function toNum(value: DecimalLike, fallback: number = 0): number {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : fallback;
+  const parsed = Number(typeof value === 'string' ? value : value.toString());
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
 
 function toFixed2(value: DecimalLike): string {
   if (value === null || value === undefined) return '0.00';

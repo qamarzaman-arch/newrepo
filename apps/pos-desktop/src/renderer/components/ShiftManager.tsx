@@ -6,6 +6,7 @@ import { cashDrawerService, CashDrawer } from '../services/cashDrawerService';
 import { validationService } from '../services/validationService';
 import { useCurrencyFormatter } from '../hooks/useCurrency';
 import toast from 'react-hot-toast';
+import { toNum } from '@restaurant-pos/shared-types';
 
 interface ShiftManagerProps {
   children: React.ReactNode;
@@ -198,11 +199,11 @@ const ShiftManager: React.FC<ShiftManagerProps> = ({ children }) => {
       if (drawer) {
         const expected = drawer.openingBalance + drawer.totalCashIn - drawer.totalCashOut + drawer.totalSales;
         setExpectedBalance(expected);
-        setClosingBalance(expected.toFixed(2));
+        setClosingBalance(toNum(expected).toFixed(2));
       }
     } catch {
       setExpectedBalance(cashDrawer.openingBalance);
-      setClosingBalance(cashDrawer.openingBalance.toFixed(2));
+      setClosingBalance(toNum(cashDrawer.openingBalance).toFixed(2));
     }
     
     setShowEndModal(true);

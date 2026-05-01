@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useFeatureAccessStore } from '../stores/featureAccessStore';
+import logoUrl from '../assets/logo.png';
 
 // Admin/Manager Navigation — kept aligned with the web-admin sidebar so the
 // experience is consistent across desktop and web.
@@ -86,7 +87,7 @@ const Sidebar: React.FC = () => {
         <Link to={user?.role === 'CASHIER' ? '/cashier-pos' : '/dashboard'} className="flex items-center gap-3 group">
           <div className="rounded-2xl p-1">
             <img
-              src="/assets/logo.png"
+              src={logoUrl}
               alt="POSLytic"
               className="h-12 w-auto"
               style={{ filter: 'brightness(0) invert(1)' }}

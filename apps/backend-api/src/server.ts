@@ -16,7 +16,7 @@ import { initializeWebSocketManager } from './utils/websocket';
 import { initSessionCleanupJob, initAuditLogCleanupJob, initTableLockCleanupJob, initQrSessionCleanupJob } from './jobs/sessionCleanup';
 import { validateAndExitIfInvalid } from './config/configValidator';
 import { JwtPayload, JWT_VERIFY_OPTIONS } from './middleware/auth';
-import { csrfProtection } from './middleware/csrfProtection';
+import { csrfProtection, issueCsrfToken } from './middleware/csrfProtection';
 import { requestId } from './middleware/requestId';
 import { ensureChartOfAccountsSeeded } from './services/accounting.service';
 
@@ -142,6 +142,7 @@ app.use((req, res, next) => {
 });
 
 app.use(compression());
+app.use(issueCsrfToken);
 app.use(csrfProtection);
 
 // Stripe webhook needs the unparsed request body for signature verification.

@@ -104,10 +104,10 @@ export default function KitchenPage() {
         </div>
         <div className="flex items-center gap-3">
           {/* View toggle */}
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+          <div className="flex gap-1 bg-gray-100 dark:bg-neutral-800 p-1 rounded-xl">
             {(['board', 'analytics'] as const).map(v => (
               <button key={v} onClick={() => setActiveView(v)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-colors capitalize ${activeView === v ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-colors capitalize ${activeView === v ? 'bg-white dark:bg-neutral-700 text-gray-900 dark:text-neutral-100 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                 {v}
               </button>
             ))}
@@ -133,7 +133,7 @@ export default function KitchenPage() {
             { label: 'Avg Prep Time', value: `${avgPrepTime} min`, icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
             { label: 'Completed Today', value: tickets.filter(t => t.status === 'COMPLETED').length, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
           ].map((s, i) => (
-            <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div key={i} className="bg-white dark:bg-neutral-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-neutral-700">
               <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center ${s.color} mb-3`}>
                 <s.icon size={20} />
               </div>
@@ -229,7 +229,7 @@ export default function KitchenPage() {
           })}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center text-gray-500">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-neutral-700 text-center text-gray-500">
           <Activity size={48} className="mx-auto mb-4 text-gray-200" />
           <p className="font-medium">Analytics summary shown in stats above</p>
           <p className="text-sm mt-1">Switch to Board view to manage tickets</p>

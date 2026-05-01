@@ -314,7 +314,13 @@ async function clearPinRateLimit(userId: string): Promise<void> {
   await prisma.pinAttempt.deleteMany({ where: { userId } });
 }
 
-// Validate PIN for the authenticated user only
+// Validate a manager PIN for an override operation (discount, refund, void).
+// The submitted PIN is matched against any active ADMIN/MANAGER user, not the
+// caller — that's the whole point of the override flow: a cashier who needs a
+// supervisor approval enters the supervisor's PIN.
+//
+// Rate limit is keyed on the caller (req.user!.userId) so brute-force attempts
+// across many manager accounts still get capped per-cashier.
 router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { pin, operation } = req.body;
@@ -323,64 +329,63 @@ router.post('/validate-pin', authenticate, async (req: AuthRequest, res: Respons
       throw new AppError('PIN is required', 400);
     }
 
-    const userId = req.user!.userId;
+    const callerId = req.user!.userId;
+    const callerUsername = req.user!.username;
 
-    if (!(await checkPinRateLimit(userId))) {
-      logger.warn(`PIN rate limit exceeded for userId ${userId}`);
+    if (!(await checkPinRateLimit(callerId))) {
+      logger.warn(`Manager-PIN rate limit exceeded for caller ${callerUsername}`);
       return res.status(429).json({
         success: false,
         error: { message: 'Too many PIN attempts. Please try again later.', code: 'RATE_LIMIT_EXCEEDED' },
       });
     }
 
-    const currentUser = await prisma.user.findUnique({
-      where: { id: userId },
+    // Pull every active manager/admin with a configured PIN. There are
+    // typically only a handful, so a linear bcrypt compare is acceptable;
+    // bcrypt cost dominates and is constant per record.
+    const managers = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        role: { in: ['ADMIN', 'MANAGER'] },
+        pin: { not: null },
+      },
       select: { id: true, pin: true, role: true, fullName: true, username: true },
     });
 
-    if (!currentUser) {
-      throw new AppError('User not found', 404);
+    let matched: typeof managers[number] | undefined;
+    for (const manager of managers) {
+      // Run every compare so timing doesn't reveal which usernames have a PIN.
+      const ok = await verifyAndUpgradeSecret(pin, manager.pin!, async (hashedPin) => {
+        await prisma.user.update({
+          where: { id: manager.id },
+          data: { pin: hashedPin },
+        });
+      });
+      if (ok && !matched) matched = manager;
     }
 
-    if (!currentUser.pin) {
-      logger.warn(`PIN validation attempted by ${currentUser.username} but no PIN configured`);
-      return res.json({
-        success: false,
-        valid: false,
-        message: 'No PIN configured for your account. Please contact administrator.',
-      });
-    }
-
-    const isValid = await verifyAndUpgradeSecret(pin, currentUser.pin, async (hashedPin) => {
-      await prisma.user.update({
-        where: { id: currentUser.id },
-        data: { pin: hashedPin },
-      });
-    });
-
-    if (!isValid) {
-      logger.warn(`Failed PIN validation attempt by ${currentUser.username} for operation: ${operation}`);
+    if (!matched) {
+      logger.warn(`Failed manager-PIN validation by ${callerUsername} for operation=${operation}`);
       return res.json({
         success: true,
         data: { valid: false },
       });
     }
 
-    // QA A78: log username + result only; don't include role.
-    logger.info(`PIN validated for ${currentUser.username}; operation=${operation}`);
-    // QA A3: clear the counter on success so the user isn't penalized for
-    // earlier mistypes.
-    await clearPinRateLimit(userId);
+    // QA A78: log usernames + result only; don't include role.
+    logger.info(`Manager PIN validated: approver=${matched.username} caller=${callerUsername} operation=${operation}`);
+    // QA A3: clear the caller's counter on success.
+    await clearPinRateLimit(callerId);
 
     res.json({
       success: true,
       data: {
         valid: true,
         user: {
-          id: currentUser.id,
-          name: currentUser.fullName,
-          username: currentUser.username,
-          role: currentUser.role,
+          id: matched.id,
+          name: matched.fullName,
+          username: matched.username,
+          role: matched.role,
         },
       },
     });

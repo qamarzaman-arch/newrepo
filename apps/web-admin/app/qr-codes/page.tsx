@@ -137,7 +137,7 @@ export default function QrCodesPage() {
       )}
 
       {/* Generator */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6 print:hidden">
+      <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-5 mb-6 print:hidden">
         <h2 className="font-semibold text-gray-900 mb-3">Generate New QR</h2>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[200px]">
@@ -169,7 +169,7 @@ export default function QrCodesPage() {
 
       {/* Created QR display */}
       {created && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 text-center print:border-0">
+        <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 mb-6 text-center print:border-0">
           <div className="flex justify-end print:hidden">
             <button
               onClick={() => setCreated(null)}
@@ -214,13 +214,13 @@ export default function QrCodesPage() {
       )}
 
       {/* Active sessions */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden print:hidden">
-        <div className="px-5 py-3 border-b border-gray-200">
+      <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 overflow-hidden print:hidden">
+        <div className="px-5 py-3 border-b border-gray-200 dark:border-neutral-700">
           <h2 className="font-semibold text-gray-900">Active QR Sessions</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 text-left">
+            <thead className="bg-gray-50 dark:bg-neutral-900 text-gray-600 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Table</th>
                 <th className="px-4 py-3 font-medium">Branch</th>

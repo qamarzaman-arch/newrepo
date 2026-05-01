@@ -128,23 +128,23 @@ class ThermalPrinterService {
     for (const item of data.items) {
       const name = item.name.substring(0, 18).padEnd(18);
       const qty = item.quantity.toString().padStart(3);
-      const total = item.total.toFixed(2).padStart(8);
+      const total = toNum(item.total).toFixed(2).padStart(8);
       lines.push(`${qty} ${name} ${total}`);
     }
     
     lines.push('--------------------------------');
     
     // Totals
-    lines.push(`Subtotal:               ${data.subtotal.toFixed(2)}`);
-    lines.push(`Tax:                      ${data.tax.toFixed(2)}`);
-    if (data.discount) lines.push(`Discount:                -${data.discount.toFixed(2)}`);
-    if (data.tip) lines.push(`Tip:                      ${data.tip.toFixed(2)}`);
-    lines.push(`TOTAL:                   ${data.total.toFixed(2)}`);
+    lines.push(`Subtotal:               ${toNum(data.subtotal).toFixed(2)}`);
+    lines.push(`Tax:                      ${toNum(data.tax).toFixed(2)}`);
+    if (data.discount) lines.push(`Discount:                -${toNum(data.discount).toFixed(2)}`);
+    if (data.tip) lines.push(`Tip:                      ${toNum(data.tip).toFixed(2)}`);
+    lines.push(`TOTAL:                   ${toNum(data.total).toFixed(2)}`);
     lines.push('');
     
     // Payment
     lines.push(`Payment: ${data.paymentMethod}`);
-    if (data.change) lines.push(`Change: ${data.change.toFixed(2)}`);
+    if (data.change) lines.push(`Change: ${toNum(data.change).toFixed(2)}`);
     lines.push('');
     
     // Footer

@@ -37,6 +37,19 @@ export const apiClient: AxiosInstance = axios.create({
 // QA C8: single source of truth for the token — getToken() reads cookie first,
 // session-mirror second. Don't fall back to localStorage 'token' which never
 // existed in the new auth flow.
+// QA C19/C72: read the CSRF cookie set by the API and echo it on every
+// state-changing request as `x-csrf-token` (double-submit pattern).
+function readCsrfCookie(): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const match = document.cookie.split('; ').find((c) => c.startsWith('csrf_token='));
+  if (!match) return undefined;
+  try {
+    return decodeURIComponent(match.split('=')[1]);
+  } catch {
+    return match.split('=')[1];
+  }
+}
+
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = getToken();
@@ -46,6 +59,18 @@ apiClient.interceptors.request.use((config) => {
         (config.headers as any).set('Authorization', `Bearer ${token}`);
       } else {
         (config.headers as any) = { ...(config.headers as any), Authorization: `Bearer ${token}` };
+      }
+    }
+
+    const method = (config.method || 'get').toLowerCase();
+    if (['post', 'put', 'patch', 'delete'].includes(method)) {
+      const csrf = readCsrfCookie();
+      if (csrf) {
+        if (config.headers && typeof (config.headers as any).set === 'function') {
+          (config.headers as any).set('x-csrf-token', csrf);
+        } else {
+          (config.headers as any) = { ...(config.headers as any), 'x-csrf-token': csrf };
+        }
       }
     }
 

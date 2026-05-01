@@ -184,7 +184,7 @@ export default function MarketingPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-red-50 text-[#E53935]"><Megaphone size={24} /></div>
             <div>
@@ -193,7 +193,7 @@ export default function MarketingPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-green-50 text-green-600"><BarChart3 size={24} /></div>
             <div>
@@ -202,7 +202,7 @@ export default function MarketingPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-blue-50 text-blue-600"><Users size={24} /></div>
             <div>
@@ -213,7 +213,7 @@ export default function MarketingPage() {
         </div>
       </div>
 
-      <div className="bg-white p-2 rounded-2xl border border-neutral-200 shadow-sm flex gap-2 w-fit">
+      <div className="bg-white dark:bg-neutral-800 p-2 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm flex gap-2 w-fit">
         {TABS.map(tab => (
           <button
             key={tab.key}
@@ -228,19 +228,19 @@ export default function MarketingPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-2xl p-20 text-center border border-neutral-200 shadow-sm">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl p-20 text-center border border-neutral-200 dark:border-neutral-700 shadow-sm">
           <div className="w-12 h-12 border-4 border-[#E53935] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500 font-medium">Loading campaigns...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl p-16 text-center border border-neutral-200 shadow-sm">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl p-16 text-center border border-neutral-200 dark:border-neutral-700 shadow-sm">
           <Megaphone size={48} className="mx-auto text-gray-300 mb-3" />
           <p className="text-gray-400 font-medium">No {activeTab.toLowerCase()} campaigns</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map(c => (
-            <div key={c.id} className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 hover:border-red-200 transition-all">
+            <div key={c.id} className="bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-sm p-6 hover:border-red-200 transition-all">
               <div className="flex items-start justify-between gap-2 mb-3">
                 <h3 className="text-lg font-extrabold text-gray-900">{c.name}</h3>
                 {typeBadge(c.type)}

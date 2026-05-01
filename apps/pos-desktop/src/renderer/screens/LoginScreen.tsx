@@ -5,6 +5,14 @@ import { User, Lock, LogIn, Hash, Delete, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { authService } from '../services/authService';
 import toast from 'react-hot-toast';
+// QA-Report #12: import via Vite so the asset URL resolves correctly under
+// the file:// protocol in a packaged Electron build. A bare `/assets/logo.png`
+// works in dev because Vite serves the project root, but in production it
+// resolves to the filesystem root and the image goes missing.
+import logoUrl from '../assets/logo.png';
+// QA-Report #23: read the displayed version from package.json instead of
+// a hardcoded literal that drifts the moment we cut a release.
+import pkg from '../../../package.json';
 
 type LoginMode = 'password' | 'pin';
 
@@ -146,7 +154,7 @@ const LoginScreen: React.FC = () => {
           >
             <div className="flex items-center gap-4 mb-3">
               <div className="w-16 h-16 rounded-2xl bg-primary-600/30 backdrop-blur-sm border border-primary-500/30 flex items-center justify-center shadow-2xl p-2">
-                <img src="/assets/logo.png" alt="POSLytic" className="h-full w-auto" />
+                <img src={logoUrl} alt="POSLytic" className="h-full w-auto" />
               </div>
               <span className="text-white font-black text-4xl tracking-tight">POSLytic</span>
             </div>
@@ -188,7 +196,7 @@ const LoginScreen: React.FC = () => {
             transition={{ delay: 0.8 }}
             className="text-white/40 text-xs font-semibold uppercase tracking-widest"
           >
-            Version 2.0.0 &nbsp;·&nbsp; © 2025 POSLytic
+            Version {pkg.version} &nbsp;·&nbsp; © {new Date().getFullYear()} POSLytic
           </motion.div>
         </div>
       </motion.div>
@@ -205,7 +213,7 @@ const LoginScreen: React.FC = () => {
           <div className="lg:hidden mb-10 text-center">
             <div className="inline-flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center p-1.5">
-                <img src="/assets/logo.png" alt="POSLytic" className="h-full w-auto" />
+                <img src={logoUrl} alt="POSLytic" className="h-full w-auto" />
               </div>
               <span className="text-neutral-900 font-black text-3xl">POSLytic</span>
             </div>

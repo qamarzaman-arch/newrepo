@@ -8,6 +8,7 @@ import {
 import { Button, Table, TableRow, TableCell, Badge, Modal } from '@poslytic/ui-components';
 import apiClient from '../lib/api';
 import toast from 'react-hot-toast';
+import { toNum } from '@restaurant-pos/shared-types';
 
 interface Recipe {
   id: string;
@@ -159,7 +160,7 @@ export default function RecipesPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-blue-50 text-blue-600">
               <BookOpen size={24} />
@@ -171,7 +172,7 @@ export default function RecipesPage() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-green-50 text-green-600">
               <Calculator size={24} />
@@ -183,33 +184,33 @@ export default function RecipesPage() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-orange-50 text-orange-600">
               <DollarSign size={24} />
             </div>
             <div>
               <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Avg Cost</p>
-              <h3 className="text-2xl font-black text-gray-900">${stats.avgCost.toFixed(2)}</h3>
+              <h3 className="text-2xl font-black text-gray-900">${toNum(stats.avgCost).toFixed(2)}</h3>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-purple-50 text-purple-600">
               <Info size={24} />
             </div>
             <div>
               <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Avg Margin</p>
-              <h3 className="text-2xl font-black text-gray-900">{stats.avgMargin.toFixed(1)}%</h3>
+              <h3 className="text-2xl font-black text-gray-900">{toNum(stats.avgMargin).toFixed(1)}%</h3>
             </div>
           </div>
         </div>
       </div>
 
       {/* Search */}
-      <div className="bg-white p-4 rounded-3xl shadow-soft border border-gray-100">
+      <div className="bg-white dark:bg-neutral-800 p-4 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input 
@@ -224,7 +225,7 @@ export default function RecipesPage() {
 
       {/* Recipes Table */}
       {loading ? (
-        <div className="bg-white rounded-3xl p-20 text-center shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 rounded-3xl p-20 text-center shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500 font-medium">Loading recipes...</p>
         </div>
@@ -244,14 +245,14 @@ export default function RecipesPage() {
                 </Badge>
               </TableCell>
               <TableCell className="font-black text-orange-600">
-                ${recipe.totalCost.toFixed(2)}
+                ${toNum(recipe.totalCost).toFixed(2)}
               </TableCell>
               <TableCell className="font-bold text-green-600">
-                ${recipe.suggestedPrice.toFixed(2)}
+                ${toNum(recipe.suggestedPrice).toFixed(2)}
               </TableCell>
               <TableCell>
                 <Badge variant={recipe.profitMargin > 60 ? 'success' : recipe.profitMargin > 40 ? 'warning' : 'error'}>
-                  {recipe.profitMargin.toFixed(1)}%
+                  {toNum(recipe.profitMargin).toFixed(1)}%
                 </Badge>
               </TableCell>
               <TableCell>
@@ -306,7 +307,7 @@ export default function RecipesPage() {
               <option value="">Select Menu Item</option>
               {menuItems.map(item => (
                 <option key={item.id} value={item.id}>
-                  {item.name} - ${item.price.toFixed(2)}
+                  {item.name} - ${toNum(item.price).toFixed(2)}
                 </option>
               ))}
             </select>
@@ -429,12 +430,12 @@ export default function RecipesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-xs text-gray-500 font-bold uppercase">Total Cost</p>
-                <p className="text-2xl font-black text-orange-600">${selectedRecipe.totalCost.toFixed(2)}</p>
+                <p className="text-2xl font-black text-orange-600">${toNum(selectedRecipe.totalCost).toFixed(2)}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-xs text-gray-500 font-bold uppercase">Profit Margin</p>
                 <p className={`text-2xl font-black ${selectedRecipe.profitMargin > 60 ? 'text-green-600' : selectedRecipe.profitMargin > 40 ? 'text-yellow-600' : 'text-red-600'}`}>
-                  {selectedRecipe.profitMargin.toFixed(1)}%
+                  {toNum(selectedRecipe.profitMargin).toFixed(1)}%
                 </p>
               </div>
             </div>
@@ -448,7 +449,7 @@ export default function RecipesPage() {
                       <p className="font-semibold text-sm">{ing.itemName}</p>
                       <p className="text-xs text-gray-500">{ing.quantity} {ing.unit} × ${ing.costPerUnit}/{ing.unit}</p>
                     </div>
-                    <p className="font-bold text-gray-900">${ing.totalCost.toFixed(2)}</p>
+                    <p className="font-bold text-gray-900">${toNum(ing.totalCost).toFixed(2)}</p>
                   </div>
                 ))}
               </div>
@@ -457,10 +458,10 @@ export default function RecipesPage() {
             <div className="bg-indigo-50 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-bold text-indigo-900">Suggested Selling Price:</span>
-                <span className="text-xl font-black text-indigo-600">${selectedRecipe.suggestedPrice.toFixed(2)}</span>
+                <span className="text-xl font-black text-indigo-600">${toNum(selectedRecipe.suggestedPrice).toFixed(2)}</span>
               </div>
               <p className="text-xs text-indigo-700">
-                Based on {selectedRecipe.profitMargin.toFixed(0)}% profit margin target
+                Based on {toNum(selectedRecipe.profitMargin).toFixed(0)}% profit margin target
               </p>
             </div>
           </div>

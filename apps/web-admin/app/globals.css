@@ -317,3 +317,152 @@ button:disabled { opacity: 1 !important; }
     min-height: 36px;
   }
 }
+
+/* ============================================
+   QA C57 follow-up: extend dark-mode coverage to surfaces the previous
+   sweep missed (cards via inline style, dropdowns, chart text/grid lines,
+   tinted hover states, divide colors, badge fills).
+   ============================================ */
+
+/* Inputs we missed */
+.dark .ring-1, .dark .ring-2 { --tw-ring-color: #374151 !important; }
+.dark .ring-gray-200, .dark .ring-gray-300 { --tw-ring-color: #374151 !important; }
+
+/* Hover-tinted surfaces from the indigo/blue/green/yellow/orange families */
+.dark .hover\:bg-indigo-50:hover,
+.dark .hover\:bg-blue-50:hover,
+.dark .hover\:bg-green-50:hover,
+.dark .hover\:bg-yellow-50:hover,
+.dark .hover\:bg-orange-50:hover,
+.dark .hover\:bg-purple-50:hover,
+.dark .hover\:bg-pink-50:hover,
+.dark .hover\:bg-red-50:hover,
+.dark .hover\:bg-amber-50:hover {
+  background-color: rgba(255,255,255,0.06) !important;
+}
+
+/* Status pill / badge backgrounds in the 100/200 range — keep them tinted
+   but readable. The 50 range is already remapped above to the dark surface. */
+.dark .bg-red-200    { background-color: rgba(220,38,38,0.20) !important; }
+.dark .bg-orange-200 { background-color: rgba(249,115,22,0.20) !important; }
+.dark .bg-amber-200  { background-color: rgba(245,158,11,0.20) !important; }
+.dark .bg-yellow-200 { background-color: rgba(234,179,8,0.20) !important; }
+.dark .bg-green-200  { background-color: rgba(34,197,94,0.20) !important; }
+.dark .bg-emerald-200{ background-color: rgba(16,185,129,0.20) !important; }
+.dark .bg-teal-200   { background-color: rgba(20,184,166,0.20) !important; }
+.dark .bg-blue-200   { background-color: rgba(59,130,246,0.20) !important; }
+.dark .bg-indigo-200 { background-color: rgba(99,102,241,0.20) !important; }
+.dark .bg-purple-200 { background-color: rgba(168,85,247,0.20) !important; }
+.dark .bg-pink-200   { background-color: rgba(236,72,153,0.20) !important; }
+
+/* Divide colors not in the original list */
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-neutral-200 > :not([hidden]) ~ :not([hidden]) { border-color: #374151 !important; }
+
+/* Inline styles using known light-mode hex values from the design system —
+   pages that set `style={{ backgroundColor: 'var(--color-card-elevated)' }}`
+   already follow theme; this targets pages that hardcoded `#fff` / `#fafafa`
+   in style props. CSS attribute selector. */
+.dark [style*="background-color: rgb(255, 255, 255)"],
+.dark [style*="background-color:#fff"],
+.dark [style*="background-color: #fff"],
+.dark [style*="background-color: white"] {
+  background-color: var(--color-card-elevated) !important;
+}
+.dark [style*="color: rgb(31, 31, 31)"],
+.dark [style*="color: #1F1F1F"],
+.dark [style*="color: black"] {
+  color: var(--color-text) !important;
+}
+
+/* Charts (recharts / chart.js draw text in <text>/<tspan>; the ticks/grid
+   default to dark grays which disappear on a dark surface). */
+.dark .recharts-text,
+.dark .recharts-cartesian-axis-tick-value,
+.dark .recharts-legend-item-text { fill: #E5E7EB !important; color: #E5E7EB !important; }
+.dark .recharts-cartesian-grid line,
+.dark .recharts-cartesian-axis line { stroke: #374151 !important; }
+.dark .recharts-tooltip-wrapper { color: #1F1F1F; } /* tooltip body keeps a light surface */
+
+/* Selects: native dropdown options inherit OS theme — we can hint via CSS */
+.dark select option { background-color: #1F2937; color: #FBFBFB; }
+
+/* Pre / code blocks */
+.dark pre, .dark code { background-color: #111827; color: #E5E7EB; }
+
+/* Tooltips (basic [title] passthrough we can't restyle, but custom .tooltip
+   patterns from a few pages use this class). */
+.dark .tooltip { background-color: #1F2937; color: #FBFBFB; border-color: #374151; }
+
+/* ============================================
+   Dashboard topbar / sticky header surfaces. Many pages render their own
+   <header> with `bg-white` (or no bg, then a child gets bg-white). Cover
+   both the bare and white-tinted variants so they don't sit as bright
+   panels on the dark page background.
+   ============================================ */
+.dark header.bg-white,
+.dark header[class*="bg-white"],
+.dark nav.bg-white,
+.dark nav[class*="bg-white"] {
+  background-color: #1F2937 !important;
+}
+
+/* Cards that lean on rounded-2xl / rounded-3xl with a bare bg-white. The
+   .dark .bg-white rule above already covers this, but Tailwind may emit
+   the utility into a higher cascade layer than expected when CSS @layer
+   ordering kicks in. Re-state with attribute matchers so the override is
+   not layered. */
+html.dark .bg-white,
+html.dark .bg-neutral-0,
+html.dark .bg-neutral-50,
+html.dark .bg-slate-50,
+html.dark .bg-stone-50,
+html.dark .bg-zinc-50 {
+  background-color: #1F2937 !important;
+}
+
+/* Fix the inverse problem: text classes that were dark-on-light without an
+   explicit dark variant. Already partly covered above; this picks up the
+   100/200 grays used for muted text. */
+html.dark .text-gray-100, html.dark .text-gray-200,
+html.dark .text-slate-100, html.dark .text-slate-200,
+html.dark .text-neutral-100, html.dark .text-neutral-200 {
+  color: #E5E7EB !important;
+}
+
+/* Keep brand-colored cards (bg-indigo-600 etc. on the quick-action tiles)
+   readable — they're already saturated, just give them a subtle ring in
+   dark mode so the boundary against the page bg isn't lost. */
+html.dark a[class*="bg-indigo-6"],
+html.dark a[class*="bg-blue-6"],
+html.dark a[class*="bg-green-6"],
+html.dark a[class*="bg-orange-6"],
+html.dark a[class*="bg-purple-6"],
+html.dark a[class*="bg-red-6"] {
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+/* Soft tinted card variants (bg-blue-50, bg-green-50, bg-amber-50 inside
+   the dashboard performance grid) — already covered above, but pin
+   foreground text so values like `text-green-700` stay legible on the
+   re-tinted dark surface. The 600/700/800/900 remap is in place; this
+   adds the inner-card outline so the tinted card still looks like a card. */
+html.dark .bg-green-50,
+html.dark .bg-blue-50,
+html.dark .bg-amber-50,
+html.dark .bg-red-50,
+html.dark .bg-orange-50,
+html.dark .bg-yellow-50,
+html.dark .bg-purple-50,
+html.dark .bg-pink-50,
+html.dark .bg-indigo-50,
+html.dark .bg-teal-50,
+html.dark .bg-cyan-50,
+html.dark .bg-sky-50,
+html.dark .bg-emerald-50,
+html.dark .bg-rose-50,
+html.dark .bg-fuchsia-50,
+html.dark .bg-lime-50,
+html.dark .bg-violet-50 {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}

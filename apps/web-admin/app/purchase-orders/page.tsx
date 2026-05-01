@@ -8,6 +8,7 @@ import {
 import { Button, Table, TableRow, TableCell, Badge, Modal } from '@poslytic/ui-components';
 import apiClient from '../lib/api';
 import toast from 'react-hot-toast';
+import { toNum } from '@restaurant-pos/shared-types';
 
 interface PurchaseOrder {
   id: string;
@@ -170,7 +171,7 @@ export default function PurchaseOrdersPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-blue-50 text-blue-600">
               <Package size={24} />
@@ -182,7 +183,7 @@ export default function PurchaseOrdersPage() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-orange-50 text-orange-600">
               <Clock size={24} />
@@ -194,7 +195,7 @@ export default function PurchaseOrdersPage() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-green-50 text-green-600">
               <CheckCircle size={24} />
@@ -206,21 +207,21 @@ export default function PurchaseOrdersPage() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-purple-50 text-purple-600">
               <DollarSign size={24} />
             </div>
             <div>
               <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Total Value</p>
-              <h3 className="text-2xl font-black text-gray-900">${stats.totalValue.toFixed(2)}</h3>
+              <h3 className="text-2xl font-black text-gray-900">${toNum(stats.totalValue).toFixed(2)}</h3>
             </div>
           </div>
         </div>
       </div>
 
       {/* Search */}
-      <div className="bg-white p-4 rounded-3xl shadow-soft border border-gray-100">
+      <div className="bg-white dark:bg-neutral-800 p-4 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input 
@@ -235,7 +236,7 @@ export default function PurchaseOrdersPage() {
 
       {/* Purchase Orders Table */}
       {loading ? (
-        <div className="bg-white rounded-3xl p-20 text-center shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 rounded-3xl p-20 text-center shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500 font-medium">Loading purchase orders...</p>
         </div>
@@ -261,7 +262,7 @@ export default function PurchaseOrdersPage() {
                 {po.items.length} item{po.items.length !== 1 ? 's' : ''}
               </TableCell>
               <TableCell className="font-black text-indigo-600">
-                ${po.totalAmount.toFixed(2)}
+                ${toNum(po.totalAmount).toFixed(2)}
               </TableCell>
               <TableCell className="text-sm text-gray-600">
                 <div className="flex items-center gap-1">

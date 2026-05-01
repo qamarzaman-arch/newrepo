@@ -60,7 +60,7 @@ const AdvancedSettingsScreen: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-manrope flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-neutral-100 font-manrope flex items-center gap-3">
             <Settings className="w-8 h-8 text-primary" />
             System Settings
           </h1>
@@ -72,7 +72,7 @@ const AdvancedSettingsScreen: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleReset}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
               Reset Defaults
@@ -101,8 +101,8 @@ const AdvancedSettingsScreen: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="border-b border-gray-200">
+      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-700 overflow-hidden">
+        <div className="border-b border-gray-200 dark:border-neutral-700">
           <div className="flex overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -137,7 +137,7 @@ const AdvancedSettingsScreen: React.FC = () => {
               {activeTab === 'general' && (
                 <div className="space-y-6 max-w-3xl">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Restaurant Information</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Restaurant Information</h3>
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Restaurant Name</label>
@@ -145,7 +145,7 @@ const AdvancedSettingsScreen: React.FC = () => {
                           type="text"
                           value={settings.restaurantName}
                           onChange={(e) => setSetting('restaurantName', e.target.value)}
-                          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none transition-colors"
+                          className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none transition-colors"
                         />
                       </div>
                       <div>
@@ -154,21 +154,21 @@ const AdvancedSettingsScreen: React.FC = () => {
                           type="text"
                           value={settings.tagline}
                           onChange={(e) => setSetting('tagline', e.target.value)}
-                          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none transition-colors"
+                          className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none transition-colors"
                         />
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Regional Settings</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Regional Settings</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
                         <select
                           value={settings.timezone}
                           onChange={(e) => setSetting('timezone', e.target.value)}
-                          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none transition-colors"
+                          className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none transition-colors"
                         >
                           <option value="America/New_York">Eastern Time (ET)</option>
                           <option value="America/Chicago">Central Time (CT)</option>
@@ -181,7 +181,7 @@ const AdvancedSettingsScreen: React.FC = () => {
                         <select
                           value={settings.language}
                           onChange={(e) => setSetting('language', e.target.value)}
-                          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none transition-colors"
+                          className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none transition-colors"
                         >
                           <option value="en">English</option>
                           <option value="es">Spanish</option>
@@ -197,7 +197,7 @@ const AdvancedSettingsScreen: React.FC = () => {
               {activeTab === 'business' && (
                 <div className="space-y-6 max-w-3xl">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Tax Configuration</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Tax Configuration</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Tax Rate (%)</label>
@@ -206,7 +206,7 @@ const AdvancedSettingsScreen: React.FC = () => {
                           step="0.1"
                           value={settings.taxRate}
                           onChange={(e) => setSetting('taxRate', parseFloat(e.target.value) || 0)}
-                          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none transition-colors"
+                          className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none transition-colors"
                         />
                       </div>
                       <div>
@@ -216,21 +216,21 @@ const AdvancedSettingsScreen: React.FC = () => {
                           step="0.1"
                           value={settings.serviceCharge}
                           onChange={(e) => setSetting('serviceCharge', parseFloat(e.target.value) || 0)}
-                          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none transition-colors"
+                          className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none transition-colors"
                         />
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Currency & Fiscal Year</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Currency & Fiscal Year</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
                         <select
                           value={settings.currency}
                           onChange={(e) => setSetting('currency', e.target.value)}
-                          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none transition-colors"
+                          className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none transition-colors"
                         >
                           <option value="USD">USD ($)</option>
                           <option value="EUR">EUR (€)</option>
@@ -244,7 +244,7 @@ const AdvancedSettingsScreen: React.FC = () => {
                         <select
                           value={settings.fiscalYearStart}
                           onChange={(e) => setSetting('fiscalYearStart', e.target.value)}
-                          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none transition-colors"
+                          className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none transition-colors"
                         >
                           <option value="January">January</option>
                           <option value="April">April</option>
@@ -260,7 +260,7 @@ const AdvancedSettingsScreen: React.FC = () => {
               {activeTab === 'payment' && (
                 <div className="space-y-6 max-w-3xl">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Accepted Payment Methods</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Accepted Payment Methods</h3>
                     <div className="space-y-3">
                       {[
                         { key: 'acceptCash', label: 'Cash', icon: '💵' },
@@ -268,10 +268,10 @@ const AdvancedSettingsScreen: React.FC = () => {
                         { key: 'acceptMobileWallet', label: 'Mobile Wallets (Apple Pay, Google Pay)', icon: '📱' },
                         { key: 'acceptGiftCards', label: 'Gift Cards', icon: '🎁' },
                       ].map((method) => (
-                        <div key={method.key} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                        <div key={method.key} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-900 rounded-xl">
                           <div className="flex items-center gap-3">
                             <span className="text-2xl">{method.icon}</span>
-                            <span className="font-medium text-gray-900">{method.label}</span>
+                            <span className="font-medium text-gray-900 dark:text-neutral-100">{method.label}</span>
                           </div>
                           <ToggleSwitch
                             value={settings[method.key as keyof typeof settings] as boolean}
@@ -283,11 +283,11 @@ const AdvancedSettingsScreen: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Payment Options</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Payment Options</h3>
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-900 rounded-xl">
                         <div>
-                          <p className="font-medium text-gray-900">Split Payment</p>
+                          <p className="font-medium text-gray-900 dark:text-neutral-100">Split Payment</p>
                           <p className="text-sm text-gray-600">Allow customers to split bills across multiple payment methods</p>
                         </div>
                         <ToggleSwitch
@@ -299,7 +299,7 @@ const AdvancedSettingsScreen: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Tip Suggestions (%)</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Tip Suggestions (%)</h3>
                     <div className="grid grid-cols-4 gap-3">
                       {[0, 1, 2, 3].map((index) => (
                         <input
@@ -311,7 +311,7 @@ const AdvancedSettingsScreen: React.FC = () => {
                             newTips[index] = parseInt(e.target.value) || 0;
                             setSetting('tipSuggestions', newTips);
                           }}
-                          className="px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none text-center"
+                          className="px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none text-center"
                         />
                       ))}
                     </div>
@@ -322,11 +322,11 @@ const AdvancedSettingsScreen: React.FC = () => {
               {activeTab === 'hardware' && (
                 <div className="space-y-6 max-w-3xl">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Printer Configuration</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Printer Configuration</h3>
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-900 rounded-xl">
                         <div>
-                          <p className="font-medium text-gray-900">Auto-print Kitchen Order Tickets</p>
+                          <p className="font-medium text-gray-900 dark:text-neutral-100">Auto-print Kitchen Order Tickets</p>
                           <p className="text-sm text-gray-600">Automatically send orders to kitchen printer</p>
                         </div>
                         <ToggleSwitch
@@ -334,9 +334,9 @@ const AdvancedSettingsScreen: React.FC = () => {
                           onChange={(value) => setSetting('autoPrintKOT', value)}
                         />
                       </div>
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-900 rounded-xl">
                         <div>
-                          <p className="font-medium text-gray-900">Auto-print Customer Receipts</p>
+                          <p className="font-medium text-gray-900 dark:text-neutral-100">Auto-print Customer Receipts</p>
                           <p className="text-sm text-gray-600">Automatically print receipts after payment</p>
                         </div>
                         <ToggleSwitch
@@ -348,7 +348,7 @@ const AdvancedSettingsScreen: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Peripheral Devices</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Peripheral Devices</h3>
                     <div className="space-y-3">
                       {[
                         { key: 'cashDrawerEnabled', label: 'Cash Drawer', icon: Monitor },
@@ -357,12 +357,12 @@ const AdvancedSettingsScreen: React.FC = () => {
                       ].map((device) => {
                         const Icon = device.icon;
                         return (
-                          <div key={device.key} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                          <div key={device.key} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-900 rounded-xl">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                                 <Icon className="w-5 h-5 text-primary" />
                               </div>
-                              <span className="font-medium text-gray-900">{device.label}</span>
+                              <span className="font-medium text-gray-900 dark:text-neutral-100">{device.label}</span>
                             </div>
                             <ToggleSwitch
                               value={settings[device.key as keyof typeof settings] as boolean}
@@ -379,11 +379,11 @@ const AdvancedSettingsScreen: React.FC = () => {
               {activeTab === 'notifications' && (
                 <div className="space-y-6 max-w-3xl">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Notification Channels</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Notification Channels</h3>
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-900 rounded-xl">
                         <div>
-                          <p className="font-medium text-gray-900">Email Notifications</p>
+                          <p className="font-medium text-gray-900 dark:text-neutral-100">Email Notifications</p>
                           <p className="text-sm text-gray-600">Receive notifications via email</p>
                         </div>
                         <ToggleSwitch
@@ -391,9 +391,9 @@ const AdvancedSettingsScreen: React.FC = () => {
                           onChange={(value) => setSetting('emailNotifications', value)}
                         />
                       </div>
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-900 rounded-xl">
                         <div>
-                          <p className="font-medium text-gray-900">SMS Notifications</p>
+                          <p className="font-medium text-gray-900 dark:text-neutral-100">SMS Notifications</p>
                           <p className="text-sm text-gray-600">Receive notifications via SMS</p>
                         </div>
                         <ToggleSwitch
@@ -405,16 +405,16 @@ const AdvancedSettingsScreen: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Alert Types</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Alert Types</h3>
                     <div className="space-y-3">
                       {[
                         { key: 'lowStockAlerts', label: 'Low Stock Alerts', description: 'Notify when inventory is running low' },
                         { key: 'orderAlerts', label: 'Order Alerts', description: 'Notify on new orders and status changes' },
                         { key: 'staffAlerts', label: 'Staff Alerts', description: 'Notify on staff check-ins and issues' },
                       ].map((alert) => (
-                        <div key={alert.key} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                        <div key={alert.key} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-900 rounded-xl">
                           <div>
-                            <p className="font-medium text-gray-900">{alert.label}</p>
+                            <p className="font-medium text-gray-900 dark:text-neutral-100">{alert.label}</p>
                             <p className="text-sm text-gray-600">{alert.description}</p>
                           </div>
                           <ToggleSwitch
@@ -431,11 +431,11 @@ const AdvancedSettingsScreen: React.FC = () => {
               {activeTab === 'security' && (
                 <div className="space-y-6 max-w-3xl">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Access Control</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Access Control</h3>
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-900 rounded-xl">
                         <div>
-                          <p className="font-medium text-gray-900">Require PIN for Void Transactions</p>
+                          <p className="font-medium text-gray-900 dark:text-neutral-100">Require PIN for Void Transactions</p>
                           <p className="text-sm text-gray-600">Manager authorization needed to void items</p>
                         </div>
                         <ToggleSwitch
@@ -443,9 +443,9 @@ const AdvancedSettingsScreen: React.FC = () => {
                           onChange={(value) => setSetting('requirePinForVoid', value)}
                         />
                       </div>
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-900 rounded-xl">
                         <div>
-                          <p className="font-medium text-gray-900">Require PIN for Refunds</p>
+                          <p className="font-medium text-gray-900 dark:text-neutral-100">Require PIN for Refunds</p>
                           <p className="text-sm text-gray-600">Manager authorization needed for refunds</p>
                         </div>
                         <ToggleSwitch
@@ -457,7 +457,7 @@ const AdvancedSettingsScreen: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Session Management</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Session Management</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Session Timeout (minutes)</label>
@@ -465,17 +465,17 @@ const AdvancedSettingsScreen: React.FC = () => {
                           type="number"
                           value={settings.sessionTimeout}
                           onChange={(e) => setSetting('sessionTimeout', parseInt(e.target.value) || 0)}
-                          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none transition-colors"
+                          className="w-full px-4 py-2 border-2 border-gray-200 dark:border-neutral-700 rounded-xl focus:border-primary focus:outline-none transition-colors"
                         />
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Two-Factor Authentication</h3>
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Two-Factor Authentication</h3>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-900 rounded-xl">
                       <div>
-                        <p className="font-medium text-gray-900">Enable 2FA for Admin Accounts</p>
+                        <p className="font-medium text-gray-900 dark:text-neutral-100">Enable 2FA for Admin Accounts</p>
                         <p className="text-sm text-gray-600">Add extra security layer for admin users</p>
                       </div>
                       <ToggleSwitch
@@ -490,7 +490,7 @@ const AdvancedSettingsScreen: React.FC = () => {
               {activeTab === 'appearance' && (
                 <div className="space-y-6 max-w-3xl">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Theme Settings</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Theme Settings</h3>
                     <div className="grid grid-cols-3 gap-4">
                       {['light', 'dark', 'auto'].map((theme) => (
                         <button
@@ -516,16 +516,16 @@ const AdvancedSettingsScreen: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Display Options</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-neutral-100 mb-4">Display Options</h3>
                     <div className="space-y-3">
                       {[
                         { key: 'compactMode', label: 'Compact Mode', description: 'Reduce spacing for more content on screen' },
                         { key: 'showImages', label: 'Show Product Images', description: 'Display images in menu and orders' },
                         { key: 'animationsEnabled', label: 'Enable Animations', description: 'Smooth transitions and effects' },
                       ].map((option) => (
-                        <div key={option.key} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                        <div key={option.key} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-neutral-900 rounded-xl">
                           <div>
-                            <p className="font-medium text-gray-900">{option.label}</p>
+                            <p className="font-medium text-gray-900 dark:text-neutral-100">{option.label}</p>
                             <p className="text-sm text-gray-600">{option.description}</p>
                           </div>
                           <ToggleSwitch
@@ -554,7 +554,7 @@ const AdvancedSettingsScreen: React.FC = () => {
             <AlertCircle className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <h3 className="font-bold text-gray-900 mb-1">Settings Management Tip</h3>
+            <h3 className="font-bold text-gray-900 dark:text-neutral-100 mb-1">Settings Management Tip</h3>
             <p className="text-sm text-gray-700">
               Changes to critical settings like tax rates and payment methods may require a system restart. 
               Always test configuration changes in a safe environment before applying to production.

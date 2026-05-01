@@ -112,14 +112,17 @@ export default function StaffPage() {
     }
   };
 
-  const filteredStaff = staff.filter(m =>
-    m.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (m.email || '').toLowerCase().includes(searchQuery.toLowerCase())
+  // QA-Report #4: every API-derived array gets defensive defaults so a
+  // failed/unexpected response never crashes the page with `Cannot read
+  // 'filter' of undefined`. Same treatment for activeShifts below.
+  const filteredStaff = (staff ?? []).filter(m =>
+    (m?.fullName ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (m?.role ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (m?.email ?? '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const activeStaffIds = new Set(activeShifts.map(s => s.userId));
-  const activeCount = activeShifts.length;
+  const activeStaffIds = new Set((activeShifts ?? []).map(s => s.userId));
+  const activeCount = (activeShifts ?? []).length;
 
   const getRoleColor = (role: string) => {
     const colors: Record<string, string> = {
@@ -152,7 +155,7 @@ export default function StaffPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4 mb-4">
             <div className="p-3 rounded-2xl bg-blue-50 text-blue-600">
               <Briefcase size={24} />
@@ -166,7 +169,7 @@ export default function StaffPage() {
             <div className="bg-blue-600 h-full" style={{ width: `${Math.min((staff.length / 20) * 100, 100)}%` }} />
           </div>
         </div>
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4 mb-4">
             <div className="p-3 rounded-2xl bg-green-50 text-green-600">
               <CheckCircle size={24} />
@@ -183,7 +186,7 @@ export default function StaffPage() {
             />
           </div>
         </div>
-        <div className="bg-white p-6 rounded-3xl shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="flex items-center gap-4 mb-4">
             <div className="p-3 rounded-2xl bg-orange-50 text-orange-600">
               <Clock size={24} />
@@ -202,7 +205,7 @@ export default function StaffPage() {
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-3xl shadow-soft border border-gray-100">
+      <div className="bg-white dark:bg-neutral-800 p-4 rounded-3xl shadow-soft border border-gray-100 dark:border-neutral-700">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input 
@@ -216,7 +219,7 @@ export default function StaffPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-3xl p-20 text-center shadow-soft border border-gray-100">
+        <div className="bg-white dark:bg-neutral-800 rounded-3xl p-20 text-center shadow-soft border border-gray-100 dark:border-neutral-700">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500 font-medium">Loading staff data...</p>
         </div>

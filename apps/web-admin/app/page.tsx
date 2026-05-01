@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import apiClient from './lib/api';
 import { useAdminWebSocket } from './hooks/useAdminWebSocket';
+import { toNum } from '@restaurant-pos/shared-types';
 
 interface DailyReport {
   totalOrders: number;
@@ -187,7 +188,7 @@ export default function Home() {
         {stats.map((stat, i) => {
           const Icon = stat.icon;
           return (
-            <div key={i} className="bg-white p-8 rounded-3xl shadow-soft hover:shadow-medium transition-all group border border-gray-50">
+            <div key={i} className="bg-white dark:bg-neutral-800 p-8 rounded-3xl shadow-soft hover:shadow-medium transition-all group border border-gray-50 dark:border-neutral-700">
               <div className="flex items-center justify-between mb-6">
                 <div className={`p-4 rounded-2xl ${stat.bg} group-hover:scale-110 transition-transform ${stat.color}`}>
                   <Icon size={32} />
@@ -206,7 +207,7 @@ export default function Home() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-8 rounded-3xl shadow-soft border border-gray-50">
+        <div className="lg:col-span-2 bg-white dark:bg-neutral-800 p-8 rounded-3xl shadow-soft border border-gray-50 dark:border-neutral-700">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-extrabold flex items-center gap-3 text-gray-900">
               <TrendingUp className="text-indigo-600" />
@@ -217,7 +218,7 @@ export default function Home() {
             <div className="grid grid-cols-3 gap-6">
               {[
                 { label: 'Total Orders', value: report.totalOrders },
-                { label: 'Total Revenue', value: `$${report.totalRevenue.toFixed(2)}` },
+                { label: 'Total Revenue', value: `$${toNum(report.totalRevenue).toFixed(2)}` },
                 { label: 'Avg. Order Value', value: `$${(report.averageOrderValue || 0).toFixed(2)}` },
               ].map((item, i) => (
                 <div key={i} className="bg-gray-50 rounded-2xl p-6 text-center">
@@ -254,7 +255,7 @@ export default function Home() {
           )}
         </div>
 
-        <div className="bg-white p-8 rounded-3xl shadow-soft border border-gray-50">
+        <div className="bg-white dark:bg-neutral-800 p-8 rounded-3xl shadow-soft border border-gray-50 dark:border-neutral-700">
           <h2 className="text-2xl font-extrabold mb-8 flex items-center gap-3 text-gray-900">
             <BarChart3 className="text-indigo-600" />
             Top Items
