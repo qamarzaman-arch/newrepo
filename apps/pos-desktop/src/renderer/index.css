@@ -1,10 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Light mode tokens (per brand sample UI) */
+    --color-bg: #FBFBFB;
+    --color-card: #DDDDDD;
+    --color-card-elevated: #FFFFFF;
+    --color-text: #1F1F1F;
+    --color-text-muted: #4B5563;
+    --color-border: #DDDDDD;
+    --color-sidebar: #AA0000;
+    --color-sidebar-text: #FBFBFB;
+    --color-primary: #AA0000;
+  }
+
+  .dark {
+    /* Dark mode tokens (per brand sample UI) */
+    --color-bg: #111827;
+    --color-card: #1F2937;
+    --color-card-elevated: #1F2937;
+    --color-text: #FBFBFB;
+    --color-text-muted: #9CA3AF;
+    --color-border: #374151;
+    --color-sidebar: #AA0000;
+    --color-sidebar-text: #FBFBFB;
+    --color-primary: #AA0000;
+  }
+
   * {
-    @apply border-neutral-300;
+    border-color: var(--color-border);
   }
 
   html {
@@ -15,16 +43,18 @@
   }
 
   body {
-    @apply bg-neutral-0 text-neutral-900 font-sans;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: 'Poppins', system-ui, sans-serif;
+    line-height: 1.6;
   }
 
-  /* Dark mode styles */
-  .dark body {
-    @apply bg-neutral-900 text-neutral-100;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', system-ui, sans-serif;
+    line-height: 1.4;
+    color: var(--color-text);
   }
 
-  /* Focus visible styles */
   :focus-visible {
     @apply outline-none ring-2 ring-primary-500 ring-offset-2;
   }
@@ -33,153 +63,187 @@
     @apply ring-offset-neutral-900;
   }
 
-  /* Custom scrollbar - Teal theme */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-neutral-100 rounded-full;
+    background-color: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
     @apply bg-neutral-400 rounded-full;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-primary-400;
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-neutral-700;
   }
 
-  /* Selection color */
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary-500;
+  }
+
   ::selection {
-    @apply bg-primary-100 text-primary-900;
+    @apply bg-primary-500 text-white;
   }
 }
 
 @layer components {
   /* ============================================
-     BUTTON SYSTEM - Red Theme
+     BUTTON SYSTEM — Solid red, no fade/whitish
      ============================================ */
-  
-  /* Primary Button - Red */
+
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
            bg-primary-500 text-white font-semibold text-body-md
-           rounded-lg shadow-button
-           transition-all duration-fast ease-snappy
-           hover:bg-primary-600 hover:shadow-button-hover
-           active:scale-[0.98] active:bg-primary-700
-           disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none
+           rounded-lg
+           transition-colors duration-fast ease-snappy
+           hover:bg-primary-600
+           active:bg-primary-700
+           disabled:bg-neutral-400 disabled:text-white disabled:cursor-not-allowed
            touch-target-lg;
   }
 
-  /* Secondary Button - White with Red border */
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3
-           bg-neutral-0 text-primary-600 font-semibold text-body-md
-           border-2 border-primary-200 rounded-lg
-           transition-all duration-fast ease-snappy
-           hover:bg-primary-50 hover:border-primary-300
-           active:scale-[0.98] active:bg-primary-100
-           disabled:opacity-50 disabled:cursor-not-allowed
+           bg-transparent text-primary-500 font-semibold text-body-md
+           border-2 border-primary-500 rounded-lg
+           transition-colors duration-fast ease-snappy
+           hover:bg-primary-500 hover:text-white
+           active:bg-primary-700 active:text-white
+           disabled:border-neutral-400 disabled:text-neutral-400 disabled:cursor-not-allowed
            touch-target-lg;
   }
 
-  /* Ghost Button - Transparent */
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2
-           bg-transparent text-neutral-700 font-medium text-body-md
+           bg-transparent font-medium text-body-md
            rounded-lg
-           transition-all duration-fast ease-snappy
-           hover:bg-neutral-100 hover:text-neutral-900
-           active:scale-[0.98] active:bg-neutral-200
-           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-colors duration-fast ease-snappy
+           hover:bg-neutral-200
+           active:bg-neutral-300
+           disabled:text-neutral-400 disabled:cursor-not-allowed
            touch-target;
+    color: var(--color-text);
   }
 
-  /* Danger Button */
+  .dark .btn-ghost {
+    @apply hover:bg-neutral-800 active:bg-neutral-700;
+  }
+
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3
            bg-error-500 text-white font-semibold text-body-md
-           rounded-lg shadow-sm
-           transition-all duration-fast ease-snappy
-           hover:bg-error-600 hover:shadow-md
-           active:scale-[0.98] active:bg-error-700
-           disabled:opacity-50 disabled:cursor-not-allowed
+           rounded-lg
+           transition-colors duration-fast ease-snappy
+           hover:bg-error-600
+           active:bg-error-700
+           disabled:bg-neutral-400 disabled:cursor-not-allowed
            touch-target-lg;
   }
 
-  /* Large Button - For Cashier Primary Actions */
+  .btn-success {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           bg-success-500 text-white font-semibold text-body-md
+           rounded-lg
+           transition-colors duration-fast ease-snappy
+           hover:bg-success-600
+           active:bg-success-700
+           disabled:bg-neutral-400 disabled:cursor-not-allowed
+           touch-target-lg;
+  }
+
   .btn-xl {
-    @apply px-8 py-4 text-headline-sm rounded-xl shadow-lg
+    @apply px-8 py-4 text-headline-sm rounded-xl
            touch-target-xl;
   }
 
-  /* Icon Button */
   .btn-icon {
     @apply inline-flex items-center justify-center p-2
-           rounded-lg transition-all duration-fast ease-snappy
-           hover:bg-neutral-100
-           active:scale-95 active:bg-neutral-200
-           disabled:opacity-50 disabled:cursor-not-allowed
+           rounded-lg transition-colors duration-fast ease-snappy
+           hover:bg-neutral-200
+           active:bg-neutral-300
+           disabled:text-neutral-400 disabled:cursor-not-allowed
            touch-target;
+    color: var(--color-text);
+  }
+
+  .dark .btn-icon {
+    @apply hover:bg-neutral-800 active:bg-neutral-700;
   }
 
   /* ============================================
      CARD SYSTEM
      ============================================ */
-  
+
   .card {
-    @apply bg-neutral-0 rounded-xl shadow-card p-5
+    background-color: var(--color-card-elevated);
+    color: var(--color-text);
+    @apply rounded-xl shadow-card p-5
            border border-neutral-200
-           transition-all duration-normal ease-smooth
-           hover:shadow-card-hover hover:border-neutral-300;
+           transition-shadow duration-normal ease-smooth
+           hover:shadow-card-hover;
+  }
+
+  .dark .card {
+    @apply border-neutral-800;
   }
 
   .card-flat {
-    @apply bg-neutral-50 rounded-xl p-5
-           border border-neutral-200;
+    background-color: var(--color-card);
+    color: var(--color-text);
+    @apply rounded-xl p-5 border border-neutral-200;
+  }
+
+  .dark .card-flat {
+    @apply border-neutral-800;
   }
 
   .card-highlight {
-    @apply bg-primary-50 rounded-xl p-5
-           border-2 border-primary-200;
+    @apply rounded-xl p-5 border-2 border-primary-500;
+    background-color: var(--color-card-elevated);
+    color: var(--color-text);
   }
 
   /* ============================================
      INPUT SYSTEM
      ============================================ */
-  
+
   .input {
-    @apply w-full px-4 py-3 
-           bg-neutral-0 text-neutral-900 text-body-md
-           border-2 border-neutral-300 rounded-lg
-           placeholder:text-neutral-500
-           transition-all duration-fast ease-snappy
+    @apply w-full px-4 py-3 text-body-md
+           border-2 rounded-lg
+           transition-colors duration-fast ease-snappy
            focus:border-primary-500 focus:outline-none focus:ring-0
-           hover:border-neutral-400
-           disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed;
+           disabled:cursor-not-allowed;
+    background-color: var(--color-card-elevated);
+    color: var(--color-text);
+    border-color: var(--color-border);
+  }
+
+  .input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .dark .input {
+    @apply bg-neutral-800 border-neutral-700;
   }
 
   .input-error {
-    @apply border-error-500 focus:border-error-500
-           bg-error-50;
+    @apply border-error-500 focus:border-error-500;
   }
 
   .input-success {
-    @apply border-success-500 focus:border-success-500
-           bg-success-50;
+    @apply border-success-500 focus:border-success-500;
   }
 
-  /* Input with icon */
   .input-with-icon {
     @apply relative;
   }
 
   .input-with-icon .icon {
-    @apply absolute left-3 top-1/2 -translate-y-1/2 
-           text-neutral-500 pointer-events-none;
+    @apply absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none;
+    color: var(--color-text-muted);
   }
 
   .input-with-icon input {
@@ -189,30 +253,34 @@
   /* ============================================
      BADGE SYSTEM
      ============================================ */
-  
+
   .badge {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1
            rounded-full text-label-md font-medium;
   }
 
   .badge-primary {
-    @apply bg-primary-100 text-primary-700;
+    @apply bg-primary-500 text-white;
   }
 
   .badge-success {
-    @apply bg-success-100 text-success-700;
+    @apply bg-success-500 text-white;
   }
 
   .badge-warning {
-    @apply bg-warning-100 text-warning-700;
+    @apply bg-warning-500 text-white;
   }
 
   .badge-error {
-    @apply bg-error-100 text-error-700;
+    @apply bg-error-500 text-white;
   }
 
   .badge-neutral {
-    @apply bg-neutral-200 text-neutral-700;
+    @apply bg-neutral-300 text-neutral-900;
+  }
+
+  .dark .badge-neutral {
+    @apply bg-neutral-700 text-neutral-50;
   }
 
   .badge-outline {
@@ -222,7 +290,7 @@
   /* ============================================
      STATUS INDICATORS
      ============================================ */
-  
+
   .status-dot {
     @apply w-2.5 h-2.5 rounded-full;
   }
@@ -235,9 +303,11 @@
   /* ============================================
      TABLE STYLES
      ============================================ */
-  
+
   .table-container {
-    @apply overflow-hidden rounded-xl border border-neutral-200 bg-neutral-0;
+    @apply overflow-hidden rounded-xl border;
+    background-color: var(--color-card-elevated);
+    border-color: var(--color-border);
   }
 
   .table {
@@ -245,14 +315,21 @@
   }
 
   .table th {
-    @apply px-4 py-3 bg-neutral-50 text-label-md font-semibold 
-           text-neutral-700 uppercase tracking-wider
-           border-b border-neutral-200;
+    @apply px-4 py-3 text-label-md font-semibold uppercase tracking-wider
+           border-b;
+    background-color: var(--color-card);
+    color: var(--color-text);
+    border-color: var(--color-border);
+  }
+
+  .dark .table th {
+    @apply bg-neutral-800;
   }
 
   .table td {
-    @apply px-4 py-3 text-body-md text-neutral-900
-           border-b border-neutral-200;
+    @apply px-4 py-3 text-body-md border-b;
+    color: var(--color-text);
+    border-color: var(--color-border);
   }
 
   .table tr:last-child td {
@@ -260,27 +337,28 @@
   }
 
   .table tr:hover td {
-    @apply bg-neutral-50;
+    background-color: var(--color-card);
   }
 
   /* ============================================
      MODAL/OVERLAY SYSTEM
      ============================================ */
-  
+
   .modal-overlay {
-    @apply fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-50
-           flex items-center justify-center p-4;
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+    background-color: rgba(17, 24, 39, 0.65);
   }
 
   .modal {
-    @apply bg-neutral-0 rounded-2xl shadow-2xl 
-           w-full max-w-lg overflow-hidden
+    @apply rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden
            animate-scale-in;
+    background-color: var(--color-card-elevated);
+    color: var(--color-text);
   }
 
   .modal-header {
-    @apply px-6 py-4 border-b border-neutral-200
-           flex items-center justify-between;
+    @apply px-6 py-4 border-b flex items-center justify-between;
+    border-color: var(--color-border);
   }
 
   .modal-body {
@@ -288,15 +366,14 @@
   }
 
   .modal-footer {
-    @apply px-6 py-4 border-t border-neutral-200
-           flex items-center justify-end gap-3;
+    @apply px-6 py-4 border-t flex items-center justify-end gap-3;
+    border-color: var(--color-border);
   }
 
   /* ============================================
      CASHIER-SPECIFIC COMPONENTS
      ============================================ */
-  
-  /* Large touch-friendly action button */
+
   .cashier-btn {
     @apply btn-primary btn-xl
            min-h-[72px] text-headline-sm;
@@ -307,82 +384,86 @@
            min-h-[72px] text-headline-sm;
   }
 
-  /* Order item card */
   .order-item-card {
-    @apply card p-4 flex items-center gap-4
-           transition-all duration-fast;
+    @apply card p-4 flex items-center gap-4;
   }
 
-  .order-item-card:hover {
-    @apply bg-neutral-50;
-  }
-
-  /* Price display - Large */
   .price-lg {
-    @apply text-price-lg text-neutral-900 font-bold;
+    @apply text-price-lg font-bold;
+    color: var(--color-text);
   }
 
   .price-xl {
-    @apply text-display-sm text-primary-600 font-bold;
+    @apply text-display-sm text-primary-500 font-bold;
   }
 
-  /* Quantity stepper */
   .quantity-stepper {
-    @apply inline-flex items-center bg-neutral-100 rounded-lg p-1;
+    @apply inline-flex items-center rounded-lg p-1;
+    background-color: var(--color-card);
   }
 
   .quantity-stepper button {
     @apply w-10 h-10 flex items-center justify-center
-           rounded-md text-neutral-700 font-bold
-           transition-colors hover:bg-neutral-200
-           active:bg-neutral-300 disabled:opacity-40;
+           rounded-md font-bold
+           transition-colors hover:bg-neutral-300
+           active:bg-neutral-400 disabled:opacity-40;
+    color: var(--color-text);
+  }
+
+  .dark .quantity-stepper button {
+    @apply hover:bg-neutral-700 active:bg-neutral-600;
   }
 
   .quantity-stepper span {
-    @apply w-12 text-center text-body-lg font-semibold text-neutral-900;
+    @apply w-12 text-center text-body-lg font-semibold;
+    color: var(--color-text);
   }
 
   /* ============================================
-     NAVIGATION & LAYOUT
+     NAVIGATION & LAYOUT — Red Sidebar
      ============================================ */
-  
+
   .sidebar {
-    @apply w-64 h-full bg-neutral-0 border-r border-neutral-200
-           flex flex-col;
+    @apply w-64 h-full flex flex-col;
+    background-color: var(--color-sidebar);
+    color: var(--color-sidebar-text);
   }
 
   .nav-item {
     @apply flex items-center gap-3 px-4 py-3
-           text-body-md text-neutral-700 font-medium
-           rounded-lg mx-2
-           transition-all duration-fast
-           hover:bg-neutral-100 hover:text-neutral-900
-           active:scale-[0.98];
+           text-body-md font-medium rounded-lg mx-2
+           transition-colors duration-fast;
+    color: var(--color-sidebar-text);
+  }
+
+  .nav-item:hover {
+    background-color: rgba(255, 255, 255, 0.12);
   }
 
   .nav-item-active {
-    @apply bg-primary-50 text-primary-700 font-semibold
-           hover:bg-primary-100;
+    background-color: #FFFFFF;
+    color: var(--color-primary);
+    font-weight: 600;
   }
 
-  /* Header */
+  .nav-item-active:hover {
+    background-color: #F2F2F2;
+    color: var(--color-primary);
+  }
+
   .app-header {
-    @apply h-16 bg-neutral-0 border-b border-neutral-200
-           flex items-center px-6 gap-4;
+    @apply h-16 border-b flex items-center px-6 gap-4;
+    background-color: var(--color-card-elevated);
+    border-color: var(--color-border);
   }
 
-  /* Page container */
   .page-container {
-    @apply flex-1 overflow-auto p-6 bg-neutral-50;
+    @apply flex-1 overflow-auto p-6;
+    background-color: var(--color-bg);
   }
 }
 
 @layer utilities {
-  /* ============================================
-     UTILITY CLASSES
-     ============================================ */
-  
-  /* Text truncation */
   .text-truncate {
     @apply overflow-hidden text-ellipsis whitespace-nowrap;
   }
@@ -394,44 +475,111 @@
     -webkit-box-orient: vertical;
   }
 
-  /* Visual feedback */
   .pressable {
     @apply transition-transform duration-fast active:scale-[0.98];
   }
 
   .hover-lift {
-    @apply transition-all duration-normal hover:-translate-y-0.5;
+    @apply transition-shadow duration-normal hover:shadow-md;
   }
 
-  /* Skeleton loading */
   .skeleton {
     @apply bg-neutral-200 rounded-lg animate-pulse;
   }
 
-  /* Focus ring utility */
+  .dark .skeleton {
+    @apply bg-neutral-800;
+  }
+
   .focus-ring {
     @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
   }
 
-  /* Screen reader only */
   .sr-only {
-    @apply absolute w-px h-px p-0 -m-px 
-           overflow-hidden whitespace-nowrap 
-           border-0;
+    @apply absolute w-px h-px p-0 -m-px
+           overflow-hidden whitespace-nowrap border-0;
     clip: rect(0, 0, 0, 0);
   }
 
-  /* Animation utilities */
   .animate-fade-in {
     animation: fade-in 0.2s ease-out;
   }
 
   .animate-slide-up {
-    animation: slide-up 0.3s ease-out;
+    animation: slide-in-up 0.3s ease-out;
   }
 
-  /* Touch action optimization */
   .touch-manipulation {
     touch-action: manipulation;
   }
+
+  /* Heading caps utilities (per brand spec) */
+  .heading-main {
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+}
+
+/* ============================================
+   DARK MODE — Auto-remap common Tailwind utilities
+   so all screens re-skin without per-file edits.
+   ============================================ */
+.dark .bg-white { background-color: #1F2937 !important; }
+.dark .bg-gray-50 { background-color: #111827 !important; }
+.dark .bg-gray-100 { background-color: #1F2937 !important; }
+.dark .bg-gray-200 { background-color: #374151 !important; }
+.dark .bg-slate-50 { background-color: #111827 !important; }
+.dark .bg-slate-100 { background-color: #1F2937 !important; }
+.dark .bg-slate-200 { background-color: #374151 !important; }
+.dark .bg-neutral-50 { background-color: #111827 !important; }
+.dark .bg-neutral-100 { background-color: #1F2937 !important; }
+
+.dark .text-gray-900 { color: #FBFBFB !important; }
+.dark .text-gray-800 { color: #F3F4F6 !important; }
+.dark .text-gray-700 { color: #E5E7EB !important; }
+.dark .text-gray-600 { color: #D1D5DB !important; }
+.dark .text-gray-500 { color: #9CA3AF !important; }
+.dark .text-gray-400 { color: #9CA3AF !important; }
+.dark .text-slate-900 { color: #FBFBFB !important; }
+.dark .text-slate-800 { color: #F3F4F6 !important; }
+.dark .text-slate-700 { color: #E5E7EB !important; }
+.dark .text-slate-600 { color: #D1D5DB !important; }
+.dark .text-neutral-900 { color: #FBFBFB !important; }
+.dark .text-neutral-800 { color: #F3F4F6 !important; }
+.dark .text-neutral-700 { color: #E5E7EB !important; }
+.dark .text-neutral-600 { color: #D1D5DB !important; }
+.dark .text-black { color: #FBFBFB !important; }
+
+.dark .border-gray-100 { border-color: #1F2937 !important; }
+.dark .border-gray-200 { border-color: #374151 !important; }
+.dark .border-gray-300 { border-color: #374151 !important; }
+.dark .border-slate-200 { border-color: #374151 !important; }
+.dark .border-slate-300 { border-color: #374151 !important; }
+.dark .border-neutral-200 { border-color: #374151 !important; }
+.dark .border-neutral-300 { border-color: #374151 !important; }
+
+.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: #374151 !important; }
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1F2937 !important; }
+
+.dark .hover\:bg-gray-50:hover { background-color: #111827 !important; }
+.dark .hover\:bg-gray-100:hover { background-color: #374151 !important; }
+.dark .hover\:bg-gray-200:hover { background-color: #4B5563 !important; }
+.dark .hover\:bg-white:hover { background-color: #1F2937 !important; }
+
+/* Remove whitish/fadish gradient backgrounds in light mode too */
+.bg-gradient-to-br.from-white,
+.bg-gradient-to-b.from-white,
+.bg-gradient-to-r.from-white,
+.bg-gradient-to-t.from-white {
+  background-image: none;
+  background-color: var(--color-card-elevated);
+}
+
+/* Tone down semi-transparent whitish overlays */
+.bg-white\/50, .bg-white\/60, .bg-white\/70, .bg-white\/80 {
+  background-color: var(--color-card-elevated) !important;
+}
+.dark .bg-white\/50, .dark .bg-white\/60, .dark .bg-white\/70, .dark .bg-white\/80 {
+  background-color: #1F2937 !important;
 }

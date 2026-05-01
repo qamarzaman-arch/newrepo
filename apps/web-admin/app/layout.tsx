@@ -72,9 +72,9 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
       <Sidebar />
-      <main className="flex-1 overflow-auto bg-gray-50">
+      <main className="flex-1 overflow-auto" style={{ backgroundColor: 'var(--color-bg)' }}>
         {children}
       </main>
     </div>
@@ -87,8 +87,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="bg-gray-50 text-gray-900">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="icon" type="image/png" href="/logo.png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('poslytic-theme');var d=t==='dark'||(t==='auto'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
+          }}
+        />
+      </head>
+      <body style={{ fontFamily: "'Poppins', system-ui, sans-serif" }}>
         <AuthWrapper>
           {children}
         </AuthWrapper>

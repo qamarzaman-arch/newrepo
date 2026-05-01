@@ -37,7 +37,11 @@
       "Bash(curl -s -o /dev/null http://localhost:3000/)",
       "Bash(git -C \"C:/Users/techl/Documents/Latest Code\" log --oneline -- role-tests.spec.ts apps/pos-desktop/src/renderer/__tests__/role-tests.spec.ts)",
       "Bash(git -C \"C:/Users/techl/Documents/Latest Code\" ls-files --error-unmatch role-tests.spec.ts)",
-      "Bash(git -C \"C:/Users/techl/Documents/Latest Code\" status --short)"
+      "Bash(git -C \"C:/Users/techl/Documents/Latest Code\" status --short)",
+      "Bash(tasklist)",
+      "Bash(wmic process *)",
+      "PowerShell(Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'node|electron' } | Select-Object ProcessId, Name, @{N='Cmd';E={$_.CommandLine}} | Format-Table -AutoSize -Wrap | Out-String -Width 500)",
+      "Bash(echo \"started PID $!\")"
     ]
   }
 }

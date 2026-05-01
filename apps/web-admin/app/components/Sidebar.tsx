@@ -27,8 +27,11 @@ import {
   Shield,
   Settings,
   Truck,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { clearAuth, getUser } from '../lib/auth';
+import { useEffect, useState } from 'react';
 
 type NavItem = {
   href: string;
@@ -106,6 +109,28 @@ const navSections: NavSection[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const user = getUser();
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('poslytic-theme');
+    const initial: 'light' | 'dark' =
+      saved === 'dark' || (saved === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        ? 'dark'
+        : saved === 'light'
+          ? 'light'
+          : document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    setTheme(initial);
+    if (initial === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('poslytic-theme', next);
+    if (next === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  };
 
   const handleLogout = () => {
     clearAuth();
@@ -117,11 +142,16 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-64 bg-slate-900 text-white min-h-screen flex flex-col">
-      <div className="p-6 border-b border-slate-800">
-        <h1 className="text-xl font-bold">POSLytic</h1>
-        <p className="text-sm text-slate-400">Restaurant Admin</p>
-        <p className="text-xs text-slate-500 mt-1">{user.fullName ?? user.username} · {user.role}</p>
+    <aside
+      className="w-64 min-h-screen flex flex-col"
+      style={{ backgroundColor: '#AA0000', color: '#FBFBFB' }}
+    >
+      <div className="p-6 border-b border-white/15 flex items-center gap-3">
+        <img src="/logo.png" alt="POSLytic" className="h-12 w-auto bg-white rounded-lg p-1" />
+        <div>
+          <h1 className="text-xl font-bold tracking-wide" style={{ fontFamily: 'Poppins, system-ui, sans-serif' }}>POSLYTIC</h1>
+          <p className="text-xs text-white/70">{user.fullName ?? user.username} · {user.role}</p>
+        </div>
       </div>
 
       <nav className="flex-1 py-4 overflow-y-auto">
@@ -131,7 +161,7 @@ export default function Sidebar() {
 
           return (
             <div key={section.title} className="mb-4">
-              <p className="px-6 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              <p className="px-6 pb-1 text-[10px] font-bold uppercase tracking-wider text-white/60">
                 {section.title}
               </p>
               {visible.map((item) => {
@@ -141,11 +171,18 @@ export default function Sidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-3 px-6 py-2.5 text-sm transition-colors ${
+                    className="flex items-center gap-3 px-6 py-2.5 text-sm transition-colors"
+                    style={
                       isActive
-                        ? 'bg-red-600 text-white'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
+                        ? { backgroundColor: '#FFFFFF', color: '#AA0000', fontWeight: 600 }
+                        : { color: '#FBFBFB' }
+                    }
+                    onMouseEnter={(e) => {
+                      if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.12)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
                   >
                     <Icon className="w-4 h-4" />
                     <span>{item.label}</span>
@@ -157,10 +194,22 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-800">
+      <div className="p-4 border-t border-white/15 flex flex-col gap-2">
+        <button
+          onClick={toggleTheme}
+          className="flex items-center gap-3 px-4 py-2.5 rounded-lg w-full transition-colors text-sm"
+          style={{ color: '#FBFBFB', backgroundColor: 'rgba(255,255,255,0.10)' }}
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+        </button>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white w-full transition-colors"
+          className="flex items-center gap-3 px-4 py-2.5 rounded-lg w-full transition-colors text-sm"
+          style={{ color: '#FBFBFB' }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.12)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
         >
           <LogOut className="w-5 h-5" />
           <span>Logout</span>

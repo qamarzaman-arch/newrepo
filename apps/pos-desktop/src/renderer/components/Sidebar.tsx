@@ -80,120 +80,79 @@ const Sidebar: React.FC = () => {
   });
 
   return (
-    <aside className="w-72 bg-gradient-to-b from-primary-600 via-primary-700 to-primary-800 text-white flex flex-col shadow-2xl">
+    <aside className="w-72 text-white flex flex-col" style={{ backgroundColor: '#AA0000' }}>
       {/* Logo */}
-      <div className="p-6 border-b border-primary-500/10">
+      <div className="p-6 border-b border-white/15">
         <Link to={user?.role === 'CASHIER' ? '/cashier-pos' : '/dashboard'} className="flex items-center gap-3 group">
-          <motion.div
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            transition={{ type: "spring", stiffness: 300 }}
-            className="bg-primary-600/30 backdrop-blur-sm rounded-2xl p-3 shadow-lg"
-          >
+          <div className="bg-white rounded-2xl p-2">
             <img src="/assets/logo.png" alt="POSLytic" className="h-10 w-auto" />
-          </motion.div>
+          </div>
           <div>
-            <motion.h1
-              className="text-2xl font-bold font-display bg-gradient-to-r from-white to-primary-100 bg-clip-text text-transparent"
-              whileHover={{ scale: 1.05 }}
-            >
-              POSLytic
-            </motion.h1>
-            <motion.p
-              className="text-xs text-white/70 font-medium"
-              animate={{ opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
+            <h1 className="text-2xl font-bold font-display tracking-wide text-white">
+              POSLYTIC
+            </h1>
+            <p className="text-xs text-white/80 font-medium">
               Smart Management
-            </motion.p>
+            </p>
           </div>
         </Link>
       </div>
 
       {/* User Info */}
-      <div className="px-6 py-5 border-b border-primary-500/10 bg-primary-900/20">
-        <motion.div
-          className="flex items-center gap-3"
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <div className="w-10 h-10 rounded-full bg-primary-600/30 flex items-center justify-center">
+      <div className="px-6 py-5 border-b border-white/15" style={{ backgroundColor: 'rgba(0,0,0,0.15)' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
             <User className="w-5 h-5" />
           </div>
           <div>
             <p className="text-sm font-semibold text-white">Hello, {user?.fullName}!</p>
-            <p className="text-xs text-white/60 mt-0.5">{user?.role}</p>
+            <p className="text-xs text-white/70 mt-0.5">{user?.role}</p>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        {filteredMenuItems.map((item, index) => {
+        {filteredMenuItems.map((item) => {
           const isActive = location.pathname === item.path.split('?')[0];
           const Icon = item.icon;
 
           return (
-            <motion.div
+            <Link
               key={item.path}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
+              to={item.path}
+              className="relative flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-150"
+              style={
+                isActive
+                  ? { backgroundColor: '#FFFFFF', color: '#AA0000', fontWeight: 600 }
+                  : { color: '#FBFBFB' }
+              }
+              onMouseEnter={(e) => {
+                if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.12)';
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+              }}
             >
-              <Link
-                to={item.path}
-                className={`relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group overflow-hidden ${
-                  isActive
-                    ? 'bg-white text-primary-700 font-semibold shadow-xl shadow-primary-500/20'
-                    : 'text-white/80 hover:bg-primary-600/30 hover:text-white hover:shadow-lg'
-                }`}
-              >
-                <motion.div
-                  whileHover={{ scale: 1.2, rotate: 5 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`${isActive ? 'text-primary-600' : ''}`}
-                >
-                  <Icon className="w-5 h-5" />
-                </motion.div>
-                <span className="flex-1">{item.label}</span>
-                {isActive && (
-                  <motion.div
-                    layoutId="activeIndicator"
-                    className="absolute right-0 w-1 h-8 bg-primary-500 rounded-l-full"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                )}
-                <motion.div
-                  className={`absolute inset-0 bg-gradient-to-r from-transparent via-primary-500/10 to-transparent ${
-                    isActive ? 'from-transparent via-primary-500/10 to-transparent' : ''
-                  }`}
-                  initial={{ x: '-100%' }}
-                  whileHover={{ x: '100%' }}
-                  transition={{ duration: 0.5 }}
-                  style={{ pointerEvents: 'none' }}
-                />
-              </Link>
-            </motion.div>
+              <Icon className="w-5 h-5" />
+              <span className="flex-1">{item.label}</span>
+            </Link>
           );
         })}
       </nav>
 
       {/* Logout */}
-      <div className="p-4 border-t border-primary-500/10 bg-primary-900/20">
-        <motion.button
+      <div className="p-4 border-t border-white/15" style={{ backgroundColor: 'rgba(0,0,0,0.15)' }}>
+        <button
           onClick={logout}
-          whileHover={{ scale: 1.02, backgroundColor: 'rgba(239, 68, 68, 0.8)' }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-600/30 backdrop-blur-sm rounded-xl transition-all font-semibold shadow-lg hover:shadow-xl"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-colors font-semibold"
+          style={{ backgroundColor: 'rgba(255,255,255,0.12)', color: '#FBFBFB' }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.20)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.12)'; }}
         >
-          <motion.div
-            whileHover={{ x: -3 }}
-            transition={{ type: "spring", stiffness: 400 }}
-          >
-            <LogOut className="w-5 h-5" />
-          </motion.div>
+          <LogOut className="w-5 h-5" />
           <span>Logout</span>
-        </motion.button>
+        </button>
       </div>
     </aside>
   );
